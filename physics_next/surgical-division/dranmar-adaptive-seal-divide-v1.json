@@ -1,18 +1,20 @@
 {
   "blade": {
     "guard_travel_m": 0.011,
-    "interlocked": true,
-    "topology_change": "progressive_release_of_runtime_bridge_attachments",
+    "interlock_authority": "same_interval_registered_scene_evidence",
+    "topology_change": "evidence_reconciled_progressive_release_of_runtime_bridge_attachments",
     "travel_m": 0.041
   },
   "boundaries": [
     "no clinical vessel-sealing claim",
     "no calibrated electrosurgical tissue response",
     "no continuous topology cutting",
+    "no biochemical or histological fusion claim",
     "no validated thermal injury model",
     "no patient-care settings"
   ],
   "centering": {
+    "production_input": "registered_alignment_force_and_geometry_evidence",
     "soft_limit_n": 2.2,
     "target_force_per_side_n": 0.7,
     "travel_per_side_m": 0.024
@@ -21,44 +23,41 @@
     "hard_abort_n": 45.0,
     "jaw_travel_per_side_m": 0.013,
     "minimum_force_n": 8.0,
+    "production_input": "exact_bilateral_post_physics_contact_evidence",
     "soft_limit_n": 32.0,
     "target_total_force_n": 18.0
   },
-  "energy_proxy": {
+  "energy_conditioning_proxy": {
     "heat_loss_w_k": 0.22,
-    "maturity_threshold": 0.9,
     "maximum_power_per_zone_w": 45.0,
     "maximum_temperature_c": 105.0,
-    "model": "lumped_thermal_impedance_and_first_order_seal_maturity_proxy",
+    "model": "registered_temperature_impedance_electrical_conditioning_proxy",
+    "seal_maturity_or_tissue_fusion": "not_observed_or_claimed",
     "target_temperature_c": 78.0,
     "thermal_capacity_j_k": 1.8
   },
   "id": "dranmar-adaptive-seal-divide-robot-v1",
-  "leak_verification": {
-    "maximum_flow_per_stump_ml_min": 0.1,
-    "model": "reduced_order_orifice_flow_from_seal_maturity_and_damage",
-    "reference_pressure_pa": 16000.0
+  "runtime": {
+    "native_scene_evidence_provider": "not_implemented",
+    "scene_evidence_adapter": "dranmar.adaptive-seal-divide.scene-evidence@3.0.0",
+    "source_registration": "locked_to_exact_workcell_prims_mechanics_attachments_and_clock"
   },
-  "schema": "dranmar.adaptive-seal-divide-profile.v1",
+  "schema": "dranmar.adaptive-seal-divide-profile.v2",
   "seal_band": {
+    "biochemical_cure_or_healing": "not_implemented",
     "bond_regions": [
       "upper",
       "lower"
     ],
-    "initial_break_force_n": 0.6,
-    "mature_break_force_n": 7.5,
-    "outer_envelope_m": [
-      0.0046,
-      0.0104,
-      0.006
-    ],
-    "state_variants": [
-      "fresh",
-      "mature",
-      "failed"
-    ]
+    "mechanical_authority": "exact_latest_shared_cohesive_interface_and_attachment_identity",
+    "physical_calibration": "not_performed"
   },
-  "status": "simulation_training_model",
+  "status": "source_hardened_native_scene_evidence_provider_missing",
+  "stump_verification": {
+    "maximum_observed_leak_per_stump_ml_min": 0.1,
+    "minimum_verification_pressure_pa": 12000.0,
+    "model": "exact_latest_shared_vessel_observation_not_seal_maturity_prediction"
+  },
   "tool": {
     "bridge_pin_count": 8,
     "irrigation_ports": 6,

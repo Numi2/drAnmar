@@ -6,6 +6,26 @@ pre-remediation snapshot; it must not be read as the current repository state.
 Exact parent/submodule revisions and artifact hashes are retained in
 `physics_next/benchmarks/dranmar-portfolio-evidence-index.json`.
 
+## 27 July 2026 source-only realism delta
+
+The current working source contains an unexecuted realism hardening pass. It
+adds shared causal mechanics, exact scene-evidence contracts, a shared but
+incompletely conserved patient ledger, and fail-closed workcell outcome paths;
+it also retracts unsupported
+stapler retention, perfusion viability/patency, oncology completion, and
+caller-authored force/effect claims.
+
+No test, build, import, simulator, validator, qualification script, release
+gate, or native evidence campaign was run for this delta. The verification and
+native observations below remain historical evidence for their exact earlier
+revisions. They do not qualify the modified working source. Generated
+manifests, hashes, catalog locks, qualification reports, and packaged artifacts
+may be stale until a deliberate execution/release phase regenerates them.
+
+The current source/evidence grades and exact B/A promotion requirements for
+every catalog asset are in
+[`REALISM_SOURCE_AUDIT_2026-07-27.md`](REALISM_SOURCE_AUDIT_2026-07-27.md).
+
 ## Repository-verification status
 
 The current source gate establishes:
@@ -60,12 +80,11 @@ subcutaneous tissue, linea alba/fascial continuity, and peritoneum. The rectus
 abdominal wall is preserved as the wound margin rather than incorrectly
 recorded as a transected layer.
 
-Incision-state release requires post-physics contact authority plus
-monotonic path, lateral alignment, active-layer depth, speed, force, and work
-evidence. Wound-edge attachment requires post-physics bilateral contact,
-qualified cells, bounded force/speed/offset, and dwell; contact loss, slip, or
-overload releases the grasp. Camera-oriented open-abdomen scenes may use an
-explicitly labelled prepositioned fixture, which is not grasp evidence.
+Runtime incision-state release and wound-edge capture authoring are disabled in
+the current source because no exact prim-bound providers exist for those
+mechanisms. The retained scalar-sample models are private engineering fixtures
+only. Camera-oriented open-abdomen scenes may use an explicitly labelled
+prepositioned fixture, which is not grasp or incision evidence.
 
 This is the most realistic supported software architecture for the current
 pre-segmented solver route. It remains a mechanics-enabled
@@ -93,8 +112,9 @@ still required.
 
 ## Release decision
 
-The repository is ready for a versioned **non-clinical research-source
-release** under its current disclaimers. It is not ready for a
+The historical verified revision was suitable for a versioned non-clinical
+research-source release under its disclaimers. The current working source is
+unexecuted and is **not release-qualified** by this review. It is not ready for a
 physics-qualified, real-world-correlated, educationally validated, clinical,
 medical-device, patient-specific, or patient-care release.
 

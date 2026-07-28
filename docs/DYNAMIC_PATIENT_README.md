@@ -3,14 +3,14 @@
 A Dr.Anmar-owned interactive abdominal simulation-training patient for Isaac
 Sim and Isaac Lab. It combines independently addressable anatomy, mixed
 deformable representations, a solver-independent physiology runtime,
-intervention adapters, and a unified procedure scene. OpenUSD, Isaac Lab, and
+evidence-bound patient effects, and a unified procedure scene. OpenUSD, Isaac Lab, and
 PhysX provide bounded runtime infrastructure; Dr.Anmar owns the patient,
-workflow, state, robot adapter, and evidence contracts.
+workflow, state, authority, and evidence contracts.
 
 The patient is available for simulation training, data generation, and
 evaluation. It is not patient-specific; real-world correlation and clinical
 evidence are not established. Its material, anatomical, physiological, fluid,
-damage, and intervention values are disclosed engineering parameters.
+damage, and effect values are disclosed engineering parameters.
 
 ## Runtime contract
 
@@ -22,9 +22,9 @@ patient.vital_signs
 patient.tissue_state
 patient.organ_motion
 patient.damage
-patient.interventions
+patient.contact_effects
+patient.patient_authority
 patient.incision
-patient.robot
 patient.event_bus
 patient.fluids
 ```
@@ -67,40 +67,11 @@ variant hides this mechanics asset.
 The complete implementation and limits are documented in
 `DYNAMIC_PATIENT_LAPAROTOMY.md`.
 
-## Validation
+## Current evidence boundary
 
-The physiology and contract regression suite has no geometry dependencies:
-
-```bash
-pytest -q tests/test_dynamic_abdominal_patient.py
-pytest -q tests/test_dynamic_patient_laparotomy_asset.py
-pytest -q tests/test_dynamic_patient_laparotomy_incision.py
-python examples/end_to_end_procedure.py
-```
-
-The complete geometry/source validator uses pinned, explicit dependencies:
-
-```bash
-python -m pip install -r scripts/requirements_dynamic_abdominal_patient_validation.txt
-python scripts/validate_dranmar_dynamic_abdominal_patient.py
-```
-
-The generated report is written to:
-
-`physics_next/benchmarks/dranmar-dynamic-abdominal-patient-validation.json`
-
-Run the native scene only from the repository's Isaac Lab environment:
-
-```bash
-./dr_anmar.sh laparotomy
-```
-
-For a bounded headless run with an RTX frame:
-
-```bash
-./dr_anmar.sh laparotomy 720 /tmp/dranmar-laparotomy.png
-```
-
-Successful execution demonstrates that the authored scene ran in that exact
-software and hardware environment. It is not constitutive, grasp-force,
-incision, clinical, or medical-device validation.
+The current revision was hardened by source inspection only. No test, build,
+validator, import, simulator, release gate, or native evidence campaign was run.
+Existing reports and prior 720-step scene records are historical and do not
+qualify this modified source. Native workcell-to-patient providers remain
+incomplete, so closure, sealing, division, patency, perfusion recovery, injury,
+resuscitation, and clinical outcome are not established.

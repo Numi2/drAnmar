@@ -470,6 +470,19 @@ def validate_action_stream(
         return ("action_contract.action_dim must be positive",)
     if not isinstance(dimensions, list) or len(dimensions) != width:
         return (f"action contract must describe all {width} dimensions",)
+    for field in (
+        "sample_hz",
+        "stale_timeout_s",
+        "maximum_continuous_delta_per_sample",
+    ):
+        value = contract.get(field)
+        if (
+            not isinstance(value, (int, float))
+            or isinstance(value, bool)
+            or not math.isfinite(float(value))
+            or float(value) <= 0.0
+        ):
+            failures.append(f"action contract {field} must be finite and positive")
     if len({str(item.get("name")) for item in dimensions if isinstance(item, Mapping)}) != width:
         failures.append("action dimension names must be unique")
     neutral = contract.get("neutral_action")
@@ -531,14 +544,34 @@ def validate_action_stream(
                 isinstance(bounds, list)
                 and len(bounds) == 2
                 and all(isinstance(item, (int, float)) for item in bounds)
+                and all(not isinstance(item, bool) and math.isfinite(float(item)) for item in bounds)
+                and float(bounds[0]) <= float(bounds[1])
             ):
-                failures.append(f"dimension {axis} requires numeric bounds")
+                failures.append(
+                    f"dimension {axis} requires finite ordered numeric bounds"
+                )
                 continue
             if value < float(bounds[0]) - 1.0e-9 or value > float(bounds[1]) + 1.0e-9:
                 failures.append(f"frame {index} dimension {axis} exceeds bounds")
             allowed = dimension.get("allowed_values")
-            if allowed is not None and value not in tuple(float(item) for item in allowed):
-                failures.append(f"frame {index} dimension {axis} is not an allowed discrete value")
+            if allowed is not None:
+                if not (
+                    isinstance(allowed, list)
+                    and allowed
+                    and all(
+                        isinstance(item, (int, float))
+                        and not isinstance(item, bool)
+                        and math.isfinite(float(item))
+                        for item in allowed
+                    )
+                ):
+                    failures.append(
+                        f"dimension {axis} allowed_values must be finite numeric values"
+                    )
+                elif value not in tuple(float(item) for item in allowed):
+                    failures.append(
+                        f"frame {index} dimension {axis} is not an allowed discrete value"
+                    )
 
     if len(timestamps) == len(frames):
         if abs(timestamps[0]) > 1.0e-9:
@@ -616,7 +649,12 @@ def safe_action_sample(
         return ActionSample(target, neutral, "invalid_time_neutral_stop")
     if validate_action_stream(stream, contract):
         return ActionSample(target, neutral, "invalid_stream_neutral_stop")
-    stale_timeout = float(contract["stale_timeout_s"])
+    try:
+        stale_timeout = float(contract["stale_timeout_s"])
+    except (KeyError, TypeError, ValueError):
+        return ActionSample(target, neutral, "invalid_stale_timeout_neutral_stop")
+    if not math.isfinite(stale_timeout) or stale_timeout <= 0.0:
+        return ActionSample(target, neutral, "invalid_stale_timeout_neutral_stop")
     if now < received or now - received > stale_timeout:
         return ActionSample(target, neutral, "stale_input_neutral_stop")
 

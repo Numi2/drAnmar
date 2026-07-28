@@ -1419,16 +1419,23 @@ class WarpSuture:
         target = np.asarray(target_m, dtype=np.float32)
         if target.shape != (3,) or not np.all(np.isfinite(target)):
             raise ValueError("attachment target must be a finite three-vector")
+        compliance = float(compliance_m_n)
+        if not math.isfinite(compliance) or compliance < 0.0:
+            raise ValueError("compliance_m_n must be finite and non-negative")
+        if break_force_n is None:
+            break_force = 0.0
+        else:
+            break_force = float(break_force_n)
+            if not math.isfinite(break_force) or break_force <= 0.0:
+                raise ValueError(
+                    "break_force_n must be finite and positive when supplied; "
+                    "use None for an intentionally unbreakable attachment"
+                )
         self._host_attachment_active[particle] = 1
         self._host_attachment_targets[particle] = target
-        self._host_attachment_compliance[particle] = max(
-            0.0,
-            float(compliance_m_n),
-        )
-        self._host_attachment_break_force[particle] = (
-            0.0 if break_force_n is None else max(0.0, float(break_force_n))
-        )
-        if compliance_m_n <= 0.0:
+        self._host_attachment_compliance[particle] = compliance
+        self._host_attachment_break_force[particle] = break_force
+        if compliance <= 0.0:
             self._host_inverse_masses[particle] = 0.0
         else:
             self._host_inverse_masses[particle] = (
@@ -1479,17 +1486,17 @@ class WarpSuture:
         target = np.asarray(target_m, dtype=np.float32)
         if target.shape != (3,) or not np.all(np.isfinite(target)):
             raise ValueError("grasp target must be a finite three-vector")
+        compliance = float(compliance_m_n)
+        if not math.isfinite(compliance) or compliance < 0.0:
+            raise ValueError("compliance_m_n must be finite and non-negative")
         current = self.positions.numpy()[particle_indices]
         offsets = current - current.mean(axis=0)
         for particle, offset in zip(particle_indices, offsets):
             self._host_attachment_active[particle] = 1
             self._host_attachment_targets[particle] = target + offset
-            self._host_attachment_compliance[particle] = max(
-                0.0,
-                float(compliance_m_n),
-            )
+            self._host_attachment_compliance[particle] = compliance
             self._host_attachment_break_force[particle] = 0.0
-            if compliance_m_n <= 0.0:
+            if compliance <= 0.0:
                 self._host_inverse_masses[particle] = 0.0
             else:
                 self._host_inverse_masses[particle] = (
@@ -1513,7 +1520,10 @@ class WarpSuture:
         values = np.asarray(strength_fractions, dtype=np.float32)
         if values.shape != (self.config.segment_count,):
             raise ValueError("damage strength array has the wrong shape")
-        values = np.clip(values, 0.05, 1.0)
+        if not np.all(np.isfinite(values)):
+            raise ValueError("damage strength array must contain only finite values")
+        if np.any(values < 0.05) or np.any(values > 1.0):
+            raise ValueError("damage strength fractions must be within [0.05, 1.0]")
         wp.copy(
             self.damage_strength,
             wp.array(values, dtype=float, device="cpu"),
@@ -1528,21 +1538,38 @@ class WarpSuture:
         gravity_m_s2: Sequence[float] = (0.0, -9.81, 0.0),
         ground_height_m: float | None = None,
     ) -> None:
-        if dt_s <= 0.0 or substeps <= 0 or solver_iterations <= 0:
+        dt = float(dt_s)
+        if not math.isfinite(dt) or dt <= 0.0:
+            raise ValueError("time step must be finite and positive")
+        if (
+            isinstance(substeps, bool)
+            or isinstance(solver_iterations, bool)
+            or int(substeps) != substeps
+            or int(solver_iterations) != solver_iterations
+            or int(substeps) <= 0
+            or int(solver_iterations) <= 0
+        ):
             raise ValueError("time step, substeps, and iterations must be positive")
-        sub_dt = float(dt_s) / int(substeps)
+        substep_count = int(substeps)
+        iteration_count = int(solver_iterations)
+        gravity_values = np.asarray(gravity_m_s2, dtype=np.float64)
+        if gravity_values.shape != (3,) or not np.all(np.isfinite(gravity_values)):
+            raise ValueError("gravity_m_s2 must be a finite three-vector")
+        if ground_height_m is not None and not math.isfinite(float(ground_height_m)):
+            raise ValueError("ground_height_m must be finite when supplied")
+        sub_dt = dt / substep_count
         maximum_displacement = self.config.diameter_m * 0.45
         maximum_speed = maximum_displacement / sub_dt
         damping = math.exp(
             -float(self.profile["material"]["linear_velocity_damping"])
             * sub_dt
         ) * 0.995
-        gravity = wp.vec3(*map(float, gravity_m_s2))
+        gravity = wp.vec3(*map(float, gravity_values))
         bend_compliance = (
             self.config.spacing_m**3
             / self.config.flexural_rigidity_n_m2
         )
-        for _ in range(substeps):
+        for _ in range(substep_count):
             self.stretch_lambdas.zero_()
             self.bend_lambdas.zero_()
             self.attachment_lambdas.zero_()
@@ -1561,7 +1588,7 @@ class WarpSuture:
                 ],
                 device=self.device,
             )
-            for _iteration in range(solver_iterations):
+            for _iteration in range(iteration_count):
                 wp.launch(
                     _project_stretch_global,
                     dim=1,

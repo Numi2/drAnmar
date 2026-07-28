@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Headless CUDA qualification for the DrAnmar SafePlane dissection system.
+"""Legacy CUDA controller exercise for the DrAnmar SafePlane asset.
+
+This script still injects caller-authored force, work, fluid, energy, visibility,
+and injury-adjacent values into the former outcome API. Those public entry
+points now intentionally fail closed until a SafePlane SceneEvidenceEnvelope and
+shared-mechanics bridge exists. Retain this file as a migration fixture; it is
+not a current validator or outcome-evidence producer.
 
 Run through Isaac Lab:
 

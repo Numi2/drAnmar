@@ -1640,7 +1640,7 @@ def mount_contract() -> dict[str,object]:
     }
 
 
-def task_contract() -> dict[str,object]:
+def _legacy_task_contract_template() -> dict[str,object]:
     return {
         "schema":"dranmar.adaptive-seal-divide-task.v1",
         "phases":["inspect","center","compress","seal","verify_seal","retract_guard","divide","release","verify_stumps","complete","abort"],
@@ -1651,7 +1651,7 @@ def task_contract() -> dict[str,object]:
     }
 
 
-def physics_profile(bundle: ToolBundle) -> dict[str,object]:
+def _legacy_physics_profile_template(bundle: ToolBundle) -> dict[str,object]:
     return {
         "schema":"dranmar.adaptive-seal-divide-profile.v1",
         "id":"dranmar-adaptive-seal-divide-robot-v1",
@@ -1685,7 +1685,9 @@ def asset_manifest() -> dict[str,object]:
         "schema":"dranmar.asset-manifest.v1","id":"dranmar-adaptive-seal-divide-robot-v1","version":VERSION,
         "catalog_subpath":str(CATALOG_SUBPATH),"license":"Apache-2.0","intended_use":"simulation_training","clinical_validation":False,
         "primary_assets":["dranmar_adaptive_seal_divide_tool_payload.usda","dranmar_adaptive_seal_divide_tool_standalone.usda","dranmar_adaptive_seal_divide_tool_rigid_proxy.usda","dranmar_seal_divide_vessel_demo.usda","dranmar_tissue_seal_band.usda","dranmar_division_blade_cartridge.usda","dranmar_seal_vapor_particle.usda"],
-        "runtime_capabilities":["franka_hand_replacement","tissue_centering","dual_zone_compression","adaptive_energy_proxy","physical_seal_band_retention","blade_interlock","progressive_bridge_release_division","dual_stump_leak_verification"],
+        "runtime_capabilities":["franka_hand_replacement","registered_tissue_centering","evidence_bound_dual_zone_compression","provisional_conditioning_proxy","cohesive_seal_band_mechanics_unqualified_for_retention","evidence_interlocked_blade_motion","bridge_topology_release_surrogate","shared_vessel_stump_observation"],
+        "native_scene_evidence_provider":"not_implemented",
+        "simulator_task_completion_verified":False,
     }
 
 
@@ -1694,7 +1696,21 @@ def integration_module() -> str:
         raise FileNotFoundError(
             f"Canonical integration module is missing: {INTEGRATION_PATH}"
         )
-    return INTEGRATION_PATH.read_text(encoding="utf-8")
+    source = INTEGRATION_PATH.read_text(encoding="utf-8")
+    required_markers = (
+        "SealDivideSceneEvidence",
+        "def consume_scene_evidence(",
+        "def update_from_scene(",
+        "maximum_authorized_blade_progress",
+        "seal energy control requires SealDivideSceneEvidence",
+    )
+    missing = tuple(marker for marker in required_markers if marker not in source)
+    if missing:
+        raise RuntimeError(
+            "adaptive seal/divide integration source lacks reviewed evidence "
+            f"markers: {missing}"
+        )
+    return source
 
 
 
@@ -1754,7 +1770,7 @@ energy device or approved surgical settings.
 '''
 
 
-def docs_physical() -> str:
+def _legacy_docs_physical_template() -> str:
     return f'''# Physical Seal and Division Contract
 
 ## Intact tissue representation
@@ -1786,7 +1802,7 @@ This is a controlled topology-surrogate strategy. It does not claim continuous f
 '''
 
 
-def docs_energy() -> str:
+def _legacy_docs_energy_template() -> str:
     return '''# Energy, Interlock, and Leak Model
 
 The runtime helper uses a lumped thermal model per seal zone:
@@ -1826,7 +1842,7 @@ The rigid proxy is available for perception, collision-aware planning, and synth
 '''
 
 
-def readme() -> str:
+def _legacy_readme_template() -> str:
     return f'''# {ASSET_NAME}
 
 A DrAnmar-owned, provider-neutral research end effector for NVIDIA Isaac Sim
@@ -1851,7 +1867,7 @@ This package is not clinically validated, is not a medical device, and is not ap
 '''
 
 
-def docs_validation() -> str:
+def _legacy_docs_validation_template() -> str:
     return '''# Integrity and runtime boundaries
 
 Static gates cover deterministic assets, dependency closure, controller
@@ -1867,6 +1883,114 @@ Seal efficacy, thermal fusion, burst pressure, division quality, physical
 calibration, clinical performance, and patient use remain unqualified pending
 a calibrated volumetric vessel/material and instrumented bench data.
 '''
+
+
+def _reviewed_catalog_text(name: str, required_markers: tuple[str, ...]) -> str:
+    path = EXTENSION_ROOT / "data" / CATALOG_SUBPATH / name
+    if not path.is_file():
+        raise RuntimeError(
+            f"reviewed adaptive seal/divide catalog source is missing: {path}"
+        )
+    source = path.read_text(encoding="utf-8")
+    missing = tuple(marker for marker in required_markers if marker not in source)
+    if missing:
+        raise RuntimeError(
+            f"reviewed adaptive seal/divide {name} lacks markers: {missing}"
+        )
+    return source
+
+
+def _reviewed_document_text(
+    name: str,
+    required_markers: tuple[str, ...],
+) -> str:
+    path = DOCS_ROOT / name
+    if not path.is_file():
+        raise RuntimeError(
+            f"reviewed adaptive seal/divide document is missing: {path}"
+        )
+    source = path.read_text(encoding="utf-8")
+    missing = tuple(marker for marker in required_markers if marker not in source)
+    if missing:
+        raise RuntimeError(
+            f"reviewed adaptive seal/divide {name} lacks markers: {missing}"
+        )
+    return source
+
+
+def task_contract() -> dict[str, object]:
+    """Preserve the reviewed fail-closed task contract."""
+    return json.loads(
+        _reviewed_catalog_text(
+            "adaptive_seal_divide_task_contract.json",
+            (
+                "dranmar.adaptive-seal-divide-task.v2",
+                "native_scene_evidence_provider",
+                "simulator_task_completion_verified",
+                "exact_cohesive_and_vessel_mechanics_identity",
+            ),
+        )
+    )
+
+
+def physics_profile(bundle: ToolBundle) -> dict[str, object]:
+    """Preserve the reviewed evidence-authority profile."""
+    del bundle
+    return json.loads(
+        _reviewed_catalog_text(
+            "physics_profile.json",
+            (
+                "dranmar.adaptive-seal-divide-profile.v2",
+                "source_hardened_native_scene_evidence_provider_missing",
+                "seal_maturity_or_tissue_fusion",
+                "exact_latest_shared_vessel_observation",
+            ),
+        )
+    )
+
+
+def readme() -> str:
+    return _reviewed_catalog_text(
+        "README.md",
+        (
+            "Evidence status",
+            "scene-evidence@3.0.0",
+            "not implemented",
+        ),
+    )
+
+
+def docs_physical() -> str:
+    return _reviewed_document_text(
+        "PHYSICAL_SEAL_AND_DIVIDE.md",
+        (
+            "Caller-reported force is not admissible",
+            "Mechanical seal-band qualification",
+            "Evidence-authorized division",
+        ),
+    )
+
+
+def docs_energy() -> str:
+    return _reviewed_document_text(
+        "ENERGY_AND_LEAK_MODEL.md",
+        (
+            "provisional control proxy",
+            "same-interval evidence",
+            "not predicted from an authored seal fraction",
+        ),
+    )
+
+
+def docs_validation() -> str:
+    return _reviewed_document_text(
+        "VALIDATION.md",
+        (
+            "source review and editing only",
+            "native scene-evidence provider",
+            "obsolete runtime diagnostic and unit tests",
+        ),
+    )
 
 
 def installer_source() -> str:
@@ -1913,7 +2037,7 @@ def write_asset_files(bundle: ToolBundle) -> list[Path]:
         write_json(ASSET_ROOT/"asset_manifest.json",asset_manifest()),
     ]
     write_json(PHYSICS_PROFILE_PATH,physics_profile(bundle));files.append(PHYSICS_PROFILE_PATH)
-    INTEGRATION_PATH.write_text(integration_module(),encoding="utf-8");files.append(INTEGRATION_PATH)
+    integration_module();files.append(INTEGRATION_PATH)
     for name,text in (("MECHANISM.md",docs_mechanism()),("PHYSICAL_SEAL_AND_DIVIDE.md",docs_physical()),("ENERGY_AND_LEAK_MODEL.md",docs_energy()),("FRANKA_INTEGRATION.md",docs_franka()),("VALIDATION.md",docs_validation())):
         path=DOCS_ROOT/name;path.write_text(text,encoding="utf-8");files.append(path)
     example=EXAMPLE_ROOT/"franka_adaptive_seal_divide_scene.py";example.write_text(example_scene(),encoding="utf-8");files.append(example)
@@ -2061,7 +2185,8 @@ def generate() -> dict[str,object]:
         "catalog_package":{"path":str(catalog),"sha256":sha256(catalog)},
         "repository_overlay":{"path":str(overlay),"sha256":sha256(overlay)},
         "primary_assets":[str(ASSET_ROOT/name) for name in ("dranmar_adaptive_seal_divide_tool_payload.usda","dranmar_adaptive_seal_divide_tool_standalone.usda","dranmar_adaptive_seal_divide_tool_rigid_proxy.usda","dranmar_seal_divide_vessel_demo.usda","dranmar_tissue_seal_band.usda","dranmar_division_blade_cartridge.usda")],
-        "runtime_validation":static_report(all_payload_files())["runtime_validation"],"clinical_validation":False,
+        "runtime_validation":"not_run_source_review_only",
+        "clinical_validation":False,
     }
     release_path=PACKAGE_ROOT.parent/"dranmar_adaptive_seal_divide_robot_release_v0.1.0.json";write_json(release_path,release)
     return {"release":release,"release_path":str(release_path),"manifest":str(manifest),"static_report":str(static)}

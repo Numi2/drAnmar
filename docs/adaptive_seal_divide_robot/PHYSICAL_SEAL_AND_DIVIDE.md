@@ -1,28 +1,43 @@
-# Physical Seal and Division Contract
+# Physical seal-and-division contract
 
 ## Intact tissue representation
 
-The demo vessel contains two watertight deformable halves connected by 8 temporary bridge pins. Each pin is attached physically to both halves. Two explicit kinematic distal fixtures keep the ends grounded. The initial visual bridge conceals the submillimetre seam.
-
-Surface self-collision is disabled by default for portable GPU deformable
-cooking. It can be enabled explicitly for a qualified solver configuration.
+The demo vessel contains two watertight deformable halves connected by eight
+temporary bridge-pin attachments and held by distal fixture attachments. This
+is a controlled topology surrogate: it does not represent continuous cutting,
+wall-layer fracture, or a real intact lumen across the future cut plane.
 
 ## Temporary jaw compression
 
-The runtime compression controller creates four verified deformable
-attachments: upper and lower jaw seal contacts for each future stump. Force is
-reported by the caller and checked against the provisional soft and hard
-limits. These attachments are temporary and are released only after both
-retained seal bands exist.
+The compression controller creates four deformable-to-jaw attachments. Its
+production update accepts only the exact registered bilateral post-physics
+contact samples from `SealDivideSceneEvidence`. Caller-reported force is not
+admissible. Hard overload releases the temporary attachments; attachment
+existence alone does not establish safe or adequate compression.
 
-## Seal retention
+## Mechanical seal-band qualification
 
-A seal operation deploys one `DrAnmarTissueSealBand` on each future stump. Each band has independent upper and lower bond volumes. The vessel is compressed when those attachments are created, so the band preserves the collapsed wall configuration after jaw release.
+Each stump band has exact registered upper/lower attachment identities and a
+shared cohesive-interface response. A band is mechanically qualified only
+when the same evidence interval establishes:
 
-Seal-band state progresses from `fresh` to `mature`. Excess load removes the attachments and changes the state to `failed`.
+- provisional temperature/impedance/electrical conditioning without fault;
+- measured compression, balance, contact area, and slip within policy;
+- a live exact attachment set;
+- cohesive integrity below damage limits and without failure;
+- shared-vessel leak below the provisional limit at sufficient pressure; and
+- wall damage below the provisional limit.
 
-## Division
+This is not seal “maturity,” biochemical cure, tissue fusion, healing, burst
+strength, or clinical seal efficacy.
 
-The blade does not silently replace the vessel mesh. Blade progress releases bridge-pin attachments in a defined order. At complete progress, the two deformable halves are mechanically independent while their seal bands remain attached.
+## Evidence-authorized division
 
-This is a controlled topology-surrogate strategy. It does not claim continuous fracture, histological thermal fusion, or clinically validated stump strength.
+The blade controller reconciles registered joint position, blade-tip position,
+guard state, vessel contact, and live bridge topology. Forward motion can
+release bridge attachments only while the same evidence interval satisfies
+the mechanical interlock. Observed bridge loss ahead of previously authorized
+blade progress is a failure, not successful division.
+
+Complete bridge release is only a simulator topology event. It does not prove
+cut quality, sealed stumps, thermal margin, or patient safety.

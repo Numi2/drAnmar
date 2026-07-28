@@ -283,13 +283,22 @@ from orbit.surgical.assets.perfusion_viability_robot import (
 )
 from orbit.surgical.assets.dynamic_abdominal_patient import (
     DynamicSurgicalPatient,
-    PatientContactFrame,
+)
+from orbit.surgical.assets.patient_contact_scene_evidence import (
+    DynamicPatientSceneEvidence,
+    PatientContactSceneSources,
+    PatientContactSensorSample,
 )
 from orbit.surgical.assets.autonomous_rescue_or import (
     AutonomousRescueORRuntime,
-    PhysicsEvidenceFrame,
     rescue_vessel_cfg,
 )
+from orbit.surgical.assets.autonomous_rescue_scene_evidence import (
+    AutonomousRescueSceneEvidence,
+    RescueContactSensorSample,
+    RescueToolSceneSources,
+)
+from orbit.surgical.assets.scene_evidence import EvidenceProvenance
 from orbit.surgical.assets.skin_stapler import (
     ClosureLine,
     FIRE_THRESHOLD_DEG,
@@ -621,15 +630,15 @@ APP_HTML = r"""<!doctype html>
     <section id="closureRobotCell" class="stapler-cell hidden" aria-label="Approximate staple seal robot controls">
       <div class="stapler-cell-head"><div><b>Dr.Anmar approximate–staple–seal robot</b><small>Franka link8 mount · surface-deformable tissue · measured physical phase gates</small></div><span id="closureRobotPhase" class="stapler-phase">READY</span></div>
       <div class="stapler-metrics"><div class="stapler-metric"><b id="closureRobotApproximation">0 / 0 mm</b><span>CARRIAGES L / R</span></div><div class="stapler-metric"><b id="closureRobotClamps">28 / −28°</b><span>CLAMPS L / R</span></div><div class="stapler-metric"><b id="closureRobotDriver">0.0 mm</b><span>STAPLE DRIVER</span></div><div class="stapler-metric"><b id="closureRobotStaple">0 · 0 bonds</b><span>RETAINED STAPLE</span></div><div class="stapler-metric"><b id="closureRobotAdhesive">0.0 / 0.0 mm</b><span>DEPLOY / METER</span></div><div class="stapler-metric"><b id="closureRobotBonds">0 · 0 bonds</b><span>ADHESIVE BEAD</span></div><div class="stapler-metric"><b id="closureRobotCapture">0</b><span>TEMP CAPTURE</span></div><div class="stapler-metric"><b id="closureRobotPhysics">PHYSX</b><span>TISSUE AUTHORITY</span></div></div>
-      <div class="stapler-controls"><button id="closureRobotRun" class="primary" data-shortcut="CLOSE-RUN" onclick="closureRobotCommand('run')">Run complete<br>physical closure</button><button id="closureRobotStop" data-shortcut="CLOSE-STOP" onclick="closureRobotCommand('stop')">Hold mechanism<br>keep attachments</button><button data-shortcut="CLOSE-RESET" onclick="closureRobotCommand('reset')">Reset robot<br>and closure</button></div>
-      <p class="stapler-boundary">The stock Panda hand and fingers are inactive; the payload is fixed directly to panda_link8. Clamp capture, the two formed-staple legs and all six cured-bead regions use PhysxPhysicsAttachment. The runtime never rewrites tissue transforms or nodal positions. Penetration, metal forming, adhesive chemistry, damage and clinical strength are not claimed.</p>
+      <div class="stapler-controls"><button id="closureRobotRun" class="primary" data-shortcut="CLOSE-RUN" onclick="closureRobotCommand('run')">Run closure<br>motion sequence</button><button id="closureRobotStop" data-shortcut="CLOSE-STOP" onclick="closureRobotCommand('stop')">Hold mechanism<br>keep attachment prims</button><button data-shortcut="CLOSE-RESET" onclick="closureRobotCommand('reset')">Reset robot<br>and sequence</button></div>
+      <p class="stapler-boundary">The stock Panda hand and fingers are inactive; the payload is fixed directly to panda_link8. Clamp capture, formed-staple legs and bead regions create PhysxPhysicsAttachment prims. Their existence does not prove load-bearing retention or adhesive cure. The runtime never rewrites tissue transforms or nodal positions. Penetration, metal forming, adhesive chemistry, damage and clinical strength are not claimed.</p>
     </section>
     <section id="staplerCell" class="stapler-cell hidden" aria-label="Stapler test cell controls">
-      <div class="stapler-cell-head"><div><b>Dr.Anmar physical tissue closure bench</b><small>PhysX FEM tissue · pre-fire wound approximation · rigid retained staples · no robot grip required</small></div><span id="staplerPhase" class="stapler-phase">READY</span></div>
+      <div class="stapler-cell-head"><div><b>Dr.Anmar stapler mechanism bench</b><small>PhysX FEM tissue · prescribed wound approximation · kinematic staple visuals · retention unverified</small></div><span id="staplerPhase" class="stapler-phase">READY</span></div>
       <div class="stapler-metrics"><div class="stapler-metric"><b id="staplerStation">1 / 7</b><span>CLOSURE STATION</span></div><div class="stapler-metric"><b id="staplerClosure">0 / 7</b><span>STAPLES PLACED</span></div><div class="stapler-metric"><b id="staplerGap">—</b><span>LIVE TISSUE GAP</span></div><div class="stapler-metric"><b id="staplerApproximation">0%</b><span>APPROXIMATION</span></div><div class="stapler-metric"><b id="staplerSpacing">6.0 mm</b><span>GUIDED SPACING</span></div><div class="stapler-metric"><b id="staplerTrigger">0.0°</b><span>ACTUAL TRIGGER</span></div><div class="stapler-metric"><b id="staplerPusher">0.0 mm</b><span>PUSHER TRAVEL</span></div><div class="stapler-metric"><b id="staplerMagazine">35 / 35</b><span>MAGAZINE</span></div><div class="stapler-metric"><b id="staplerRetention">OPEN</b><span>PHYSICAL RETENTION</span></div></div>
       <div class="stapler-progress" aria-label="Closure placement progress"><i id="staplerProgress"></i></div>
       <div class="stapler-controls"><button id="staplerPrevious" data-shortcut="CELL-PREV" onclick="staplerCommand('previous_station')">← Previous<br>station</button><button id="staplerFire" class="primary" data-shortcut="CELL-FIRE" onclick="runStaplerCycle()">Staple &amp; advance<br>one full cycle</button><button id="staplerNext" data-shortcut="CELL-NEXT" onclick="staplerCommand('next_station')">Next<br>station →</button><button data-shortcut="CELL-20" onclick="setStaplerTarget(20)">Mechanism check<br>partial 20°</button><button data-shortcut="CELL-RELEASE" onclick="staplerCommand('release')">Release<br>&lt; 8°</button><button data-shortcut="CELL-RESET" onclick="staplerCommand('reset')">Reset closure</button></div>
-      <p class="stapler-boundary">The tissue is a live PhysX FEM body. Each cycle first approximates both wound edges, then a collision-enabled rigid staple retains two local FEM attachment bands after release. The backend does not cut tissue or model needle penetration, metal plastic forming, calibrated pullout strength or clinical performance.</p>
+      <p class="stapler-boundary">The tissue is a live PhysX FEM body, but each placement prescribes local nodal targets before adding a collision-enabled kinematic staple visual. No staple-to-tissue attachment or load-bearing retention is created. The backend does not cut tissue or model needle penetration, metal forming, pullout strength or clinical performance.</p>
     </section>
     <details class="session-details"><summary>Procedure details and session tools</summary><div class="session-details-grid">
       <section class="session-section"><h2>Procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div></div></section>
@@ -673,13 +682,13 @@ async function requestJson(url,options={},timeoutMs=5000){const controller=new A
 async function post(url,body={},timeoutMs=5000){return requestJson(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)},timeoutMs)}
 async function setSkinAdhesiveActivation(percent){const activation=Math.max(0,Math.min(1,(Number(percent)||0)/100));try{await post('/api/skin-adhesive/activation',{activation});toast(`Skin adhesive activation ${Math.round(activation*100)}%`);await refresh()}catch(e){toast(e.message)}}
 function renderSkinAdhesive(system={}){const panel=document.getElementById('skinAdhesiveCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const actual=Number(system.actual_activation||0),target=Number(system.target_activation||0),slider=document.getElementById('skinAdhesiveTarget'),arm=Number(system.mounted_arm||1);document.getElementById('skinAdhesivePhase').textContent=String(system.workflow_state||system.applicator_state||'mounted').replaceAll('_',' ');document.getElementById('skinAdhesiveActivation').textContent=`${Math.round(actual*100)}%`;document.getElementById('skinAdhesiveLeft').textContent=`${Number(system.left_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesiveRight').textContent=`${Number(system.right_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesivePiston').textContent=`${Number(system.piston_travel_mm||0).toFixed(2)} mm`;document.getElementById('skinAdhesiveMount').textContent=`INSTRUMENT ${arm}`;document.getElementById('skinAdhesiveOutlet').textContent=String(system.outlet_state||'exposed').toUpperCase();const gripButton=document.getElementById(arm===1?'gripOpenButton':'gripCloseButton');if(gripButton)gripButton.innerHTML=`<kbd>${arm===1?'Space':'Enter'}</kbd> Dispense`;if(document.activeElement!==slider)slider.value=String(Math.round(target*100));document.getElementById('skinAdhesiveTargetOutput').value=`${Math.round(target*100)}%`}
-async function closureRobotCommand(action){try{await post('/api/closure-robot/command',{action});toast({run:'Physical closure started',stop:'Closure mechanism held',reset:'Closure robot reset'}[action]||action);await refresh()}catch(e){toast(e.message)}}
-function renderClosureRobot(system={}){const panel=document.getElementById('closureRobotCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const phase=String(system.phase||'ready').replaceAll('_',' '),running=!!system.cycle_running,complete=!!system.cycle_complete;document.getElementById('closureRobotPhase').textContent=system.last_error?'safety hold':complete?'complete':system.held?`held · ${phase}`:phase;document.getElementById('closureRobotApproximation').textContent=`${Number(system.left_approximation_mm||0).toFixed(1)} / ${Number(system.right_approximation_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotClamps').textContent=`${Number(system.left_clamp_deg||0).toFixed(1)} / ${Number(system.right_clamp_deg||0).toFixed(1)}°`;document.getElementById('closureRobotDriver').textContent=`${Number(system.staple_driver_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotStaple').textContent=`${Number(system.formed_staple_count||0)} · ${Number(system.staple_attachment_count||0)} bonds`;document.getElementById('closureRobotAdhesive').textContent=`${Number(system.adhesive_deploy_mm||0).toFixed(1)} / ${Number(system.adhesive_meter_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotBonds').textContent=`${Number(system.adhesive_bead_count||0)} · ${Number(system.adhesive_bond_attachment_count||0)} bonds`;document.getElementById('closureRobotCapture').textContent=String(Number(system.capture_attachment_count||0));document.getElementById('closureRobotPhysics').textContent=String(system.tissue_backend||'physx').replace('physx_','').toUpperCase();const run=document.getElementById('closureRobotRun'),stop=document.getElementById('closureRobotStop');run.disabled=running;stop.disabled=!running;run.innerHTML=complete?'Run a new<br>physical closure':'Run complete<br>physical closure';if(system.last_error)run.title=system.last_error;else run.removeAttribute('title')}
+async function closureRobotCommand(action){try{await post('/api/closure-robot/command',{action});toast({run:'Closure motion sequence started',stop:'Closure mechanism held',reset:'Closure robot reset'}[action]||action);await refresh()}catch(e){toast(e.message)}}
+function renderClosureRobot(system={}){const panel=document.getElementById('closureRobotCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const phase=String(system.phase||'ready').replaceAll('_',' '),running=!!system.cycle_running,sequenceComplete=!!system.motion_sequence_complete;document.getElementById('closureRobotPhase').textContent=system.last_error?'safety hold':sequenceComplete?'sequence complete · outcome unverified':system.held?`held · ${phase}`:phase;document.getElementById('closureRobotApproximation').textContent=`${Number(system.left_approximation_mm||0).toFixed(1)} / ${Number(system.right_approximation_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotClamps').textContent=`${Number(system.left_clamp_deg||0).toFixed(1)} / ${Number(system.right_clamp_deg||0).toFixed(1)}°`;document.getElementById('closureRobotDriver').textContent=`${Number(system.staple_driver_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotStaple').textContent=`${Number(system.formed_staple_count||0)} · ${Number(system.staple_attachment_count||0)} attachment prims`;document.getElementById('closureRobotAdhesive').textContent=`${Number(system.adhesive_deploy_mm||0).toFixed(1)} / ${Number(system.adhesive_meter_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotBonds').textContent=`${Number(system.adhesive_bead_count||0)} · ${Number(system.adhesive_bond_attachment_count||0)} attachment prims`;document.getElementById('closureRobotCapture').textContent=String(Number(system.capture_attachment_count||0));document.getElementById('closureRobotPhysics').textContent=String(system.tissue_backend||'physx').replace('physx_','').toUpperCase();const run=document.getElementById('closureRobotRun'),stop=document.getElementById('closureRobotStop');run.disabled=running;stop.disabled=!running;run.innerHTML=sequenceComplete?'Run a new<br>motion sequence':'Run closure<br>motion sequence';if(system.last_error)run.title=system.last_error;else run.removeAttribute('title')}
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toastTimer=null;e.classList.remove('show')},1600)}
 async function staplerCommand(action,targetDeg=null){try{const body={action};if(targetDeg!==null)body.target_deg=Number(targetDeg);await post('/api/stapler/command',body);const message={fire:'Stapler cycle started',reset:'Tissue closure reset',release:'Stapler released',previous_station:'Fixture indexed to previous station',next_station:'Fixture indexed to next station'}[action]||`Trigger target ${Number(targetDeg).toFixed(0)}°`;toast(message);await refresh()}catch(e){toast(e.message)}}
 function setStaplerTarget(value){const target=Math.max(0,Math.min(28,Number(value)||0));return staplerCommand('set_target',target)}
 function runStaplerCycle(){return staplerCommand('fire')}
-function renderStaplerCell(cell={}){const panel=document.getElementById('staplerCell'),enabled=!!cell.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const station=Number(cell.station_index||1),stationCount=Number(cell.station_count||7),placed=Number(cell.closed_station_count||0),running=!!cell.cycle_running,stationPlaced=cell.station_state==='placed',stationReady=cell.station_ready!==false,gap=cell.tissue_gap_mm;document.getElementById('staplerPhase').textContent=cell.closure_complete?'closure complete':!stationReady?'indexing':String(cell.cycle_phase||'ready').replaceAll('_',' ');document.getElementById('staplerStation').textContent=`${station} / ${stationCount}`;document.getElementById('staplerClosure').textContent=`${placed} / ${stationCount}`;document.getElementById('staplerGap').textContent=gap===null||gap===undefined?'—':`${Number(gap).toFixed(2)} mm`;document.getElementById('staplerApproximation').textContent=`${Number(cell.approximation_progress_percent||0).toFixed(0)}%`;document.getElementById('staplerRetention').textContent=String(cell.retention_state||'open').replaceAll('_',' ').toUpperCase();document.getElementById('staplerSpacing').textContent=`${Number(cell.station_spacing_mm||6).toFixed(1)} mm`;document.getElementById('staplerTrigger').textContent=`${Number(cell.actual_trigger_deg||0).toFixed(1)}°`;document.getElementById('staplerPusher').textContent=`${Number(cell.pusher_travel_mm||0).toFixed(2)} mm`;document.getElementById('staplerMagazine').textContent=`${cell.magazine_remaining??0} / ${cell.magazine_capacity??35}`;document.getElementById('staplerProgress').style.width=`${Number(cell.closure_progress_percent||0)}%`;document.getElementById('staplerPrevious').disabled=running||!stationReady||station<=1;document.getElementById('staplerNext').disabled=running||!stationReady||station>=stationCount;const fire=document.getElementById('staplerFire');fire.disabled=running||!stationReady||stationPlaced||!!cell.closure_complete;fire.innerHTML=cell.closure_complete?'Closure complete<br>reset to repeat':!stationReady?'Indexing fixture<br>hold position':stationPlaced?'Staple retaining tissue<br>choose next':'Approximate, staple &amp; retain<br>one physical cycle'}
+function renderStaplerCell(cell={}){const panel=document.getElementById('staplerCell'),enabled=!!cell.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const station=Number(cell.station_index||1),stationCount=Number(cell.station_count||7),placed=Number(cell.closed_station_count||0),running=!!cell.cycle_running,stationPlaced=cell.station_state==='placed',stationReady=cell.station_ready!==false,gap=cell.tissue_gap_mm,sequenceComplete=!!cell.placement_sequence_complete;document.getElementById('staplerPhase').textContent=sequenceComplete?'placement sequence complete':!stationReady?'indexing':String(cell.cycle_phase||'ready').replaceAll('_',' ');document.getElementById('staplerStation').textContent=`${station} / ${stationCount}`;document.getElementById('staplerClosure').textContent=`${placed} / ${stationCount}`;document.getElementById('staplerGap').textContent=gap===null||gap===undefined?'—':`${Number(gap).toFixed(2)} mm`;document.getElementById('staplerApproximation').textContent=`${Number(cell.approximation_progress_percent||0).toFixed(0)}%`;document.getElementById('staplerRetention').textContent=String(cell.retention_state||'unverified').replaceAll('_',' ').toUpperCase();document.getElementById('staplerSpacing').textContent=`${Number(cell.station_spacing_mm||6).toFixed(1)} mm`;document.getElementById('staplerTrigger').textContent=`${Number(cell.actual_trigger_deg||0).toFixed(1)}°`;document.getElementById('staplerPusher').textContent=`${Number(cell.pusher_travel_mm||0).toFixed(2)} mm`;document.getElementById('staplerMagazine').textContent=`${cell.magazine_remaining??0} / ${cell.magazine_capacity??35}`;document.getElementById('staplerProgress').style.width=`${Number(cell.closure_progress_percent||0)}%`;document.getElementById('staplerPrevious').disabled=running||!stationReady||station<=1;document.getElementById('staplerNext').disabled=running||!stationReady||station>=stationCount;const fire=document.getElementById('staplerFire');fire.disabled=running||!stationReady||stationPlaced||sequenceComplete;fire.innerHTML=sequenceComplete?'Placement complete<br>retention unverified':!stationReady?'Indexing fixture<br>hold position':stationPlaced?'Staple visual placed<br>choose next':'Approximate &amp; place<br>prescribed pose'}
 function showKeyAction(key,label,active=true){const display=document.getElementById('keyActionDisplay');display.classList.toggle('active',active);display.querySelector('kbd').textContent=key;display.querySelector('span').textContent=label}
 function flashShortcut(shortcut,label,duration=850){if(keyFlashTimer)clearTimeout(keyFlashTimer);document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));document.querySelectorAll('button[data-shortcut]').forEach(button=>{if(button.dataset.shortcut===shortcut)button.classList.add('key-active')});showKeyAction(shortcut,label,true);keyFlashTimer=setTimeout(()=>{document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));showKeyAction('READY','Keyboard control ready',false)},duration)}
 function runShortcut(shortcut,label,action){flashShortcut(shortcut,label);action()}
@@ -1513,13 +1522,13 @@ class SharedState:
                 >= 0.5
             )
             completed += int(
-                int(cell.get("retained_attachment_count", 0)) >= 1
+                int(cell.get("placed_staple_count", 0)) >= 1
             )
             completed += int(
-                bool(cell.get("closure_complete"))
+                bool(cell.get("placement_sequence_complete"))
             )
             completed += int(
-                bool(cell.get("closure_complete"))
+                bool(cell.get("placement_sequence_complete"))
                 and not bool(cell.get("cycle_running"))
             )
         elif kind == "dynamic_abdominal_patient":
@@ -2414,7 +2423,10 @@ def build_web_app(state: SharedState) -> FastAPI:
                     )
                 if (
                     action == "fire"
-                    and state.stapler_test_cell.get("closure_complete", False)
+                    and state.stapler_test_cell.get(
+                        "placement_sequence_complete",
+                        False,
+                    )
                 ):
                     raise HTTPException(
                         409,
@@ -2426,8 +2438,9 @@ def build_web_app(state: SharedState) -> FastAPI:
                 state.coaching_cue = {
                     "fire": (
                         "Approximating both wound edges before firing. The "
-                        "formed staple will retain the FEM tissue after "
-                        "release, then the fixture will advance."
+                        "formed staple visual will be placed after the "
+                        "prescribed FEM pose is reached. Retention remains "
+                        "unverified."
                     ),
                     "release": "Returning the actuator below the 8° rearm threshold.",
                     "reset": "Resetting the closure, fixture and magazine evidence.",
@@ -2537,17 +2550,22 @@ def build_web_app(state: SharedState) -> FastAPI:
                 action == "run"
                 and state.closure_robot_system.get("cycle_running", False)
             ):
-                raise HTTPException(409, "The physical closure cycle is already running")
+                raise HTTPException(
+                    409,
+                    "The closure motion sequence is already running",
+                )
             state.closure_robot_command_request = action
             state.operator_input_source = "keyboard_pointer"
             state.coaching_cue = {
                 "run": (
-                    "Closure robot started. Each phase advances only after the "
-                    "articulated mechanism reaches its measured physical target."
+                    "Closure motion sequence started. Each phase advances "
+                    "after the articulation reaches its measured target; "
+                    "repair integrity remains unverified."
                 ),
                 "stop": (
                     "Closure robot held at its current articulated target. "
-                    "PhysX attachments remain physical and active."
+                    "Any PhysX attachment prims remain present, but their "
+                    "load-bearing integrity is not inferred."
                 ),
                 "reset": (
                     "Resetting the closure mechanism and removing its runtime "
@@ -7090,6 +7108,92 @@ def main() -> None:
         sensor = scene[name]
         if getattr(sensor.data, "net_forces_w", None) is not None:
             contact_sensors[name] = sensor
+    dynamic_patient_physics_step = -1
+    dynamic_patient_simulation_time_s = 0.0
+    dynamic_patient_episode_id = (
+        f"env_0-seed-{DEFAULT_SCENARIO_SEED}-{time.time_ns()}"
+    )
+    dynamic_patient_scene_collectors: dict[
+        int,
+        DynamicPatientSceneEvidence,
+    ] = {}
+    dynamic_patient_contact_target = str(
+        procedure.get(
+            "dynamic_patient_contact_target",
+            "mesentery",
+        )
+    )
+    dynamic_patient_contact_interaction = str(
+        procedure.get(
+            "dynamic_patient_contact_interaction",
+            "exposure",
+        )
+    )
+    dynamic_patient_target_prim_path = str(
+        contact_effect_filter_prim or ""
+    ).replace(
+        "{ENV_REGEX_NS}",
+        "/World/envs/env_0",
+    )
+    dynamic_patient_topology_revision = hashlib.sha256(
+        (
+            dynamic_patient_target_prim_path
+            + "|"
+            + dynamic_patient_contact_target
+            + "|"
+            + dynamic_patient_contact_interaction
+            + "|dranmar-patient-contact-v2"
+        ).encode("utf-8")
+    ).hexdigest()
+    if dynamic_abdominal_patient_enabled:
+        if not dynamic_patient_target_prim_path.startswith("/"):
+            raise RuntimeError(
+                "Dynamic patient contact evidence requires an exact "
+                "target prim path"
+            )
+        if not suture_stage.GetPrimAtPath(
+            dynamic_patient_target_prim_path
+        ).IsValid():
+            raise RuntimeError(
+                "Dynamic patient contact target prim is missing: "
+                f"{dynamic_patient_target_prim_path}"
+            )
+        for arm, robot_prim_name in enumerate(
+            wrist_robot_names[: len(robot_names)]
+        ):
+            source_robot = f"psm_{arm + 1}"
+            dynamic_patient_scene_collectors[arm] = (
+                DynamicPatientSceneEvidence(
+                    PatientContactSceneSources(
+                        target_id=dynamic_patient_contact_target,
+                        interaction=(
+                            dynamic_patient_contact_interaction
+                        ),
+                        source_robot=source_robot,
+                        left_contact_source_id=(
+                            f"gripper_contact_{arm + 1}_jaw_1"
+                        ),
+                        right_contact_source_id=(
+                            f"gripper_contact_{arm + 1}_jaw_2"
+                        ),
+                        left_jaw_prim_path=(
+                            f"/World/envs/env_0/{robot_prim_name}/"
+                            "psm_tool_gripper1_link"
+                        ),
+                        right_jaw_prim_path=(
+                            f"/World/envs/env_0/{robot_prim_name}/"
+                            "psm_tool_gripper2_link"
+                        ),
+                        tool_tip_prim_path=(
+                            f"/World/envs/env_0/{robot_prim_name}/"
+                            f"{wrist_tip_name}"
+                        ),
+                        target_prim_path=(
+                            dynamic_patient_target_prim_path
+                        ),
+                    )
+                )
+            )
     dynamic_patient_runtime = (
         DynamicSurgicalPatient(
             seed=DEFAULT_SCENARIO_SEED,
@@ -7120,32 +7224,94 @@ def main() -> None:
     )
     rescue_physics_step = -1
     rescue_simulation_time_s = 0.0
+    rescue_episode_id = (
+        f"env_0-seed-{DEFAULT_SCENARIO_SEED}-{time.time_ns()}"
+    )
     rescue_previous_tool_positions: dict[int, np.ndarray] = {}
+    rescue_scene_evidence_collectors: dict[
+        int,
+        AutonomousRescueSceneEvidence,
+    ] = {}
     rescue_target_position_w: np.ndarray | None = None
+    rescue_target_frame_prim = None
+    rescue_target_path = (
+        "/World/envs/env_0/AutonomousRescueVessel/"
+        "VesselWall/SimulationMesh"
+    )
+    rescue_target_frame_path = (
+        "/World/envs/env_0/AutonomousRescueVessel/"
+        "Frames/temporary_compression"
+    )
+    rescue_topology_revision = hashlib.sha256(
+        (
+            rescue_target_path
+            + "|"
+            + rescue_target_frame_path
+            + "|dranmar-rescue-evidence-v3"
+        ).encode("utf-8")
+    ).hexdigest()
     if autonomous_rescue_or_enabled:
         from pxr import Usd, UsdGeom
 
-        rescue_target_path = (
-            "/World/envs/env_0/AutonomousRescueVessel/"
-            "Frames/temporary_compression"
-        )
-        rescue_target_prim = suture_stage.GetPrimAtPath(
-            rescue_target_path
+        rescue_target_frame_prim = suture_stage.GetPrimAtPath(
+            rescue_target_frame_path
         )
         if (
-            not rescue_target_prim.IsValid()
-            or not UsdGeom.Xformable(rescue_target_prim)
+            not rescue_target_frame_prim.IsValid()
+            or not UsdGeom.Xformable(rescue_target_frame_prim)
         ):
             raise RuntimeError(
                 "Autonomous Rescue OR is missing its authored physical "
-                f"target frame: {rescue_target_path}"
+                f"target frame: {rescue_target_frame_path}"
+            )
+        if not suture_stage.GetPrimAtPath(
+            rescue_target_path
+        ).IsValid():
+            raise RuntimeError(
+                "Autonomous Rescue OR is missing its deformable vessel "
+                f"target: {rescue_target_path}"
             )
         rescue_target_position_w = np.asarray(
-            UsdGeom.Xformable(rescue_target_prim)
+            UsdGeom.Xformable(rescue_target_frame_prim)
             .ComputeLocalToWorldTransform(Usd.TimeCode.Default())
             .ExtractTranslation(),
             dtype=np.float32,
         )
+        for arm, robot_prim_name in enumerate(
+            wrist_robot_names[: len(robot_names)]
+        ):
+            station_id = f"psm_{arm + 1}"
+            tool_id = f"{station_id}_grasper"
+            rescue_scene_evidence_collectors[arm] = (
+                AutonomousRescueSceneEvidence(
+                    RescueToolSceneSources(
+                        station_id=station_id,
+                        tool_id=tool_id,
+                        left_contact_source_id=(
+                            f"gripper_contact_{arm + 1}_jaw_1"
+                        ),
+                        right_contact_source_id=(
+                            f"gripper_contact_{arm + 1}_jaw_2"
+                        ),
+                        left_jaw_prim_path=(
+                            f"/World/envs/env_0/{robot_prim_name}/"
+                            "psm_tool_gripper1_link"
+                        ),
+                        right_jaw_prim_path=(
+                            f"/World/envs/env_0/{robot_prim_name}/"
+                            "psm_tool_gripper2_link"
+                        ),
+                        tool_tip_prim_path=(
+                            f"/World/envs/env_0/{robot_prim_name}/"
+                            f"{wrist_tip_name}"
+                        ),
+                        target_prim_path=rescue_target_path,
+                        target_frame_prim_path=(
+                            rescue_target_frame_path
+                        ),
+                    )
+                )
+            )
     showcase_children: list[Any] = []
     default_showcase_names: set[str] = {"Liver_topo_blender"}
     collision_mesh_count = 0
@@ -7620,8 +7786,12 @@ def main() -> None:
                 continue
         return max(observed, default=0.0)
 
-    def contact_effect_jaw_force(arm: int, jaw: int) -> float | None:
-        """Return only the configured jaw/substrate collision-pair force."""
+    def contact_effect_jaw_force_vector(
+        arm: int,
+        jaw: int,
+    ) -> tuple[np.ndarray, int] | None:
+        """Return the strongest jaw/target vector and its raw buffer index."""
+
         sensor = contact_sensors.get(
             f"gripper_contact_{arm + 1}_jaw_{jaw}"
         )
@@ -7631,15 +7801,25 @@ def main() -> None:
         if filtered is None:
             return None
         try:
-            return float(
-                torch.linalg.vector_norm(
-                    filtered[0],
-                    dim=-1,
-                )
-                .max()
+            vectors = filtered[0].reshape(-1, 3)
+            magnitudes = torch.linalg.vector_norm(
+                vectors,
+                dim=-1,
+            )
+            if int(magnitudes.numel()) < 1:
+                return None
+            selected_index = int(torch.argmax(magnitudes).item())
+            selected = (
+                vectors[selected_index]
                 .detach()
                 .cpu()
-                .item()
+                .numpy()
+                .astype(np.float32)
+            )
+            return (
+                (selected, selected_index)
+                if np.isfinite(selected).all()
+                else None
             )
         except (AttributeError, IndexError, RuntimeError):
             return None
@@ -8504,7 +8684,10 @@ def main() -> None:
         strand_self_collision_ready=strand_self_collision_ready,
         stapler_test_cell={
             "enabled": stapler_test_cell_enabled,
-            "mode": "fem_preapproximation_and_retained_staple_constraints",
+            "mode": (
+                "fem_prescribed_preapproximation_and_kinematic_"
+                "staple_visuals"
+            ),
             "cycle_phase": "ready" if stapler_test_cell_enabled else "disabled",
             "cycle_running": False,
             "target_trigger_deg": 0.0,
@@ -8526,7 +8709,10 @@ def main() -> None:
             "partial_stroke_passes": 0,
             "tissue_asset_id": "dr-anmar-suturable-tissue",
             "tissue_runtime": "physx_fem_two_flap_deformable",
-            "closure_model": "preapproximation_then_rigid_staple_fem_retention",
+            "closure_model": (
+                "preapproximation_then_prescribed_fem_pose_with_"
+                "kinematic_staple_visual"
+            ),
             "detected_wound_axis": stapler_tissue_detected_wound_axis,
             "detected_source_gap_mm": round(
                 stapler_tissue_detected_source_gap_mm,
@@ -8557,13 +8743,15 @@ def main() -> None:
             "retained_node_count": 0,
             "retained_verified_count": 0,
             "retained_station_gaps_mm": {},
+            "prescribed_station_gaps_mm": {},
             "retention_state": "open",
             "staple_rigid_body_mode": (
-                "kinematic_retainer_with_collision"
+                "kinematic_visual_with_collision"
             ),
             "tissue_attachment_mode": (
-                "fem_nodal_staple_leg_constraint"
+                "none_prescribed_fem_nodal_pose"
             ),
+            "retention_verified": False,
             "tissue_material": dict(
                 stapler_tissue_material_runtime
             ),
@@ -8579,6 +8767,8 @@ def main() -> None:
             "closed_station_count": 0,
             "closed_station_indices": [],
             "closure_progress_percent": 0.0,
+            "placement_sequence_complete": False,
+            "closure_geometry_prescribed": False,
             "closure_complete": False,
             "current_target_m": list(stapler_closure_targets_m[0]),
             "max_spacing_error_mm": 0.0,
@@ -8629,7 +8819,10 @@ def main() -> None:
             "version": "0.1.0",
             "phase": "ready" if closure_robot_enabled else "disabled",
             "cycle_running": False,
+            "motion_sequence_complete": False,
             "cycle_complete": False,
+            "retention_verified": False,
+            "adhesive_cure_verified": False,
             "mount_robot": "Franka Panda",
             "mount_link": "panda_link8",
             "stock_hand_active": False,
@@ -9150,16 +9343,16 @@ def main() -> None:
                 retained_mask |= stapler_tissue_station_masks[
                     retained_index
                 ]
-        retained_node_count = (
+        prescribed_node_count = (
             int(retained_mask.sum().item())
             if retained_mask is not None
             else 0
         )
-        current_station_retained = (
+        current_station_prescribed = (
             stapler_active_station_index
             in stapler_closed_station_indices
         )
-        retained_station_gaps_mm = {
+        prescribed_station_gaps_mm = {
             retained_index + 1: stapler_tissue_station_gap_mm(
                 retained_index
             )
@@ -9167,20 +9360,11 @@ def main() -> None:
                 stapler_closed_station_indices
             )
         }
-        retained_gap_limit_mm = (
-            STAPLER_TISSUE_TARGET_GAP_M * 1000.0 + 0.25
-        )
-        retained_verified_count = sum(
-            gap_mm is not None
-            and gap_mm <= retained_gap_limit_mm
-            for gap_mm in retained_station_gaps_mm.values()
-        )
+        placement_sequence_complete = closed_count == station_count
         retention_state = (
-            "retained_complete"
-            if closed_count == station_count
-            else "retained"
-            if current_station_retained
-            else "approximating"
+            "unverified_no_load_bearing_attachment"
+            if closed_count
+            else "not_applicable_during_approximation"
             if stapler_tissue_approximation_progress > 0.0
             else "open"
         )
@@ -9207,7 +9391,9 @@ def main() -> None:
                 100.0 * closed_count / station_count,
                 2,
             ),
-            "closure_complete": closed_count == station_count,
+            "placement_sequence_complete": placement_sequence_complete,
+            "closure_geometry_prescribed": bool(closed_count),
+            "closure_complete": False,
             "approximation_progress_percent": round(
                 stapler_tissue_approximation_progress * 100.0,
                 2,
@@ -9239,24 +9425,30 @@ def main() -> None:
                 stapler_tissue_max_displacement_mm,
                 4,
             ),
-            "retained_attachment_count": closed_count,
-            "retained_node_count": retained_node_count,
-            "retained_verified_count": retained_verified_count,
-            "retained_station_gaps_mm": {
+            "placed_staple_count": closed_count,
+            "prescribed_kinematic_node_count": prescribed_node_count,
+            "retained_attachment_count": 0,
+            "retained_node_count": 0,
+            "retained_verified_count": 0,
+            "retained_station_gaps_mm": {},
+            "prescribed_station_gaps_mm": {
                 str(station): (
                     round(gap_mm, 4)
                     if gap_mm is not None
                     else None
                 )
                 for station, gap_mm
-                in retained_station_gaps_mm.items()
+                in prescribed_station_gaps_mm.items()
             },
             "retention_state": retention_state,
-            "retention_verified": bool(
-                current_station_retained
-                and tissue_gap_mm is not None
-                and tissue_gap_mm
-                <= STAPLER_TISSUE_TARGET_GAP_M * 1000.0 + 0.25
+            "retention_verified": False,
+            "current_station_pose_prescribed": (
+                current_station_prescribed
+            ),
+            "realism_blocker": (
+                "tissue gap is imposed by FEM nodal kinematic targets; "
+                "no staple-tissue attachment, puncture, forming, pullout, "
+                "or load-bearing retention is observed"
             ),
             "current_target_m": list(
                 stapler_closure_targets_m[stapler_active_station_index]
@@ -9332,10 +9524,9 @@ def main() -> None:
             translation_m=target_position_m,
             orientation_wxyz=(1.0, 0.0, 0.0, 0.0),
         )
-        # The formed staple remains a kinematic rigid retainer with collision.
-        # Its two FEM attachment bands are driven below through PhysX nodal
-        # constraints. This models post-release retention without pretending
-        # that the current backend simulates puncture or metal plasticity.
+        # The formed staple is a kinematic visual/collision proxy.  The tissue
+        # pose below is prescribed through nodal kinematic targets; it is not
+        # a staple-tissue attachment and cannot support a retention claim.
         rigid_body = UsdPhysics.RigidBodyAPI.Apply(staple_prim)
         rigid_body.CreateRigidBodyEnabledAttr().Set(True)
         rigid_body.CreateKinematicEnabledAttr().Set(True)
@@ -9347,11 +9538,11 @@ def main() -> None:
         staple_prim.CreateAttribute(
             "drAnmar:retentionMode",
             Sdf.ValueTypeNames.String,
-        ).Set("physx_fem_nodal_staple_leg_constraint")
+        ).Set("none_prescribed_fem_nodal_pose_only")
         staple_prim.CreateAttribute(
             "drAnmar:rigidRetainer",
             Sdf.ValueTypeNames.Bool,
-        ).Set(True)
+        ).Set(False)
         staple_prim.CreateAttribute(
             "drAnmar:clinicalValidation",
             Sdf.ValueTypeNames.Bool,
@@ -9390,14 +9581,15 @@ def main() -> None:
                 if tissue_gap_at_deployment_mm is not None
                 else None
             ),
-            "retained_node_count": int(
+            "prescribed_kinematic_node_count": int(
                 stapler_tissue_station_masks[station_index]
                 .sum()
                 .item()
             ),
             "representation": (
-                "formed_staple_rigid_fem_retainer"
+                "formed_staple_kinematic_visual_with_prescribed_tissue_pose"
             ),
+            "retention_verified": False,
         }
         return dict(stapler_last_placement)
 
@@ -9429,6 +9621,10 @@ def main() -> None:
         nonlocal closure_robot_max_mount_error_mm
         nonlocal rescue_physics_step
         nonlocal rescue_simulation_time_s
+        nonlocal rescue_episode_id
+        nonlocal dynamic_patient_physics_step
+        nonlocal dynamic_patient_simulation_time_s
+        nonlocal dynamic_patient_episode_id
         native_grasp_arms.clear()
         update_procedure_waypoint_marker(0, force=True)
         np.random.seed(selected_seed)
@@ -9442,6 +9638,11 @@ def main() -> None:
                     "Dynamic patient physiology runtime is unavailable"
                 )
             dynamic_patient_runtime.reset()
+            dynamic_patient_physics_step = -1
+            dynamic_patient_simulation_time_s = 0.0
+            dynamic_patient_episode_id = (
+                f"env_0-seed-{selected_seed}-{time.time_ns()}"
+            )
             patient_prim = suture_stage.GetPrimAtPath(
                 "/World/envs/env_0/DynamicAbdominalPatient"
             )
@@ -9474,10 +9675,12 @@ def main() -> None:
                 raise RuntimeError(
                     "Autonomous Rescue OR shared patient runtime is unavailable"
                 )
-            autonomous_rescue_patient_runtime.reset()
             autonomous_rescue_runtime.reset(seed=selected_seed)
             rescue_physics_step = -1
             rescue_simulation_time_s = 0.0
+            rescue_episode_id = (
+                f"env_0-seed-{selected_seed}-{time.time_ns()}"
+            )
             rescue_previous_tool_positions.clear()
             vessel_prim = suture_stage.GetPrimAtPath(
                 "/World/envs/env_0/AutonomousRescueVessel"
@@ -9669,7 +9872,10 @@ def main() -> None:
                     {
                         "phase": "ready",
                         "cycle_running": False,
+                        "motion_sequence_complete": False,
                         "cycle_complete": False,
+                        "retention_verified": False,
+                        "adhesive_cure_verified": False,
                         "temporary_capture_attachment_count": 0,
                         "formed_staple_count": 0,
                         "staple_attachment_count": 0,
@@ -9755,6 +9961,15 @@ def main() -> None:
 
     while simulation_app.is_running() and not stop_event.is_set():
         loop_started = time.monotonic()
+        if rescue_target_frame_prim is not None:
+            rescue_target_position_w = np.asarray(
+                UsdGeom.Xformable(rescue_target_frame_prim)
+                .ComputeLocalToWorldTransform(
+                    Usd.TimeCode.Default()
+                )
+                .ExtractTranslation(),
+                dtype=np.float32,
+            )
         refresh_hand_camera_control_frame()
         action_uses_upstream_softmimicgen_units = False
         action_owns_grippers = False
@@ -10224,10 +10439,6 @@ def main() -> None:
                         is ClosurePhase.CURE_LEADING
                         and phase_elapsed_s >= 0.75
                     ):
-                        closure_robot_controller.adhesive_bonds.set_cure_fraction(
-                            0,
-                            0.5,
-                        )
                         closure_cycle_phase = (
                             ClosurePhase.CURE_TRAILING
                         )
@@ -10240,10 +10451,6 @@ def main() -> None:
                         is ClosurePhase.CURE_TRAILING
                         and phase_elapsed_s >= 0.75
                     ):
-                        closure_robot_controller.adhesive_bonds.set_cure_fraction(
-                            0,
-                            1.0,
-                        )
                         closure_cycle_phase = ClosurePhase.COMPLETE
                         closure_robot_controller.phase = (
                             ClosurePhase.COMPLETE
@@ -10255,13 +10462,14 @@ def main() -> None:
                         )
                         with state.lock:
                             state.procedure_event_code = (
-                                PROCEDURE_EVENTS["task_complete"]
+                                PROCEDURE_EVENTS["safety_review"]
                             )
                             state.procedure_event_sequence += 1
                             state.coaching_cue = (
-                                "Physical closure complete: the dynamic "
-                                "formed staple retains two tissue attachments "
-                                "and the cured bead retains six."
+                                "Closure motion sequence complete. Attachment "
+                                "prims exist, but staple retention, adhesive "
+                                "cure, load transfer and closure strength "
+                                "remain unverified."
                             )
 
                 set_closure_robot_joint_targets(
@@ -10329,9 +10537,16 @@ def main() -> None:
                                 else "disabled"
                             ),
                             "cycle_running": closure_cycle_running,
-                            "cycle_complete": (
+                            "motion_sequence_complete": (
                                 closure_cycle_phase
                                 is ClosurePhase.COMPLETE
+                            ),
+                            "cycle_complete": False,
+                            "retention_verified": False,
+                            "adhesive_cure_verified": False,
+                            "completion_blocker": (
+                                "no same-step contact, traction, separation, "
+                                "cohesive damage, or pullout evidence"
                             ),
                             "held": bool(
                                 not closure_cycle_running
@@ -10418,7 +10633,10 @@ def main() -> None:
                         {
                             "phase": "safety_hold",
                             "cycle_running": False,
+                            "motion_sequence_complete": False,
                             "cycle_complete": False,
+                            "retention_verified": False,
+                            "adhesive_cure_verified": False,
                             "last_error": str(exc),
                         }
                     )
@@ -11237,51 +11455,124 @@ def main() -> None:
             write_native_attachment()
             _observations, reward, terminated, truncated, info = env.step(actions)
             if dynamic_patient_runtime is not None:
-                patient_contact_target = str(
-                    procedure.get(
-                        "dynamic_patient_contact_target",
-                        "mesentery",
-                    )
+                patient_dt_s = float(
+                    env_cfg.sim.dt * env_cfg.decimation
                 )
-                patient_contact_interaction = str(
-                    procedure.get(
-                        "dynamic_patient_contact_interaction",
-                        "exposure",
-                    )
-                )
+                dynamic_patient_physics_step += 1
+                dynamic_patient_simulation_time_s += patient_dt_s
                 sensor_pairs_observed = 0
                 for arm in range(arms):
-                    left_force = contact_effect_jaw_force(arm, 1)
-                    right_force = contact_effect_jaw_force(arm, 2)
+                    left_force_sample = contact_effect_jaw_force_vector(
+                        arm,
+                        1,
+                    )
+                    right_force_sample = contact_effect_jaw_force_vector(
+                        arm,
+                        2,
+                    )
+                    jaw_positions = jaw_positions_for_arm(arm)
                     tool_position = tool_position_for_arm(arm)
+                    collector = dynamic_patient_scene_collectors.get(
+                        arm
+                    )
                     if (
-                        left_force is None
-                        or right_force is None
+                        left_force_sample is None
+                        or right_force_sample is None
+                        or jaw_positions is None
                         or tool_position is None
+                        or collector is None
                     ):
                         continue
-                    dynamic_patient_runtime.contacts.observe(
-                        PatientContactFrame(
-                            target=patient_contact_target,
-                            source_robot=f"psm_{arm + 1}",
-                            interaction=patient_contact_interaction,
-                            normal_forces_n=(
-                                left_force,
-                                right_force,
+                    left_force_w, left_force_index = left_force_sample
+                    right_force_w, right_force_index = right_force_sample
+                    raw_sample_prefix = (
+                        f"{dynamic_patient_episode_id}:"
+                        f"{dynamic_patient_physics_step}:"
+                        f"arm_{arm + 1}"
+                    )
+                    evidence = collector.collect_contact_interval(
+                        provenance=EvidenceProvenance(
+                            episode_id=(
+                                dynamic_patient_episode_id
                             ),
-                            tool_position_m=tuple(
+                            environment_id="env_0",
+                            physics_step=(
+                                dynamic_patient_physics_step
+                            ),
+                            simulation_time_s=(
+                                dynamic_patient_simulation_time_s
+                            ),
+                            dt_s=patient_dt_s,
+                            adapter_id=collector.ADAPTER_ID,
+                            adapter_version=collector.ADAPTER_VERSION,
+                            topology_revision=(
+                                dynamic_patient_topology_revision
+                            ),
+                        ),
+                        sample=PatientContactSensorSample(
+                            physics_step=(
+                                dynamic_patient_physics_step
+                            ),
+                            simulation_time_s=(
+                                dynamic_patient_simulation_time_s
+                            ),
+                            left_force_w_n=tuple(
+                                float(value)
+                                for value in left_force_w
+                            ),
+                            right_force_w_n=tuple(
+                                float(value)
+                                for value in right_force_w
+                            ),
+                            left_jaw_position_w_m=tuple(
+                                float(value)
+                                for value in jaw_positions[0]
+                            ),
+                            right_jaw_position_w_m=tuple(
+                                float(value)
+                                for value in jaw_positions[1]
+                            ),
+                            tool_tip_position_w_m=tuple(
                                 float(value)
                                 for value in tool_position
                             ),
-                        )
+                            left_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"gripper_contact_{arm + 1}_jaw_1:"
+                                "force_matrix_w:env_0:"
+                                f"flat_{left_force_index}",
+                            ),
+                            right_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"gripper_contact_{arm + 1}_jaw_2:"
+                                "force_matrix_w:env_0:"
+                                f"flat_{right_force_index}",
+                            ),
+                            left_position_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"{collector.sources.left_jaw_prim_path}:"
+                                "body_pos_w:env_0",
+                            ),
+                            right_position_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"{collector.sources.right_jaw_prim_path}:"
+                                "body_pos_w:env_0",
+                            ),
+                            tool_position_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"{collector.sources.tool_tip_prim_path}:"
+                                "body_pos_w:env_0",
+                            ),
+                        ),
+                    )
+                    dynamic_patient_runtime.contacts.observe_scene_evidence(
+                        evidence
                     )
                     sensor_pairs_observed += 1
-                dynamic_patient_runtime.step(
-                    float(env_cfg.sim.dt * env_cfg.decimation)
-                )
+                dynamic_patient_runtime.step(patient_dt_s)
                 target_tissue_state = (
                     dynamic_patient_runtime.tissue_state.get(
-                        patient_contact_target
+                        dynamic_patient_contact_target
                     )
                 )
                 latest_dynamic_patient_telemetry = {
@@ -11308,117 +11599,186 @@ def main() -> None:
                 action_period_s = float(
                     env_cfg.sim.dt * env_cfg.decimation
                 )
-                rescue_candidates: list[dict[str, Any]] = []
+                rescue_physics_step += 1
+                rescue_simulation_time_s += action_period_s
+                rescue_target_position_w = np.asarray(
+                    UsdGeom.Xformable(rescue_target_frame_prim)
+                    .ComputeLocalToWorldTransform(
+                        Usd.TimeCode.Default()
+                    )
+                    .ExtractTranslation(),
+                    dtype=np.float32,
+                )
+                if not np.isfinite(rescue_target_position_w).all():
+                    raise RuntimeError(
+                        "Autonomous Rescue OR target frame produced a "
+                        "non-finite post-physics transform"
+                    )
+                rescue_candidates = []
                 for arm in range(arms):
-                    left_force = contact_effect_jaw_force(arm, 1)
-                    right_force = contact_effect_jaw_force(arm, 2)
+                    left_force_sample = contact_effect_jaw_force_vector(
+                        arm,
+                        1,
+                    )
+                    right_force_sample = contact_effect_jaw_force_vector(
+                        arm,
+                        2,
+                    )
                     jaw_positions = jaw_positions_for_arm(arm)
                     tool_position = tool_position_for_arm(arm)
+                    collector = (
+                        rescue_scene_evidence_collectors.get(arm)
+                    )
                     if (
-                        left_force is None
-                        or right_force is None
+                        left_force_sample is None
+                        or right_force_sample is None
                         or jaw_positions is None
                         or tool_position is None
+                        or collector is None
                     ):
                         continue
+                    left_force_w, left_force_index = left_force_sample
+                    right_force_w, right_force_index = right_force_sample
                     previous_tool_position = (
                         rescue_previous_tool_positions.get(arm)
-                    )
-                    tool_speed_m_s = (
-                        float(
-                            np.linalg.norm(
-                                tool_position - previous_tool_position
-                            )
-                            / action_period_s
-                        )
-                        if previous_tool_position is not None
-                        else 0.0
                     )
                     rescue_previous_tool_positions[arm] = (
                         tool_position.copy()
                     )
-                    jaw_center_w = 0.5 * (
-                        jaw_positions[0] + jaw_positions[1]
+                    raw_sample_prefix = (
+                        f"{rescue_episode_id}:"
+                        f"{rescue_physics_step}:arm_{arm + 1}"
                     )
-                    target_distance_m = float(
-                        np.linalg.norm(
-                            jaw_center_w - rescue_target_position_w
-                        )
-                    )
-                    rescue_candidates.append(
-                        {
-                            "arm": arm,
-                            "left_force_n": left_force,
-                            "right_force_n": right_force,
-                            "separation_m": float(
-                                np.linalg.norm(
-                                    jaw_positions[0] - jaw_positions[1]
-                                )
-                            ),
-                            "tool_speed_m_s": tool_speed_m_s,
-                            "target_distance_m": target_distance_m,
-                        }
-                    )
-                selected_contact = (
-                    max(
-                        rescue_candidates,
-                        key=lambda item: (
-                            min(
-                                float(item["left_force_n"]),
-                                float(item["right_force_n"]),
-                            )
-                            * max(
-                                0.0,
-                                1.0
-                                - float(item["target_distance_m"])
-                                / (
-                                    autonomous_rescue_runtime.effects
-                                    .calibration.maximum_target_radius_m
-                                ),
-                            )
-                        ),
-                    )
-                    if rescue_candidates
-                    else {
-                        "arm": 0,
-                        "left_force_n": 0.0,
-                        "right_force_n": 0.0,
-                        "separation_m": 0.02,
-                        "tool_speed_m_s": 0.0,
-                        "target_distance_m": 1.0,
-                    }
-                )
-                rescue_physics_step += 1
-                rescue_simulation_time_s += action_period_s
-                rescue_observation = (
-                    autonomous_rescue_runtime.advance_scene(
-                        PhysicsEvidenceFrame(
+                    evidence = collector.collect_vessel_interval(
+                        provenance=EvidenceProvenance(
+                            episode_id=rescue_episode_id,
+                            environment_id="env_0",
                             physics_step=rescue_physics_step,
                             simulation_time_s=(
                                 rescue_simulation_time_s
                             ),
                             dt_s=action_period_s,
-                            station_id=(
-                                f"psm_{int(selected_contact['arm']) + 1}"
+                            adapter_id=collector.ADAPTER_ID,
+                            adapter_version=collector.ADAPTER_VERSION,
+                            topology_revision=(
+                                rescue_topology_revision
                             ),
-                            tool_id="psm_grasper",
-                            target_id="rescue_vessel",
-                            left_normal_force_n=float(
-                                selected_contact["left_force_n"]
+                        ),
+                        sample=RescueContactSensorSample(
+                            physics_step=rescue_physics_step,
+                            simulation_time_s=(
+                                rescue_simulation_time_s
                             ),
-                            right_normal_force_n=float(
-                                selected_contact["right_force_n"]
+                            left_force_w_n=tuple(
+                                float(value)
+                                for value in left_force_w
                             ),
-                            separation_m=float(
-                                selected_contact["separation_m"]
+                            right_force_w_n=tuple(
+                                float(value)
+                                for value in right_force_w
                             ),
-                            tool_speed_m_s=float(
-                                selected_contact["tool_speed_m_s"]
+                            left_jaw_position_w_m=tuple(
+                                float(value)
+                                for value in jaw_positions[0]
                             ),
-                            target_distance_m=float(
-                                selected_contact["target_distance_m"]
+                            right_jaw_position_w_m=tuple(
+                                float(value)
+                                for value in jaw_positions[1]
+                            ),
+                            tool_tip_position_w_m=tuple(
+                                float(value)
+                                for value in tool_position
+                            ),
+                            previous_tool_tip_position_w_m=(
+                                tuple(
+                                    float(value)
+                                    for value in (
+                                        previous_tool_position
+                                    )
+                                )
+                                if previous_tool_position is not None
+                                else None
+                            ),
+                            target_frame_position_w_m=tuple(
+                                float(value)
+                                for value in rescue_target_position_w
+                            ),
+                            left_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"gripper_contact_{arm + 1}_jaw_1:"
+                                "force_matrix_w:env_0:"
+                                f"flat_{left_force_index}",
+                            ),
+                            right_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"gripper_contact_{arm + 1}_jaw_2:"
+                                "force_matrix_w:env_0:"
+                                f"flat_{right_force_index}",
+                            ),
+                            left_position_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"{collector.sources.left_jaw_prim_path}:"
+                                "body_pos_w:env_0",
+                            ),
+                            right_position_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"{collector.sources.right_jaw_prim_path}:"
+                                "body_pos_w:env_0",
+                            ),
+                            tool_motion_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"{collector.sources.tool_tip_prim_path}:"
+                                "body_pos_w:env_0:current",
+                                (
+                                    f"{rescue_episode_id}:"
+                                    f"{max(0, rescue_physics_step - 1)}:"
+                                    f"arm_{arm + 1}:"
+                                    f"{collector.sources.tool_tip_prim_path}:"
+                                    "body_pos_w:env_0:previous"
+                                ),
+                            ),
+                            target_frame_raw_sample_ids=(
+                                f"{raw_sample_prefix}:"
+                                f"{collector.sources.target_frame_prim_path}:"
+                                "UsdGeomXformable:"
+                                "ComputeLocalToWorldTransform",
                             ),
                         )
+                    )
+                    rescue_candidates.append(
+                        {
+                            "arm": arm,
+                            "evidence": evidence,
+                        }
+                    )
+                if not rescue_candidates:
+                    raise RuntimeError(
+                        "Autonomous Rescue OR has no complete "
+                        "post-physics jaw evidence; refusing to fabricate "
+                        "a zero-contact interval"
+                    )
+                selected_contact = max(
+                    rescue_candidates,
+                    key=lambda item: (
+                        min(
+                            item["evidence"].left_normal_force_n,
+                            item["evidence"].right_normal_force_n,
+                        )
+                        * max(
+                            0.0,
+                            1.0
+                            - item["evidence"].target_distance_m
+                            / (
+                                autonomous_rescue_runtime.effects
+                                .calibration.maximum_target_radius_m
+                            ),
+                        )
+                    ),
+                )
+                selected_evidence = selected_contact["evidence"]
+                rescue_observation = (
+                    autonomous_rescue_runtime.advance_vessel_scene(
+                        selected_evidence
                     )
                 )
                 rescue_patient = rescue_observation["patient"]
@@ -11478,19 +11838,23 @@ def main() -> None:
                     "release_observed": release_observed,
                     "measured_contact": {
                         "left_normal_force_n": float(
-                            selected_contact["left_force_n"]
+                            selected_evidence.left_normal_force_n
                         ),
                         "right_normal_force_n": float(
-                            selected_contact["right_force_n"]
+                            selected_evidence.right_normal_force_n
                         ),
                         "jaw_separation_m": float(
-                            selected_contact["separation_m"]
+                            selected_evidence.separation_m
                         ),
                         "tool_speed_m_s": float(
-                            selected_contact["tool_speed_m_s"]
+                            selected_evidence.tool_speed_m_s
                         ),
                         "target_distance_m": float(
-                            selected_contact["target_distance_m"]
+                            selected_evidence.target_distance_m
+                        ),
+                        "evidence_digest_sha256": (
+                            selected_evidence
+                            .evidence_digest_sha256
                         ),
                     },
                     "vessel": {
@@ -11500,8 +11864,9 @@ def main() -> None:
                     "vital_signs": asdict(
                         autonomous_rescue_patient_runtime.vital_signs
                     ),
-                    "fluid_balance": asdict(
-                        autonomous_rescue_patient_runtime.fluid_balance
+                    "fluid_balance": (
+                        autonomous_rescue_patient_runtime
+                        .fluid_balance.snapshot()
                     ),
                     "active_complications": rescue_complications,
                     "rescue_plan": (
@@ -11523,7 +11888,7 @@ def main() -> None:
                         rescue_observation["last_reward"]
                     ),
                     "outcome_authority": (
-                        "post_physics_filtered_local_contact"
+                        "prim_bound_post_physics_scene_evidence"
                     ),
                 }
             if (
@@ -11878,12 +12243,13 @@ def main() -> None:
                         == len(STAPLER_CLOSURE_STATION_OFFSETS_M)
                     )
                     state.coaching_cue = (
-                        "All seven rigid staples are retaining the approximated "
-                        "FEM tissue. Review the closure evidence or reset."
+                        "All seven staple visuals are placed and the prescribed "
+                        "FEM closure pose is complete. Load-bearing retention "
+                        "is not modeled; review the boundary or reset."
                         if closure_complete
-                        else "The rigid staple is retaining both FEM tissue "
-                        "attachment bands. The fixture will advance after "
-                        "release."
+                        else "The staple visual is placed over a prescribed "
+                        "FEM tissue pose. No load-bearing attachment has been "
+                        "created. The fixture will advance after release."
                     )
         if (
             skin_adhesive_enabled

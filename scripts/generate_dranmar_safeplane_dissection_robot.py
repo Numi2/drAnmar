@@ -2,12 +2,12 @@
 """Generate the DrAnmar SafePlane Dissection Robot asset family.
 
 This DrAnmar-owned, provider-neutral research asset models a Franka-compatible
-end effector for traction-assisted safe-plane dissection in NVIDIA Isaac.
-It combines distributed tissue traction, blunt spreading, hydrodissection,
-guarded micro-scissors, low-energy dissection, irrigation, smoke evacuation,
-protected-structure monitoring, physical adhesion release, and connectivity
-verification. It is not clinically validated and is not approved for patient
-care.
+end effector and physical-setup representation for a proposed safe-plane
+dissection task in NVIDIA Isaac. It authors mechanism geometry, surface meshes,
+fixed-joint proxies, attachment targets, and particle helpers. It does not
+establish physical adhesion release, protected-structure safety, connectivity
+verification, or patient outcome. It is not clinically validated and is not
+approved for patient care.
 """
 from __future__ import annotations
 
@@ -72,6 +72,19 @@ PROTECTED_STRUCTURE_NAMES = ("vessel", "nerve", "duct")
 HYDRO_JET_COUNT = 7
 SUCTION_PORT_COUNT = 10
 IRRIGATION_PORT_COUNT = 6
+OUTCOME_EVIDENCE_STATUS = "unavailable_no_safeplane_scene_evidence_bridge"
+REQUIRED_OUTCOME_EVIDENCE = (
+    "one_exact_step_SceneEvidenceEnvelope_with_registry_provenance",
+    "stable_source_prim_ids_raw_sample_ids_adapter_version_and_scene_epoch",
+    "physics_step_time_and_monotonic_topology_revision_cursor",
+    "shared_layered_soft_tissue_and_cohesive_interface_state",
+    "live_attachment_identity_force_and_disconnect_evidence",
+    "tool_contact_hydro_deposition_scissor_crossing_and_energy_delivery_evidence",
+    "shared_vessel_duct_and_nerve_mechanics",
+    "same_step_patient_blood_and_bile_ledger_binding",
+)
+
+
 def f(value: float, digits: int = 10) -> str:
     if abs(value) < 1.0e-18:
         value = 0.0
@@ -1270,7 +1283,7 @@ def tool_usda(bundle: ToolBundle, articulation_root: bool) -> str:
     return f'''#usda 1.0
 (
     defaultPrim = "{root}"
-    doc = "{ASSET_NAME}: bilateral traction, blunt spreading, hydrodissection, guarded cutting, energy dissection, protected-structure monitoring, and connectivity verification."
+    doc = "DrAnmar SafePlane research mechanism geometry and physical-setup asset; dissection outcomes and protected-structure safety are unavailable without a scene-evidence/shared-mechanics bridge."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -1291,11 +1304,14 @@ def Xform "{root}" (
         string drAnmarAssetVersion = "{VERSION}"
         bool drAnmarClinicalValidation = false
         bool drAnmarMedicalDevice = false
-        string drAnmarStatus = "simulation_training_workcell"
+        string drAnmarStatus = "research_asset_and_physical_setup_only"
         string drAnmarMount = "replaces_panda_hand_at_panda_link8"
         int drAnmarTractionCellCount = {2 * TRACTION_CELL_COUNT_PER_SIDE}
         int drAnmarDissectionModalityCount = 4
-        bool drAnmarProtectedStructureInterlock = true
+        bool drAnmarProtectedStructureInterlock = false
+        string drAnmarInterlockStatus = "{OUTCOME_EVIDENCE_STATUS}"
+        string drAnmarOutcomeEvidenceStatus = "{OUTCOME_EVIDENCE_STATUS}"
+        bool drAnmarPatientOutcomeAuthoritative = false
     }}
 )
 {{
@@ -1463,7 +1479,8 @@ def Xform "{root}" (
     customData = {{
         string drAnmarAssetId = "dranmar-adhesion-bridge-v1"
         bool drAnmarClinicalValidation = false
-        string drAnmarReleaseContract = "remove_or_deactivate_continuity_joint"
+        string drAnmarReleaseContract = "asset_level_fixed_joint_variant_only_public_controller_release_unavailable_without_scene_evidence"
+        string drAnmarOutcomeEvidenceStatus = "{OUTCOME_EVIDENCE_STATUS}"
     }}
 )
 {{
@@ -1573,7 +1590,8 @@ def Xform "{root}" (
         string drAnmarAssetId = "{asset_id}"
         string drAnmarStructureKind = "{kind}"
         bool drAnmarClinicalValidation = false
-        string drAnmarContinuityContract = "independent_rigid_halves_connected_by_runtime_removable_joint"
+        string drAnmarContinuityContract = "rigid_proxy_halves_and_visual_injury_variant_not_{kind}_mechanics_or_patient_outcome"
+        string drAnmarOutcomeEvidenceStatus = "{OUTCOME_EVIDENCE_STATUS}"
     }}
 )
 {{
@@ -1722,7 +1740,9 @@ def Xform "{TISSUE_ROOT}" (
         bool drAnmarClinicalValidation = false
         int drAnmarAdhesionBridgeCount = {len(bundle.bridge_specs)}
         int drAnmarProtectedStructureCount = 3
-        string drAnmarTopologyContract = "two_solver_ready_tissue_surfaces_connected_by_two_anchor_bridge_joints"
+        string drAnmarTopologyContract = "authored_surface_meshes_require_runtime_deformable_cooking_and_attachment_setup_fixed_joints_are_not_cohesive_tissue_mechanics"
+        string drAnmarOutcomeEvidenceStatus = "{OUTCOME_EVIDENCE_STATUS}"
+        bool drAnmarPatientOutcomeAuthoritative = false
     }}
 )
 {{
@@ -2402,14 +2422,31 @@ def integration_module() -> str:
         raise FileNotFoundError(
             f"Canonical integration module is missing: {INTEGRATION_PATH}"
         )
-    return INTEGRATION_PATH.read_text(encoding="utf-8")
+    source = INTEGRATION_PATH.read_text(encoding="utf-8")
+    required_markers = (
+        "OUTCOME_EVIDENCE_STATUS",
+        "unavailable_no_safeplane_scene_evidence_bridge",
+        "Patient-outcome mutation requires a workcell-owned bridge",
+        "patient_outcome_authoritative",
+        "_aspirate_scene_particles",
+    )
+    missing = tuple(marker for marker in required_markers if marker not in source)
+    if missing:
+        raise RuntimeError(
+            "SafePlane integration source lacks reviewed fail-closed markers: "
+            f"{missing}"
+        )
+    return source
 
 
 
 def interaction_frames(bundle: ToolBundle) -> dict[str, object]:
     return {
-        "schema": "dranmar.interaction-frames.v1",
+        "schema": "dranmar.interaction-frames.v2",
         "asset": "dranmar-safeplane-dissection-robot-v1",
+        "evidence_scope": "authored_xform_coordinates_only_not_calibrated_sensor_or_contact_observations",
+        "raw_sensor_samples_available": False,
+        "sensor_prims_authored": False,
         "frames": bundle.frames,
         "coordinate_contract": {
             "units": "metres",
@@ -2422,10 +2459,12 @@ def interaction_frames(bundle: ToolBundle) -> dict[str, object]:
 
 def mount_contract() -> dict[str, object]:
     return {
-        "schema": "dranmar.franka-hand-replacement.v1",
+        "schema": "dranmar.franka-hand-replacement.v2",
         "asset": "dranmar-safeplane-dissection-robot-v1",
         "parent_link": "panda_link8",
+        "payload_dynamics_calibrated": False,
         "payload_link": "DrAnmarSafePlaneDissectionTool/Links/Mount",
+        "runtime_validation_status": "no_current_safeplane_native_diagnostic_record_in_repository",
         "local_translation_m": [0.0, 0.0, 0.0],
         "local_rotation": {"axis": [0.0, 0.0, 1.0], "degrees": FRANKA_HAND_EQUIVALENT_ROTATION_DEG},
         "composable_asset_compatibility": "reconstruct_fixed_panda_link8_when_nvidia_asset_collapses_terminal_link_into_panda_link7_to_hand_joint",
@@ -2443,20 +2482,25 @@ def dissection_topology(bundle: ToolBundle) -> dict[str, object]:
     nerve = [[-0.075, 0.022, 0.019], [-0.035, 0.016, 0.021], [0.0, 0.020, 0.020], [0.040, 0.028, 0.019], [0.078, 0.034, 0.018]]
     duct = [[-0.068, 0.048, 0.018], [-0.030, 0.041, 0.020], [0.006, 0.036, 0.019], [0.043, 0.043, 0.018], [0.072, 0.052, 0.017]]
     return {
-        "schema": "dranmar.safeplane-dissection-topology.v1",
+        "schema": "dranmar.safeplane-dissection-topology.v2",
         "asset": "dranmar-safeplane-tissue-demo-v1",
         "units": "metres",
+        "clearance_basis": "static_authored_bridge_xy_to_one_authored_midpoint_per_structure_not_live_scene_or_structure_surface_distance",
+        "outcome_evidence_status": OUTCOME_EVIDENCE_STATUS,
+        "patient_outcome_authoritative": False,
+        "threshold_qualification": "three_category_level_private_task_proxy_seed_sets_not_measured_cohesive_failure_hydro_or_thermal_parameters",
+        "topology_kind": "static_authored_proxy_table_not_live_scene_graph_or_topology_revision",
         "safe_plane": {
             "reference_z_m": 0.025,
             "superficial_surface_path": "Anatomy/SuperficialFlap",
             "target_bed_path": "Anatomy/TargetBed",
             "target_bridge_count": len(bundle.bridge_specs),
-            "completion_rule": "all_target_bridge_continuity_joints_released_and_all_protected_structures_intact",
+            "proposed_completion_rule": "requires_scene_evidenced_target_bridge_disconnects_and_shared_mechanics_evidence_that_all_protected_structures_remain_intact",
         },
         "protected_structures": {
-            "vessel": {"centerline_m": vessel, "nominal_radius_m": 0.0031, "safety_clearance_m": {"blunt": 0.0025, "hydro": 0.0030, "scissors": 0.0050, "energy": 0.0070}},
-            "nerve": {"centerline_m": nerve, "nominal_radius_m": 0.0021, "safety_clearance_m": {"blunt": 0.0025, "hydro": 0.0030, "scissors": 0.0050, "energy": 0.0070}},
-            "duct": {"centerline_m": duct, "nominal_radius_m": 0.0026, "safety_clearance_m": {"blunt": 0.0025, "hydro": 0.0030, "scissors": 0.0050, "energy": 0.0070}},
+            "vessel": {"centerline_m": vessel, "nominal_radius_m": 0.0031, "centerline_distance_threshold_proxy_m": {"blunt": 0.0025, "hydro": 0.0030, "scissors": 0.0050, "energy": 0.0070}},
+            "nerve": {"centerline_m": nerve, "nominal_radius_m": 0.0021, "centerline_distance_threshold_proxy_m": {"blunt": 0.0025, "hydro": 0.0030, "scissors": 0.0050, "energy": 0.0070}},
+            "duct": {"centerline_m": duct, "nominal_radius_m": 0.0026, "centerline_distance_threshold_proxy_m": {"blunt": 0.0025, "hydro": 0.0030, "scissors": 0.0050, "energy": 0.0070}},
         },
         "adhesion_bridges": [
             {
@@ -2483,13 +2527,22 @@ def dissection_topology(bundle: ToolBundle) -> dict[str, object]:
 
 def task_contract() -> dict[str, object]:
     return {
-        "schema": "dranmar.safeplane-dissection-task.v1",
+        "schema": "dranmar.safeplane-dissection-task.v2",
         "asset": "dranmar-safeplane-dissection-robot-v1",
-        "procedure": [
+        "clinical_validation": False,
+        "completion_available": False,
+        "completion_blocker": OUTCOME_EVIDENCE_STATUS,
+        "medical_device": False,
+        "outcome_evidence": {
+            "required": list(REQUIRED_OUTCOME_EVIDENCE),
+            "status": OUTCOME_EVIDENCE_STATUS,
+        },
+        "patient_outcome_authoritative": False,
+        "proposed_procedure_sequence": [
             "inspect", "capture", "traction", "blunt", "hydro", "guarded_scissors",
             "low_energy", "irrigate_and_evacuate", "verify_connectivity", "release", "complete",
         ],
-        "required_success_conditions": [
+        "proposed_success_conditions": [
             "all_target_adhesion_bridges_released",
             "vessel_continuity_intact",
             "nerve_continuity_intact",
@@ -2498,7 +2551,7 @@ def task_contract() -> dict[str, object]:
             "traction_stable",
             "no_uncommanded_scissor_or_energy_action_inside_protected_clearance",
         ],
-        "metrics": [
+        "task_proxy_metrics": [
             "released_bridge_fraction", "residual_bridge_count", "release_mode_distribution",
             "left_traction_force_n", "right_traction_force_n", "traction_force_asymmetry_n",
             "blunt_work_j", "hydro_volume_ml", "energy_j", "scissor_cut_count",
@@ -2506,23 +2559,27 @@ def task_contract() -> dict[str, object]:
             "blood_loss_ml", "duct_leak_ml", "nerve_conduction_fraction",
             "roi_visibility_fraction", "procedure_time_s", "safety_interlock_violations",
         ],
-        "failure_states": [
+        "task_proxy_failure_categories": [
             "traction_overload", "pad_capture_loss", "residual_adhesion", "wrong_plane_dissection",
             "vessel_injury", "nerve_injury", "duct_injury", "hydro_overpressure_proxy",
             "energy_overtemperature", "unguarded_scissor_command", "incomplete_smoke_evacuation",
         ],
-        "clinical_validation": False,
-        "medical_device": False,
     }
 
 
 def physics_profile(bundle: ToolBundle) -> dict[str, object]:
     return {
-        "schema": "dranmar.safeplane-dissection-profile.v1",
+        "schema": "dranmar.safeplane-dissection-profile.v2",
         "id": "dranmar-safeplane-dissection-robot-v1",
         "version": VERSION,
-        "status": "research_informed_engineering_model_pending_runtime_metrology_and_clinical_validation",
+        "status": "asset_and_physical_setup_model_outcome_entrypoints_fail_closed_pending_scene_evidence_shared_mechanics_runtime_metrology_and_clinical_validation",
         "units": "metres_kilograms_seconds",
+        "completion_available": False,
+        "outcome_evidence": {
+            "required": list(REQUIRED_OUTCOME_EVIDENCE),
+            "status": OUTCOME_EVIDENCE_STATUS,
+        },
+        "patient_outcome_authoritative": False,
         "tool": {
             "mount": "panda_link8_hand_replacement",
             "approximate_mass_kg": sum(link.mass_kg or 0.0 for link in bundle.links.values()),
@@ -2542,7 +2599,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str, object]:
             "target_bed_mesh": {"vertices": int(len(bundle.target_bed_mesh.vertices)), "triangles": int(len(bundle.target_bed_mesh.faces))},
             "adhesion_bridge_count": len(bundle.bridge_specs),
             "bridge_classes": sorted({spec.bridge_class for spec in bundle.bridge_specs}),
-            "physics_contract": "two_deformable_surfaces_each_bridge_uses_two_rigid_anchors_and_one_removable_continuity_joint",
+            "physics_contract": "runtime_cooked_surface_meshes_with_rigid_anchor_and_fixed_joint_proxies_not_shared_cohesive_tissue_mechanics",
             "surface_parameters": {
                 "superficial": {"youngs_modulus_pa": 95000.0, "poissons_ratio": 0.36, "surface_thickness_m": 0.0045, "dynamic_friction": 0.48},
                 "target_bed": {"youngs_modulus_pa": 145000.0, "poissons_ratio": 0.38, "surface_thickness_m": 0.0055, "dynamic_friction": 0.52},
@@ -2552,33 +2609,33 @@ def physics_profile(bundle: ToolBundle) -> dict[str, object]:
             "nominal_force_per_pad_n": 1.4,
             "soft_force_limit_per_pad_n": 3.0,
             "hard_release_limit_per_pad_n": 5.0,
-            "qualification": "provisional_unmeasured",
+            "qualification": "private_task_proxy_thresholds_provisional_unmeasured_public_force_release_unavailable",
         },
         "hydrodissection": {
             "reservoir_capacity_ml": 35.0,
             "particle_radius_m": 0.00072,
             "nominal_jet_speed_m_s": 1.35,
             "jet_count": HYDRO_JET_COUNT,
-            "bridge_dose_model": "distance_weighted_volume_threshold_proxy",
+            "bridge_dose_model": "private_task_proxy_distance_weighted_caller_volume_not_scene_derived_deposition",
             "qualification": "provisional_unmeasured_not_a_clinical_pressure_or_flow_setting",
         },
         "guarded_scissors": {
             "guard_retraction_m": SCISSOR_GUARD_TRAVEL_M,
             "blade_closure_deg": SCISSOR_CLOSE_DEG,
-            "minimum_protected_structure_clearance_m": 0.005,
-            "cut_contract": "nearest_unreleased_bridge_continuity_joint_removed_only_after_guard_and_clearance_interlocks_pass",
+            "minimum_centerline_distance_proxy_m": 0.005,
+            "cut_contract": "public_cut_unavailable_until_exact_step_guard_blade_contact_and_topology_evidence_exists_private_geometric_task_proxy_only",
         },
         "low_energy_dissection": {
             "target_temperature_c": 72.0,
             "maximum_temperature_c": 95.0,
             "maximum_power_w": 22.0,
-            "model": "lumped_thermal_dose_proxy",
+            "model": "private_task_proxy_lumped_thermal_dose_from_caller_force_time_and_power",
             "qualification": "not_electrosurgical_tissue_physics",
         },
         "protected_structures": {
-            "vessel": {"radius_m": 0.0031, "injury_consequence": "continuity_joint_removed_and_blood_loss_ledger_activated"},
-            "nerve": {"radius_m": 0.0021, "injury_consequence": "continuity_joint_removed_and_conduction_fraction_set_to_zero"},
-            "duct": {"radius_m": 0.0026, "injury_consequence": "continuity_joint_removed_and_duct_leak_ledger_activated"},
+            "vessel": {"radius_m": 0.0031, "injury_consequence": "private_task_proxy_only_public_injury_mutation_unavailable"},
+            "nerve": {"radius_m": 0.0021, "injury_consequence": "private_task_proxy_only_public_injury_mutation_unavailable"},
+            "duct": {"radius_m": 0.0026, "injury_consequence": "private_task_proxy_only_public_injury_mutation_unavailable"},
         },
         "runtime_platforms": ["OpenUSD", "NVIDIA PhysX", "NVIDIA Isaac Lab"],
         "clinical_validation": False,
@@ -2603,7 +2660,13 @@ def collider_coverage(bundle: ToolBundle) -> dict[str, object]:
                 "axis_coverage_ratio": coverage.tolist(),
                 "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
             })
-    return {"schema": "dranmar.collider-coverage.v1", "asset": "dranmar-safeplane-dissection-robot-v1", "links": rows}
+    return {
+        "schema": "dranmar.collider-coverage.v2",
+        "asset": "dranmar-safeplane-dissection-robot-v1",
+        "coverage_basis": "authored_local_axis_aligned_bounds_only",
+        "runtime_contact_coverage_validated": False,
+        "links": rows,
+    }
 
 
 def asset_manifest() -> dict[str, object]:
@@ -2640,7 +2703,9 @@ def example_scene() -> str:
 
     Run through the Isaac Lab launcher on CUDA. The example spawns the combined
     Franka robot and layered dissection substrate. Runtime physical attachments,
-    particle systems, and controller actions remain explicit host-task steps.
+    surface cooking, and particle systems remain explicit host-task steps.
+    Outcome-driving dissection actions are unavailable until an exact-step
+    SceneEvidenceEnvelope and shared-mechanics bridge is implemented.
     """
     from isaaclab.app import AppLauncher
     app_launcher = AppLauncher(headless=False)
@@ -2681,10 +2746,16 @@ The payload replaces the Panda hand at `panda_link8` and provides {len(build_too
 - guarded articulated micro-scissors;
 - a retractable low-energy spatula probe.
 
-Annular suction and irrigation operate around the same registered field. Stereo RGB, depth, fluorescence, and thermal frames are fixed to the housing so modality changes do not require scene re-registration.
+Annular suction and irrigation geometry share the same authored field. The
+housing includes optical-frame Xforms and visual meshes labelled for stereo RGB,
+depth, fluorescence, and thermal channels. It does not author USD Camera/sensor
+prims, calibration, capture adapters, raw samples, or cross-modal registration
+evidence.
 
 The mechanism is owned by DrAnmar and provider-neutral. NVIDIA Isaac Sim and
-Isaac Lab provide the target runtime. It is an executable simulation-training workcell.
+Isaac Lab are the target runtime for the authored research asset and physical
+setup utilities. Outcome-driving dissection controllers remain unavailable
+until a scene-evidence and shared-mechanics bridge is implemented.
 '''
 
 
@@ -2699,16 +2770,29 @@ The target bed is attached to two explicit kinematic fixtures. Surface
 self-collision is disabled by default for portable GPU deformable cooking and
 can be enabled explicitly only on a qualified solver configuration.
 
-Releasing a bridge removes its continuity joint. The anchor halves remain attached to their respective tissue layers, so separation is produced by the physics solver and traction mechanism rather than by directly rewriting the tissue transform.
+The authored representation permits a continuity joint to be removed while its
+anchor halves remain attached to their respective tissue layers. That is an
+asset-level topology mechanism, not evidence that a bridge failed under tool
+contact. Public bridge release currently fails closed because no exact-step
+scene-evidence adapter derives cohesive damage or disconnect state from the
+physics solver. The former caller-supplied release logic is retained only as a
+private task proxy.
 
-## Four release mechanisms
+## Proposed release modalities
 
-- blunt spreading accumulates mechanical contact work;
-- hydrodissection accumulates local delivered fluid volume and weakens mechanical thresholds;
-- guarded scissors release the bridge nearest the cut volume after guard and safety interlocks pass;
-- low-energy dissection accumulates a provisional local thermal-energy dose.
+- blunt spreading requires contact-derived force, relative motion, and integrated
+  work;
+- hydrodissection requires particle/tissue contact, deposited volume, and fluid
+  mass balance;
+- guarded scissors require live guard/blade transforms, contact/crossing
+  evidence, and a topology event;
+- low-energy dissection requires measured electrical/thermal delivery and shared
+  tissue damage state.
 
-All bridge thresholds are category-level engineering seeds and are not biomechanical or clinical claims.
+None of those evidence bridges exists in this package today. The static
+distance-weighted work, volume, and energy thresholds remain private,
+non-authoritative task proxies. All bridge thresholds are category-level
+engineering seeds and are not biomechanical or clinical claims.
 '''
 
 
@@ -2717,26 +2801,53 @@ def docs_safety() -> str:
 
 The tissue substrate includes independent vessel, nerve, and duct assets. Each structure has two rigid segments joined by a removable continuity joint and attached to the target tissue at runtime.
 
-The controller calculates local tool clearance against each authored centerline. Minimum provisional clearances differ by modality. Scissors and energy actions are blocked when the nearest structure lies inside the configured safety envelope unless the host task explicitly overrides the interlock.
+The private task proxy calculates caller-supplied local tool coordinates against
+undeformed authored centerlines. Minimum provisional clearances differ by
+modality, but this geometry is not synchronized with live structure
+deformation, tool contact, or a physics step. The proxy compares distance to the
+centerline directly and does not subtract the authored structure radius, so its
+thresholds are not structure-surface clearances. Public protected-structure
+action authorization fails closed; there is no host override that can establish
+a safety result.
 
-An override has a physical consequence:
+The legacy private proxy can illustrate three synthetic failure labels:
 
-- vessel injury removes continuity and activates blood-loss state;
-- nerve injury removes continuity and sets conduction to zero;
-- duct injury removes continuity and activates a leak state.
+- vessel: deactivate a rigid continuity joint and increment a scalar blood-loss
+  proxy;
+- nerve: deactivate a rigid continuity joint and set a scalar conduction proxy
+  to zero;
+- duct: deactivate a rigid continuity joint and increment a scalar leak proxy.
 
-This is a research complication model, not a validated injury predictor.
+Those mutations are not exposed as public injury outcomes. The rigid halves and
+visual variants are not vessel flow, duct transport, nerve conduction, tissue
+failure, or patient physiology. No same-step evidence bridge currently connects
+tool contact to shared vessel/duct/nerve mechanics or a patient blood/bile
+ledger. This is an uncalibrated task representation, not an injury predictor.
 '''
 
 
 def docs_hydro_energy() -> str:
     return '''# Hydrodissection and Energy Models
 
-The hydrodissection helper creates a PhysX PBD particle system, emits quantized seven-port bursts from the authored nozzle frame, and conserves reservoir, active, aspirated, absorbed, and spilled volume in a ledger. Bridge weakening uses a distance-weighted delivered-volume proxy.
+The hydrodissection helper creates a PhysX PBD particle system and emits
+quantized seven-port bursts from the authored nozzle frame. Its ledger accounts
+for commanded emission and particles removed by the scene-space suction pass.
+It does not measure jet pressure, tissue contact, deposited volume, absorption,
+or patient fluid balance. Caller-authored absorption and spillage are
+fail-closed, and the old distance-weighted bridge weakening calculation is a
+private task proxy only.
 
-The low-energy probe uses a lumped thermal model with force-dependent absorption, heat loss, temperature, delivered energy, smoke generation, and overtemperature state. It does not reproduce electrosurgical current paths, collagen transformation, steam, charring, or tissue-specific thermal spread.
+The former low-energy calculation is a private lumped task proxy with
+caller-supplied force, time, and power. Public energy/dose mutation fails closed
+until scene evidence provides contact, electrical delivery, impedance,
+temperature, and shared tissue-damage state. The proxy does not reproduce
+electrosurgical current paths, collagen transformation, steam, charring, or
+tissue-specific thermal spread.
 
-The annular suction controller accelerates fluid particles toward the authored suction center and transfers captured particle volume into the collection ledger.
+The annular suction controller accelerates authored fluid particles toward the
+suction center and transfers geometrically captured particle volume into the
+collection inventory. This is particle bookkeeping, not evidence of
+hydrodissection, tissue absorption, clinical irrigation, or patient fluid loss.
 '''
 
 
@@ -2747,22 +2858,33 @@ def docs_franka() -> str:
 
 The payload preserves the standard Panda-hand mounting rotation of −45 degrees around local Z. Tool joints are appended to the same articulation and grouped into traction, pad-compliance, spreader, hydro, scissors, energy-tip, and valve actuator sets.
 
-The rigid proxy is available for perception, synthetic data, collision-aware planning, and handover tasks.
+The rigid proxy is a geometry-only planning/perception representation. It does
+not provide calibrated sensors, measured payload dynamics, collision-safety
+qualification, synthetic-data ground truth, or dissection outcome evidence.
 '''
 
 
 def docs_validation() -> str:
-    return '''# Integrity and runtime boundaries
+    return '''# Capability and evidence boundaries
 
-Static gates cover deterministic assets, dependency closure, controller
-invariants, protected-structure interlocks, capacity-safe fluid accounting,
-fail-closed attachment overlap, and source/container integrity. The optional
-Isaac script is diagnostic only.
+The SafePlane Dissection Robot is an authored Dr.Anmar research workcell asset
+with traction, blunt, hydro, guarded-scissor, and energy-dissection geometry
+around protected-structure proxies.
 
-Injecting threshold-plus-margin work or fluid at an exact authored bridge
-coordinate is a controller unit test, not physical release evidence. Physical
-bridge release may be promoted only when the accumulated work or delivered
-volume is derived from tool contact and the live simulation state.
+Source inspection establishes deterministic asset paths, explicit surface
+cooking/attachment setup, fixed-joint proxy topology, guarded public outcome
+entry points, and bounded command/particle accounting. It does not establish
+runtime behavior. No current SafePlane native diagnostic record is present in
+the repository; the optional Isaac script is a legacy controller-exercise
+script, not outcome evidence, and still targets the former caller-authored
+controller API.
+
+Injecting threshold-plus-margin work, fluid, energy, force, injury state, or
+visibility at an authored coordinate is not physical release or completion
+evidence. Physical bridge release may be promoted only when the accumulated
+work, deposited fluid, cut event, or thermal damage is derived from one
+exact-step `SceneEvidenceEnvelope`, live simulation identity/topology, and
+shared mechanics.
 
 No current record qualifies safe-plane identification, tissue selectivity,
 traction, hydro pressure, cutting, thermal spread, physical calibration,
@@ -2774,11 +2896,17 @@ def readme() -> str:
     return f'''# {ASSET_NAME}
 
 A DrAnmar-owned, provider-neutral NVIDIA Isaac Sim and Isaac Lab research
-system for connectivity-aware tissue dissection with protected anatomy.
+asset/setup package for a proposed connectivity-aware dissection task. The
+package also retains private task-proxy calculations for offline engineering
+analysis; those calculations are not scene observations or patient outcomes.
 
 ## Workflow
 
-`inspect → capture → counter-traction → blunt spread → hydrodissect → selectively cut or apply low energy → evacuate → verify topology → release`
+Proposed task sequence:
+
+`inspect → capture → counter-traction → blunt spread → hydrodissect → selectively cut or apply low energy → evacuate → inspect connectivity → release`
+
+This sequence is not an evidence-backed completion pipeline.
 
 ## Primary assets
 
@@ -2786,11 +2914,26 @@ system for connectivity-aware tissue dissection with protected anatomy.
 - `dranmar_safeplane_dissection_tool_standalone.usda` — standalone articulated mechanism.
 - `dranmar_safeplane_dissection_tool_rigid_proxy.usda` — perception/planning proxy.
 - `dranmar_safeplane_tissue_demo.usda` — layered tissue, adhesion network, vessel, nerve, duct, and protected organ surface.
-- `dissection_topology.json` — bridge graph, thresholds, structure centerlines, and completion contract.
+- `dissection_topology.json` — a static authored bridge table, category-level
+  proxy thresholds, undeformed structure centerlines, and a proposed completion
+  rule. It is not a live scene graph or topology record.
+- `glb/` — pre-authored visual previews of tool/tissue states. These are not
+  recorded simulator transitions or outcome evidence.
 
 ## Boundary
 
-The package is not clinically validated, is not a medical device, and is not approved for patient care. Tissue, fluid, cutting, energy, force, injury, and safety parameters remain provisional research values.
+The package is not clinically validated, is not a medical device, and is not
+approved for patient care. Tissue, fluid, cutting, energy, force, injury, and
+safety parameters remain provisional research values.
+
+There is currently no SafePlane `SceneEvidenceEnvelope`/registry adapter that
+binds exact physics steps, source prims, raw sample IDs, attachment identity,
+topology revisions, tool contact, fluid deposition, thermal state, or shared
+vessel/duct/nerve and patient ledgers. Public force-driven release, bridge
+division, tissue-dose, protected-structure injury, complication, and completion
+entry points therefore fail closed. Runtime setup utilities may cook the two
+surface meshes, create attachments, and author fluid particles; those setup
+operations do not establish a dissection result.
 '''
 
 
@@ -2886,7 +3029,7 @@ def write_asset_files(bundle: ToolBundle) -> list[Path]:
     ]
     write_json(PHYSICS_PROFILE_PATH, physics_profile(bundle))
     files.append(PHYSICS_PROFILE_PATH)
-    INTEGRATION_PATH.write_text(integration_module(), encoding="utf-8")
+    integration_module()
     files.append(INTEGRATION_PATH)
     for name, text in (
         ("MECHANISM.md", docs_mechanism()),
@@ -2923,7 +3066,12 @@ def all_payload_files() -> list[Path]:
         path
         for path in PACKAGE_ROOT.rglob("*")
         if path.is_file()
-        and "__pycache__" not in path.parts
+        and not {
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".ruff_cache",
+        }.intersection(path.parts)
         and path.suffix != ".pyc"
         and path.name not in excluded_names
         and not path.is_relative_to(mirror_root)

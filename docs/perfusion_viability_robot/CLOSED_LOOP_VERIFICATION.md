@@ -2,6 +2,12 @@
 
 The canonical research task is `scan → identify cause → intervene → rescan → verify recovery`. Causes include arterial inflow obstruction, venous outflow obstruction, anastomotic stenosis, branch leakage, retraction ischemia, and dressing compression.
 
-Diagnosis is blind to the authored scenario label. Intervention progress is derived from caller-reported displacement, lumen gain, seal contact, force, and dwell evidence. Evidence-free completion is rejected. The bundled deterministic evidence profile is a test fixture, is identified as such in results, and is not a physical measurement.
+The synthetic fixture is blind to its authored scenario label, but its
+displacement, lumen, contact, force, and dwell inputs remain authored fixture
+signals. Production assessment now always abstains and completion stays false
+until an environment-owned native provider receipt causally binds an admitted
+action and exact target to before/intervention/after evidence and one patient
+revision. The bundled deterministic profile is a fixture, not a physical
+measurement or completion record.
 
 No generated score is a clinical diagnosis or treatment recommendation.

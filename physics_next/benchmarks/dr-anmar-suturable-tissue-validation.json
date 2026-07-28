@@ -1,5 +1,7 @@
 {
   "asset_id": "dr-anmar-suturable-tissue",
+  "evidence_scope": "repository_static_and_analytical_checks_only",
+  "native_runtime_evidence_recorded": false,
   "blocked_capability_boundary": [
     "arbitrary_puncture",
     "persistent_tract",
@@ -489,5 +491,6 @@
     "grasping",
     "retraction",
     "wound_edge_approximation"
-  ]
+  ],
+  "stable_capability_boundary_status": "intended_physx_route_pending_native_gpu_probe"
 }

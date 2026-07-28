@@ -32,15 +32,24 @@ surface, and evidence lifecycle. NVIDIA Isaac Sim, Isaac Lab, PhysX,
 ORBIT-Surgical-derived foundations, and optional providers perform bounded
 technical roles.
 
-The result is a research platform in which robot behavior stays inspectable:
-articulations and contacts advance in the simulator, post-physics evidence
-drives patient effects, and learning algorithms receive reward only after the
-environment computes the resulting benefit or harm.
+The intended result is a research platform in which robot behavior stays
+inspectable: articulations and contacts advance in the simulator, post-physics
+evidence drives patient effects, and learning algorithms receive reward only
+after a causally complete transition. In the current unexecuted source,
+Autonomous Rescue policy reward is deliberately zero because evidence is not
+yet bound to one admitted action and a same-step batch for every active target.
 
 > [!CAUTION]
 > Dr.Anmar is research software for simulation, synthetic data, and evaluation.
 > It is not clinically validated, is not a medical device, and must not control
 > physical surgical hardware or be used for patient care.
+
+> [!NOTE]
+> The 27 July 2026 working source contains an unexecuted realism hardening pass.
+> Its new source and evidence boundaries, current grades, and exact B/A
+> promotion work are documented in the
+> [source-only realism audit](docs/REALISM_SOURCE_AUDIT_2026-07-27.md). Prior
+> runtime artifacts do not qualify the modified source.
 
 ## Robotics first
 
@@ -112,7 +121,7 @@ flowchart LR
     C --> D["Post-physics evidence<br/>force, geometry, flow,<br/>pressure, attachment, dwell"]
     D --> E["Dr.Anmar patient effects<br/>conservation + damage + repair"]
     E --> F["Patient state<br/>bleeding, MAP, perfusion,<br/>oxygenation, integrity"]
-    F --> G["Transition reward<br/>improvement minus harm"]
+    F --> G["Diagnostic transition delta<br/>reward disabled until complete binding"]
     G --> A
     A -. "no outcome write path" .-> D
 ```
@@ -129,10 +138,11 @@ Examples of mutually supported evidence:
 The complete mechanics and learning contracts live in the canonical
 [Dr.Anmar asset catalog](https://github.com/Numi2/dr-assets).
 
-## Executable Autonomous Rescue learning loop
+## Historical Autonomous Rescue learning workflow
 
-Autonomous Rescue OR connects clinician demonstration to policy evaluation
-without giving the policy patient-outcome controls:
+The repository contains a workflow intended to connect clinician demonstration
+to policy evaluation without giving the policy patient-outcome controls. It has
+not been re-executed or qualified against the current source:
 
 ```text
 record complete expert episode

@@ -1786,18 +1786,33 @@ def mount_contract() -> dict[str,object]:
 
 def task_contract() -> dict[str,object]:
     return {
-        "schema":"dranmar.adaptive-anastomosis-task.v1",
+        "schema":"dranmar.adaptive-anastomosis-task.v2",
         "procedure":"end_to_end_hollow_tissue_anastomosis",
         "phases":["inspect","capture","align","mandrel","approximate","evert","staple","release_capture","reinforce","occlude","pressurize","verify","complete","abort"],
-        "success_metrics":[
-            "lumen_axis_error_deg","centerline_offset_m","minimum_lumen_radius_m","patency_area_fraction","edge_apposition_gap_m",
-            "eversion_height_m","retained_staple_fraction","reinforcement_bond_fraction","pressure_decay_pa_s","residual_leak_ml_min",
-            "integrated_leak_volume_ml","capture_force_n","procedure_time_s","tissue_damage_proxy"
+        "provisional_task_signals":[
+            "scene_bound_lumen_axis_error_deg","scene_bound_centerline_offset_m",
+            "minimum_lumen_radius_m","geometry_only_patency_area_fraction",
+            "mechanically_qualified_staple_fraction",
+            "mechanically_qualified_collar_sector_fraction",
+            "measured_pressure_pa","measured_residual_leak_ml_min",
+            "integrated_leak_volume_ml"
         ],
         "failure_modes":[
             "capture_loss","torsional_misalignment","lumen_obstruction","edge_inversion","incomplete_apposition","staple_misfire","staple_pullout",
             "collar_delamination","pressure_test_leak","tissue_crush","wall_cut_through","mandrel_entrapment","instrument_collision"
         ],
+        "required_scene_evidence":[
+            "exact_lumen_node_sets","exact_staple_rod_results",
+            "exact_staple_and_collar_attachment_prim_ids",
+            "exact_cohesive_interface_results","exact_pressure_flow_records",
+            "raw_native_record_identity",
+            "episode_environment_topology_step_and_time"
+        ],
+        "capture_overload_authority":"unavailable_until_capture_contact_sources_are_registered",
+        "retention_verified":False,
+        "flow_connected_patency_verified":False,
+        "native_scene_evidence_provider":"not_implemented",
+        "simulator_task_completion_verified":False,
         "clinical_validation":False,
     }
 
@@ -1809,7 +1824,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str,object]:
         "id":"dranmar-adaptive-anastomosis-robot-v1",
         "name":ASSET_NAME,
         "version":VERSION,
-        "status":"simulation_training_model",
+        "status":"source_hardened_native_scene_evidence_provider_missing",
         "units":"metres-kilograms-seconds",
         "mechanism":{
             "active_joint_count":sum(1 for j in bundle.joints if j.type!="fixed"),
@@ -1835,16 +1850,22 @@ def physics_profile(bundle: ToolBundle) -> dict[str,object]:
         "capture":{
             "attachment_model":"six_current_vertex_to_xform_attachment_cells_per_side",
             "target_force_per_side_n":1.6,"soft_limit_n":3.5,"hard_release_n":6.0,
+            "caller_force_input":"rejected",
+            "overload_release_authority":"unavailable_until_prim_bound_capture_contact_sources_exist",
         },
         "staples":{
             "representation":"sixteen_independent_rigid_formed_staples_with_left_and_right_attachment_regions",
-            "provisional_pullout_force_per_staple_n":1.4,
             "forming":"discrete_open_to_formed_state_pending_plasticity_backend_evidence",
+            "source_mechanics":"exact_shared_rod_result_and_bilateral_attachment_evidence",
+            "retention_verified":False,
+            "missing":"calibrated_proof_load_and_pullout",
         },
         "reinforcement_collar":{
             "surface_representation":"connected_triangular_circumferential_ribbon",
             "stable_bond_carrier":"rigid_proxy_with_independent_left_and_right_sector_attachments",
-            "cure_time_s":45.0,"initial_sector_tack_force_n":0.18,"final_sector_break_force_n":2.2,
+            "source_mechanics":"exact_shared_cohesive_interface_per_bilateral_sector",
+            "biochemical_cure_or_healing":"not_implemented",
+            "physical_calibration":"not_performed",
         },
         "leak_test":{
             "initial_reservoir_ml":TEST_RESERVOIR_ML,"nominal_challenge_pressure_pa":8000.0,"observation_window_s":8.0,
@@ -1855,7 +1876,8 @@ def physics_profile(bundle: ToolBundle) -> dict[str,object]:
         },
         "boundaries":[
             "no_clinical_force_or_pressure_claims","no_continuous_staple_plasticity","no_validated_tissue_penetration_or_damage",
-            "no_biochemical_adhesive_or_healing_model","no_clinical_leak_threshold_claim","native_simulator_evidence_required",
+            "no_biochemical_adhesive_or_healing_model","no_clinical_leak_threshold_claim",
+            "no_flow_connected_patency_claim","native_scene_evidence_provider_not_implemented",
         ],
     }
 
@@ -1871,7 +1893,7 @@ def collider_coverage(bundle: ToolBundle) -> dict[str,object]:
     return {"schema":"dranmar.collider-coverage.v1","asset":"dranmar-adaptive-anastomosis-robot-v1","links":rows}
 
 
-def author_integration_module() -> str:
+def _legacy_author_integration_module_template() -> str:
     if not INTEGRATION_PATH.exists():
         raise FileNotFoundError(
             "The authoritative Isaac integration module is required for generation: "
@@ -2423,6 +2445,36 @@ class AdaptiveAnastomosisSequenceController:
 ''')
 
 
+def author_integration_module() -> str:
+    """Preserve the reviewed evidence-bound integration source.
+
+    The embedded legacy template above is intentionally inert because it
+    contains caller-authored retention, cure, and leak paths. Regeneration
+    fails closed unless the reviewed module already exists with the required
+    evidence boundary.
+    """
+
+    if not INTEGRATION_PATH.is_file():
+        raise RuntimeError(
+            "reviewed adaptive_anastomosis_robot.py is required; the legacy "
+            "embedded template is not admissible"
+        )
+    source = INTEGRATION_PATH.read_text(encoding="utf-8")
+    required_markers = (
+        "AnastomosisSceneEvidence",
+        "def update_from_scene(",
+        '"retention_verified":False',
+        "caller-authored capture loads are not admissible",
+    )
+    missing = tuple(marker for marker in required_markers if marker not in source)
+    if missing:
+        raise RuntimeError(
+            "adaptive anastomosis integration source lacks reviewed evidence "
+            f"markers: {missing}"
+        )
+    return source
+
+
 def readme() -> str:
     return f'''# {ASSET_NAME} v{VERSION}
 
@@ -2435,12 +2487,12 @@ Dr.Anmar executable simulation-training workcell for end-to-end hollow-tissue an
 - lumen-preserving alignment mandrel and expandable centering cage;
 - independent edge-eversion rings;
 - one-shot {STAPLE_COUNT}-position circumferential staple crown;
-- individual retained staple bodies with left/right tissue attachment regions;
+- formed staple proxies with left/right tissue attachment regions; retention is unverified;
 - circumferential reinforcement collar with independent bilateral bond sectors;
-- lumen patency scoring and pressure-decay leak verification;
+- geometry-only lumen scoring and provisional pressure/leak observation;
 - direct replacement of the Panda hand at `panda_link8`;
 - standalone articulated, Franka payload, and rigid proxy representations.
-- explicit deformable distal fixtures, temporary-capture release, retained staples, and bilateral collar-sector attachments.
+- explicit deformable distal fixtures and bilateral collar-sector attachments.
 
 ## Primary assets
 
@@ -2455,7 +2507,7 @@ dranmar_reinforcement_collar_rigid_proxy.usda
 dranmar_leak_test_droplet.usda
 ```
 
-The current package represents staple formation as a discrete open-to-formed event and reinforcement as staged mechanical attachments. It does not claim clinically calibrated penetration, plasticity, tissue damage, adhesive chemistry, healing, patency, or leak thresholds. It is not approved for patient care.
+The current package represents staple formation as a discrete open-to-formed event. Production retention and collar qualification require exact rod, cohesive, contact, attachment and clock evidence, but the native provider is not implemented. Temporary-capture overload release is unavailable until capture-contact sources are added. It does not claim calibrated penetration, plasticity, tissue damage, adhesive chemistry, healing, flow-connected patency, or clinical leak thresholds. It is not approved for patient care.
 '''
 
 
@@ -2464,7 +2516,7 @@ def docs_mechanism() -> str:
 
 The end effector uses two coaxial capture collars around a common local X lumen axis. Each collar carries six broad capture cells. Independent carriage motion moves the tissue ends toward the seam. Independent eversion rings advance after alignment to present the tissue rims to the staple crown.
 
-A transparent lumen mandrel crosses both tissue segments and supports centerline alignment. A six-rib centering cage provides an expandable patency reference. The right-side staple driver advances a sixteen-position crown toward a fixed left-side anvil. After staple retention is established, the capture attachments can be removed without releasing the seam.
+A transparent lumen mandrel crosses both tissue segments and supports centerline alignment. A six-rib centering cage provides an expandable geometry reference. The right-side staple driver advances a sixteen-position crown toward a fixed left-side anvil. Attachment presence does not establish staple retention, and capture removal must not be automated until exact post-release load-path evidence exists.
 
 A separate carousel and compliant ring platen place the reinforcement collar. Two occluder-control valves and a pressure valve support the subsequent leak-test phase.
 
@@ -2489,22 +2541,22 @@ The lumen mandrel is inserted before final approximation. Eversion rings then mo
 
 ## Staple retention
 
-Sixteen formed staple bodies are spawned around the seam. Each staple owns two independent attachment volumes: one for the left tissue and one for the right. The 12 temporary capture constraints can then be released while the 32 staple-leg attachments remain the load-bearing bridge. Pullout is represented by removing a staple's tissue attachments when the caller reports load above a provisional threshold.
+Sixteen formed staple bodies are spawned around the seam. Each staple owns two independent attachment volumes: one for the left tissue and one for the right. Source qualification now requires the exact shared rod result, exact bilateral attachment set, intact topology, and observed bilateral reactions. Retention remains false because no calibrated proof-load or pullout criterion exists. Caller-authored pullout loads are not accepted.
 
 Continuous metal plasticity, penetration, puncture damage, wall crushing, ischemia and cut-through require calibrated solver and specimen data and are not claimed by this release.
 
 ## Reinforcement collar
 
-The reinforcement collar is supplied as a connected triangular surface and as a stable rigid bond carrier. The rigid carrier contains 16 independent left and 16 independent right bond cells. Bond strength rises from a provisional 0.18 N sector tack value to 2.2 N over 45 seconds. This models the mechanical result of reinforcement but not biochemical adhesion or healing.
+The reinforcement collar is supplied as a connected triangular surface and as a rigid bond carrier with 16 independent left and 16 independent right cells. A sector qualifies only from the exact latest shared cohesive-interface response, exact bilateral attachments, nonfailed topology, positive contact area, and positive bilateral reactions. This is provisional source mechanics, not calibrated bonding, biochemical adhesion, cure, or healing.
 '''
 
 
 def docs_leak_test() -> str:
     return '''# DrAnmar patency and leak verification
 
-The mandrel and centering cage provide a reference for minimum lumen radius, centerline offset and axis alignment. `LumenPatencyController` evaluates user-supplied radial samples and reports minimum radius, mean radius, area fraction, offset, axis error and pass state.
+The mandrel and centering cage provide a reference for minimum lumen radius, centerline offset and axis alignment. `LumenPatencyController` consumes exact scene-bound lumen node sets and reports geometry thresholds only; `flow_connected_patency_verified` remains false.
 
-`PressureDecayLeakController` is a reduced-order, dimensionally consistent chamber model. Pump inflow and orifice outflow change pressure through an effective chamber compliance. Effective leak area depends on residual edge gap, retained staple fraction and reinforcement bond fraction. It tracks instantaneous leak flow, pressure, integrated leak volume, observation time and pass state. `LeakTestLedger` conserves test medium across the reservoir, isolated chamber, active leaked medium, collection, spill, and discard buckets.
+`PressureDecayLeakController` consumes the envelope's exact pressure and measured leak-flow records. It tracks pressure, integrated leak volume, observation time and a provisional simulator seal-test threshold. `LeakTestLedger` conserves test medium across reservoir, chamber, active leak, collection, spill and discard buckets, but the ledger is not a native fluid-structure provider.
 
 The leak model is a research benchmark. It is not a clinical leak test, does not reproduce full fluid-structure interaction, and must be calibrated against the selected tissue, test medium, pressure protocol and instrumentation.
 '''
@@ -2524,14 +2576,15 @@ Use `make_franka_adaptive_anastomosis_robot_cfg()` for the combined robot, `make
 def docs_validation() -> str:
     return '''# Integrity and runtime boundaries
 
-Static gates cover deterministic assets, dependency closure, controller
-invariants, fail-closed attachment overlap, leak-ledger conservation, and
-source/container integrity. The optional Isaac script is diagnostic only.
+This revision was hardened by source review only. No tests, builds, imports,
+simulators, validators, gates, or native diagnostics were run. Previous
+artifacts do not qualify the modified source.
 
 Articulation motion, attachment creation, staple count, collar sectors, and
 nominal reduced-order inputs do not establish patency, edge apposition, or a
 pressure-tight seam. Patency and leak status may be promoted only from measured
-runtime lumen/seam geometry and calibrated pressure/flow sensing.
+runtime lumen/seam geometry and calibrated pressure/flow sensing. The native
+provider for the new evidence envelope is not implemented.
 
 No current record qualifies staple penetration or plasticity, collar adhesion,
 anastomosis efficacy, physical calibration, clinical performance, or patient
@@ -2685,7 +2738,7 @@ def write_asset_files(bundle: ToolBundle) -> list[Path]:
         write_json(ASSET_ROOT/"collider_coverage.json",collider_coverage(bundle)),
         write_json(PHYSICS_PROFILE_PATH,physics_profile(bundle)),
     ]
-    INTEGRATION_PATH.write_text(author_integration_module(),encoding="utf-8");files.append(INTEGRATION_PATH)
+    author_integration_module();files.append(INTEGRATION_PATH)
     docs={
         "MECHANISM.md":docs_mechanism(),
         "PHYSICAL_ANASTOMOSIS.md":docs_physical_anastomosis(),

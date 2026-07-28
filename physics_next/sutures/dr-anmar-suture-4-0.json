@@ -102,7 +102,7 @@
       "failure": "single_localized_weakest_constraint_failure_from_the_profile_force_elongation_envelope",
       "determinism": "fixed_pair_order_and_gather_without_floating_point_atomics",
       "native_simulator_evidence": "physics_next/benchmarks/dr-anmar-warp-suture-native-simulator-evidence.json",
-      "status": "native_warp_gpu_evidence_recorded_on_gilgamesh"
+      "status": "native_warp_gpu_engineering_evidence_recorded_hardware_and_source_revision_binding_incomplete"
     }
   },
   "geometry": {

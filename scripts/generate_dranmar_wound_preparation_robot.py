@@ -1677,7 +1677,7 @@ def mount_contract() -> dict[str, object]:
 
 def task_contract() -> dict[str, object]:
     return {
-        "schema": "dr.anmar.wound-preparation-task.v1",
+        "schema": "dr.anmar.wound-preparation-task.v2",
         "asset": ASSET_NAME,
         "version": VERSION,
         "sequence": ["inspect", "contact", "pre_rinse", "aspirate", "debride", "post_rinse", "dry", "verify"],
@@ -1687,10 +1687,16 @@ def task_contract() -> dict[str, object]:
             "aspiration": "twelve-slot annular suction crown with capture field and collection ledger",
             "debridement": "extendable rotary cartridge with compliant guard and work-based debris release",
         },
-        "success_metrics": [
+        "requested_observations_not_completion_proof": [
             "target coverage", "remaining debris fraction", "fluid emitted ml", "fluid recovered ml", "unrecovered fluid ml",
             "peak contact force", "debridement work", "surface dwell time", "collision count", "verification coverage"
         ],
+        "completion_authority": {
+            "debris_release": "registered post-physics contact plus exact attachment topology",
+            "provider_status": "missing_native_scene_adapter",
+            "procedure_success": False,
+            "reason": "no runtime provider currently publishes the required evidence envelope; suction is a scripted particle capture proxy",
+        },
         "blocked_claims": [
             "clinical debridement efficacy", "bacterial reduction", "healing improvement", "tissue viability diagnosis",
             "sterility", "manufacturer equivalence", "patient-care approval"
@@ -1704,7 +1710,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str, object]:
         "id": "dranmar-wound-preparation-robot-v1",
         "name": ASSET_NAME,
         "version": VERSION,
-        "status": "simulation_training_model",
+        "status": "source_mechanics_hardened_runtime_evidence_bridge_pending",
         "units": "metres-kilograms-seconds",
         "mount": mount_contract(),
         "tool": {
@@ -1752,7 +1758,9 @@ def physics_profile(bundle: ToolBundle) -> dict[str, object]:
             "extension_m": 0.020,
             "nominal_rotation_speed_rpm": 420,
             "guard_compression_m": 0.008,
-            "debris_release_model": "cumulative_contact_work_removes_temporary_deformable_attachment",
+            "debris_release_model": "prim_bound_post_physics_tangential_dissipation_work_removes_exact_live_temporary_attachment",
+            "evidence_adapter": "dranmar.wound-preparation.scene-evidence@1.0.0",
+            "runtime_evidence_provider": "not_implemented_fail_closed",
             "status": "no_tissue_cutting_or_viability_claim",
         },
         "wound_demo": {
@@ -1784,7 +1792,7 @@ def collider_coverage(bundle: ToolBundle) -> dict[str, object]:
 
 # ---------------------------- Isaac / DrAnmar integration ----------------------------
 
-def author_integration_module() -> str:
+def _legacy_author_integration_module_template() -> str:
     source = r'''# Copyright (c) 2026, DrAnmar Project Developers.
 # SPDX-License-Identifier: Apache-2.0
 """Isaac Lab integration for the DrAnmar wound-preparation robot.
@@ -1804,6 +1812,11 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 import math
 import random
+
+from .wound_preparation_scene_evidence import (
+    WoundPreparationEvidenceCursor,
+    WoundPreparationSceneEvidence,
+)
 
 CATALOG_SUBPATH = "Props/SurgicalPreparation/WoundPreparationRobot"
 ASSET_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
@@ -2638,12 +2651,17 @@ class DebrisBond:
     threshold_j: float
     accumulated_work_j: float = 0.0
     released: bool = False
+    released_reason: str | None = None
 
 
 @dataclass
 class DebridementReleaseController:
-    """Release attached debris after cumulative brush/curette contact work."""
+    """Release debris only from registered post-physics dissipative work."""
+
     bonds: dict[str, DebrisBond] = field(default_factory=dict)
+    evidence_cursor: WoundPreparationEvidenceCursor = field(
+        default_factory=WoundPreparationEvidenceCursor
+    )
 
     def register_demo(self, attachments: Mapping[str, str], *, stage=None) -> None:
         stage = _current_stage(stage)
@@ -2659,27 +2677,77 @@ class DebridementReleaseController:
             )
             if threshold <= 0.0:
                 raise ValueError("adhesion work threshold must be greater than zero")
+            if debris_path in self.bonds:
+                raise ValueError(f"Debris bond {debris_path!r} is already registered")
             self.bonds[debris_path] = DebrisBond(debris_path, attachment_path, threshold)
 
     def update(
         self, contact_forces_n: Mapping[str, float], tangential_speeds_m_s: Mapping[str, float],
         *, dt: float, stage=None,
     ) -> list[str]:
+        raise RuntimeError(
+            "caller-authored force/speed dictionaries cannot release debris; "
+            "use update_from_scene(WoundPreparationSceneEvidence)"
+        )
+
+    def update_from_scene(
+        self,
+        evidence: WoundPreparationSceneEvidence,
+        *,
+        stage=None,
+    ) -> dict[str, Any]:
+        evidence = self.evidence_cursor.consume(evidence)
         stage = _current_stage(stage)
-        dt = _nonnegative_finite(dt, "dt")
+        registered_paths = set(self.bonds)
+        evidence_paths = {
+            source.debris_prim_path
+            for source in evidence.sources.debris_sources
+        }
+        if registered_paths != evidence_paths:
+            raise ValueError(
+                "scene evidence debris set must exactly match registered bonds"
+            )
         released: list[str] = []
+        externally_missing: list[str] = []
+        interval_work_j: dict[str, float] = {}
         for path, bond in self.bonds.items():
+            sample = evidence.sample_for(path)
+            if sample.source.attachment_prim_path != bond.attachment_path:
+                raise ValueError(
+                    f"debris {path!r} attachment identity disagrees with "
+                    "scene registration"
+                )
             if bond.released:
+                if sample.attachment_present:
+                    raise ValueError(
+                        f"released debris {path!r} reappeared with a live "
+                        "attachment"
+                    )
                 continue
-            force = _nonnegative_finite(contact_forces_n.get(path, 0.0), "contact_force_n")
-            speed = _nonnegative_finite(tangential_speeds_m_s.get(path, 0.0), "tangential_speed_m_s")
-            bond.accumulated_work_j += force * speed * dt
+            if not sample.attachment_present:
+                bond.released = True
+                bond.released_reason = "attachment_absent_in_scene_evidence"
+                externally_missing.append(path)
+                continue
+            work_j = sample.dissipation_power_w * evidence.dt_s
+            interval_work_j[path] = work_j
+            bond.accumulated_work_j += work_j
             if bond.accumulated_work_j >= bond.threshold_j:
                 if stage.GetPrimAtPath(bond.attachment_path).IsValid():
                     stage.RemovePrim(bond.attachment_path)
                 bond.released = True
+                bond.released_reason = "measured_dissipative_work_threshold"
                 released.append(path)
-        return released
+        return {
+            "released": released,
+            "externally_missing": externally_missing,
+            "interval_work_j": interval_work_j,
+            "physics_step": evidence.physics_step,
+            "simulation_time_s": evidence.simulation_time_s,
+            "dt_s": evidence.dt_s,
+            "evidence_digest_sha256": evidence.evidence_digest_sha256,
+            "qualification_scope": "provisional_source_mechanics_only",
+        }
 
     def snapshot(self) -> dict[str, dict[str, Any]]:
         return {
@@ -2687,6 +2755,7 @@ class DebridementReleaseController:
                 "threshold_j": bond.threshold_j,
                 "accumulated_work_j": bond.accumulated_work_j,
                 "released": bond.released,
+                "released_reason": bond.released_reason,
                 "attachment_path": bond.attachment_path,
             }
             for path, bond in self.bonds.items()
@@ -2774,6 +2843,31 @@ class WoundPreparationSequenceController:
 
 # ---------------------------- Documentation and packaging ----------------------------
 
+
+def author_integration_module() -> str:
+    """Preserve the reviewed evidence-bound runtime and fail closed."""
+    if not INTEGRATION_PATH.is_file():
+        raise RuntimeError(
+            "reviewed wound_preparation_robot.py is required; the embedded "
+            "template is not admissible"
+        )
+    source = INTEGRATION_PATH.read_text(encoding="utf-8")
+    required_markers = (
+        "WoundPreparationSceneEvidence",
+        "def update_from_scene(",
+        "caller-authored force/speed dictionaries cannot release debris",
+        "evidence_cursor.consume",
+        "registered post-physics dissipative work",
+    )
+    missing = tuple(marker for marker in required_markers if marker not in source)
+    if missing:
+        raise RuntimeError(
+            "wound preparation integration source lacks reviewed evidence "
+            f"markers: {missing}"
+        )
+    return source
+
+
 def readme() -> str:
     return f'''# {ASSET_NAME}
 
@@ -2829,13 +2923,17 @@ The supplied integration helper supports:
 - conservative fluid-volume bookkeeping;
 - annular suction forces and particle capture;
 - temporary debris-to-wound attachments;
-- cumulative-work debris release;
+- debris release from prim-bound, raw-identified post-physics contact evidence;
 - canonical wound-preparation phase targets.
 
 The fluid implementation is a particle-scale task model, not CFD. The
-debridement implementation releases discrete debris fragments and does not
-claim tissue viability classification, biological cutting, bacterial reduction,
-or clinical efficacy.
+debridement implementation integrates dissipative tangential contact work from
+the shared contact convention and requires the exact live debris attachment.
+The former caller-authored force/speed update path now fails closed. No
+production Isaac/PhysX provider currently constructs the required
+`WoundPreparationSceneEvidence`, so runtime debridement completion remains
+unverified until that bridge exists. The model does not claim tissue viability
+classification, biological cutting, bacterial reduction, or clinical efficacy.
 
 ## Validation
 
@@ -2869,9 +2967,12 @@ and workstation metadata from manifests and archives.
 ## Evidence boundary
 
 This simulation-training workcell is available for task execution and
-evaluation. Real-world and clinical evidence are not established. All
-unmeasured mechanical, fluid, tissue, and contact values remain disclosed
-engineering parameters.
+evaluation of its mechanism and scene contract. Debris release is not a
+qualified runtime capability without a registered post-physics evidence
+provider. Suction remains a scripted capture field rather than pressure/flow
+physics. Real-world and clinical evidence are not established. All unmeasured
+mechanical, fluid, tissue, and contact values remain disclosed engineering
+parameters.
 '''
 
 
@@ -3384,7 +3485,7 @@ def generate() -> dict[str, object]:
         encoding="utf-8",
     )
 
-    INTEGRATION_PATH.write_text(author_integration_module(), encoding="utf-8")
+    author_integration_module()
     (DOCS_ROOT / "MECHANISM.md").write_text(docs_mechanism(), encoding="utf-8")
     (DOCS_ROOT / "FLUID_MODEL.md").write_text(docs_fluid(), encoding="utf-8")
     (DOCS_ROOT / "DEBRIDEMENT_MODEL.md").write_text(docs_debridement(), encoding="utf-8")

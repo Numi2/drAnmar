@@ -7,8 +7,13 @@ The payload replaces the Panda hand at `panda_link8` and provides 17 controlled 
 - guarded articulated micro-scissors;
 - a retractable low-energy spatula probe.
 
-Annular suction and irrigation operate around the same registered field. Stereo RGB, depth, fluorescence, and thermal frames are fixed to the housing so modality changes do not require scene re-registration.
+Annular suction and irrigation geometry share the same authored field. The
+housing includes optical-frame Xforms and visual meshes labelled for stereo RGB,
+depth, fluorescence, and thermal channels. It does not author USD Camera/sensor
+prims, calibration, capture adapters, raw samples, or cross-modal registration
+evidence.
 
 The mechanism is owned by DrAnmar and provider-neutral. NVIDIA Isaac Sim and
-Isaac Lab provides the target runtime for this executable simulation-training
-workcell.
+Isaac Lab are the target runtime for the authored research asset and physical
+setup utilities. Outcome-driving dissection controllers remain unavailable
+until a scene-evidence and shared-mechanics bridge is implemented.

@@ -1,17 +1,37 @@
 {
   "capture": {
     "attachment_cells": "independent_runtime_deformable_attachments",
-    "fenestrated": "geometric_trapping_plus_distributed_overlap_attachments",
-    "microcup": "distributed_low_vacuum_proxy_plus_overlap_attachments",
-    "release": "progressive_outer_cell_release_then_full_release_on_hard_overload"
+    "fenestrated": "visual_geometry_identity_only_shared_box_capture_proxy_does_not_establish_geometric_trapping",
+    "microcup": "visual_geometry_identity_only_shared_box_capture_proxy_does_not_establish_vacuum_retention",
+    "release": "exact_scene_attachment_loss_contact_below_retention_floor_slip_or_measured_transmitted_overload",
+    "release_behavior": "any_release_latches_safe_relief_until_explicit_full_recapture",
+    "source_body_identity": "actor_roots_resolve_to_exact_simulation_mesh_before_attachment_and_evidence_binding",
+    "transaction_boundary": "all_exact_targets_registered_partial_recapture_rolled_back_evidence_preflighted_before_release_commit",
+    "capture_confirmation_linear_tolerance_m_seed": 0.0015,
+    "capture_confirmation_angular_tolerance_rad_seed": 0.017453292519943295,
+    "minimum_capture_cell_normal_force_n_seed": 0.02,
+    "minimum_capture_cell_contact_area_m2_seed": 1e-06,
+    "capture_confirmation_intervals_required_seed": 3,
+    "capture_confirmation_min_dwell_s_seed": 0.03333333333333333,
+    "capture_maximum_evidence_interval_s_seed": 0.03333333333333333,
+    "capture_handshake": "command_pose_then_adjacent_no_attachment_preflight_then_author_before_clock_advance_then_consecutive_dwell_confirmation",
+    "transmitted_load_proxy": "contact_resultant_norm_plus_attachment_reaction_norm_deliberately_may_double_count",
+    "pad_variant_physics": "shared_capture_cell_colliders_material_and_attachment_contract_visual_variants_only",
+    "pad_variant_physics_comparison_valid": false,
+    "retention_strength_calibrated": false
   },
   "clinical_validation": false,
   "force_control": {
     "all_values": "provisional_engineering_seeds",
+    "compliance_axis_force_estimator": "task_proxy_only_not_admissible_evidence",
     "controller": "independent_force_limited_impedance_plus_roi_visibility_outer_loop",
     "hard_release_force_per_pad_n": 4.0,
+    "max_cell_slip_speed_m_s": 0.012,
+    "maximum_control_interval_s": 0.03333333333333333,
     "maximum_force_asymmetry_n": 1.0,
     "nominal_target_force_per_pad_n": 1.25,
+    "production_input": "exact_post_physics_contact_attachment_reaction_and_visibility_envelope",
+    "state_synchronization": "capture_confirmation_and_each_hold_interval_use_exact_post_physics_articulation_state",
     "soft_limit_force_per_pad_n": 2.5
   },
   "id": "dranmar-atraumatic-exposure-robot-v1",
@@ -38,15 +58,20 @@
     }
   },
   "medical_device": false,
+  "physical_calibration": "not_performed",
   "runtime": {
     "franka_mount": "stock panda_hand_joint frame with unique panda_link8 compatibility fallback",
+    "native_scene_evidence_provider": "not_implemented",
     "observed_stack": "Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16",
-    "status": "composition_observed_physical_effect_unqualified"
+    "scene_evidence_adapter": "dranmar.atraumatic-exposure.scene-evidence@3.0.0",
+    "scene_registration": "locked_per_capture_epoch_across_workcell_cells_visibility_roi_and_calibration",
+    "status": "source_contract_only_runtime_effect_unqualified"
   },
-  "schema": "dr.anmar.atraumatic-exposure-profile.v1",
-  "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
+  "schema": "dr.anmar.atraumatic-exposure-profile.v2",
+  "status": "source_hardened_native_evidence_provider_missing",
   "tissue": {
     "density_kg_m3_seed": 1050.0,
+    "injury_model": "not_implemented",
     "poissons_ratio_seed": 0.45,
     "representation": "two portable triangle surfaces cooked at runtime by the current surface-deformable route",
     "self_collision": true,

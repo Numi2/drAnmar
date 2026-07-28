@@ -547,7 +547,9 @@
   "straight_failure_load_n": 22.5,
   "knot_failure_load_n": 14.625,
   "runtime_material_history_controller": null,
-  "runtime_physics_authority": "OpenUSD_PhysX",
+  "report_scope": "openusd_physx_compatibility_payload_asset_inspection",
+  "runtime_physics_authority": "OpenUSD_PhysX_compatibility_payload_only",
+  "promoted_knotting_runtime_physics_authority": "NVIDIA_Warp_dr-anmar-warp-xpbd-segment-capsule-v1",
   "runtime_observation_source": "native_filtered_jaw_contacts_and_openusd_rigid_body_poses",
   "runtime_self_contact_broadphase": {
     "algorithm": "uniform_spatial_hash_over_expanded_centerline_edge_aabbs",

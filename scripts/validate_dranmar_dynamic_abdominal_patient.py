@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Deterministic validation for the DrAnmar dynamic abdominal patient.
+"""Static package inspection for the DrAnmar dynamic abdominal patient.
 
-This requires native OpenUSD parsing and composition, then validates package
-structure, source conventions, explicit tetrahedral meshes, GLB/PNG/JSON
-payloads, and solver-independent physiology behavior. It does not replace Isaac
-Sim, PhysX, CUDA, sensor, physical-bench, or clinical validation.
+This requires native OpenUSD parsing and composition, then inspects package
+structure, source conventions, explicit tetrahedral meshes, and GLB/PNG/JSON
+payloads. It deliberately does not execute authored physiology outcomes and
+does not replace scene-derived Isaac Sim, PhysX, CUDA, sensor, physical-bench,
+or clinical evidence.
 """
 
 from __future__ import annotations
@@ -13,7 +14,6 @@ import argparse
 import hashlib
 import importlib.util
 import json
-import math
 import py_compile
 import re
 import subprocess
@@ -72,18 +72,6 @@ def _git_revision(root: Path) -> str:
         text=True,
         timeout=15,
     ).stdout.strip()
-
-
-def _load_runtime():
-    spec = importlib.util.spec_from_file_location(
-        "dranmar_dynamic_patient_validation_runtime", RUNTIME_PATH
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError("Unable to load dynamic patient runtime")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
 
 
 def _native_openusd_checks() -> dict[str, Any]:
@@ -483,205 +471,8 @@ def _static_payload_checks() -> dict[str, Any]:
     }
 
 
-def _physiology_checks() -> dict[str, Any]:
-    module = _load_runtime()
-    condition_results: dict[str, Any] = {}
-    for condition in sorted(module.VALID_CONDITIONS):
-        patient = module.DynamicSurgicalPatient(condition=condition)
-        for _ in range(100):
-            patient.step(0.1)
-        observation = patient.observation()
-        numeric = [
-            observation["vital_signs"]["heart_rate_bpm"],
-            observation["vital_signs"]["mean_arterial_pressure_mmhg"],
-            observation["vital_signs"]["spo2_fraction"],
-            observation["oxygen"]["lactate_mmol_l"],
-            observation["perfusion"]["liver"]["relative_flow_fraction"],
-        ]
-        if not all(math.isfinite(float(value)) for value in numeric):
-            raise AssertionError(f"Non-finite physiology in condition {condition}")
-        condition_metrics = {
-            "status": observation["vital_signs"]["clinical_status"],
-            "procedure_stage": observation["procedure_stage"],
-            "access_state": observation["tissue_state"]["access_state"],
-            "map_mmhg": observation["vital_signs"]["mean_arterial_pressure_mmhg"],
-            "heart_rate_bpm": observation["vital_signs"]["heart_rate_bpm"],
-            "global_perfusion_fraction": observation["vital_signs"][
-                "global_perfusion_fraction"
-            ],
-            "minimum_regional_perfusion_fraction": min(
-                float(region["relative_flow_fraction"])
-                for region in observation["perfusion"].values()
-            ),
-            "small_bowel_perfusion_fraction": observation["perfusion"]["small_bowel"][
-                "relative_flow_fraction"
-            ],
-            "active_bleeding_ml_min": observation["vital_signs"][
-                "active_blood_loss_ml_min"
-            ],
-            "cumulative_bile_leak_ml": observation["biliary"][
-                "cumulative_bile_leak_ml"
-            ],
-            "damage_event_count": len(observation["damage"]),
-            "active_adhesion_count": len(
-                observation["tissue_state"]["organs"]["adhesions"]["active_adhesions"]
-            ),
-            "dressing_applied": bool(observation["dressing"].get("applied")),
-            "event_count": len(observation["events"]),
-        }
-        if (
-            condition == "bowel_ischemia"
-            and condition_metrics["small_bowel_perfusion_fraction"] >= 0.40
-        ):
-            raise AssertionError(
-                "Bowel-ischemia scenario did not reduce small-bowel perfusion"
-            )
-        if (
-            condition == "bile_leak"
-            and condition_metrics["cumulative_bile_leak_ml"] <= 0.0
-        ):
-            raise AssertionError("Bile-leak scenario did not accumulate bile loss")
-        if (
-            condition == "ureter_injury"
-            and condition_metrics["damage_event_count"] <= 0
-        ):
-            raise AssertionError("Ureter-injury scenario did not retain a damage event")
-        if (
-            condition == "dense_adhesions"
-            and condition_metrics["active_adhesion_count"] <= 0
-        ):
-            raise AssertionError(
-                "Dense-adhesion scenario did not populate the adhesion graph"
-            )
-        if (
-            condition == "hemorrhage"
-            and condition_metrics["active_bleeding_ml_min"] <= 0.0
-        ):
-            raise AssertionError(
-                "Hemorrhage scenario did not generate active blood loss"
-            )
-        if condition == "postoperative" and not condition_metrics["dressing_applied"]:
-            raise AssertionError(
-                "Postoperative scenario did not retain the dressing state"
-            )
-        condition_results[condition] = condition_metrics
-
-    patient = module.DynamicSurgicalPatient(procedure_stage="access_open")
-    patient.contacts.observe(
-        module.PatientContactFrame(
-            target="liver",
-            source_robot="atraumatic_exposure_robot",
-            interaction="exposure",
-            normal_forces_n=(1.25, 1.25),
-            tool_position_m=(0.0, 0.0, 0.0),
-        )
-    )
-    patient.step(0.1)
-    for _ in range(12):
-        patient.contacts.observe(
-            module.PatientContactFrame(
-                target="liver",
-                source_robot="atraumatic_exposure_robot",
-                interaction="exposure",
-                normal_forces_n=(1.25, 1.25),
-                tool_position_m=(0.02, 0.0, 0.0),
-            )
-        )
-        patient.step(0.1)
-    patient.robot.dissection(target="adhesion_03", method="hydrodissection")
-    patient.start_bleeding(
-        "mesenteric_bleed",
-        "major_vessels",
-        vessel_radius_m=0.0015,
-        injury_fraction=0.75,
-        kind="arterial",
-    )
-    for _ in range(160):
-        patient.step(0.1)
-    before = patient.observation()
-    for _ in range(240):
-        patient.contacts.observe(
-            module.PatientContactFrame(
-                target="mesenteric_bleed",
-                source_robot="adaptive_hemostasis_robot",
-                interaction="hemostasis",
-                normal_forces_n=(1.8, 1.8),
-                tool_position_m=(0.0, 0.0, 0.0),
-            )
-        )
-        patient.step(0.1)
-    patient.robot.perfusion_scan(target="small_bowel")
-    patient.robot.close_wound(
-        target="abdominal_wall", method="staple_and_adhesive", closure_fraction=1.0
-    )
-    patient.robot.dressing(target="skin", pressure_kpa=-8.0, seal_fraction=0.96)
-    after = patient.observation()
-    if (
-        after["vital_signs"]["active_blood_loss_ml_min"]
-        >= before["vital_signs"]["active_blood_loss_ml_min"]
-    ):
-        raise AssertionError("Hemostasis did not reduce active blood loss")
-    if after["tissue_state"]["access_state"] != "intact":
-        raise AssertionError("Closure did not restore intact access state")
-    if not after["dressing"].get("applied"):
-        raise AssertionError("Dressing event was not retained")
-
-    severe = module.DynamicSurgicalPatient()
-    severe.start_bleeding(
-        "major",
-        "major_vessels",
-        vessel_radius_m=0.003,
-        injury_fraction=1.0,
-        kind="arterial",
-    )
-    for _ in range(1800):
-        severe.step(0.1)
-    if (
-        severe.fluid_balance.cumulative_blood_loss_ml
-        > severe.fluid_balance.baseline_blood_volume_ml + 1.0e-6
-    ):
-        raise AssertionError(
-            "Blood-loss ledger exceeded available intravascular volume"
-        )
-    if (
-        severe.fluid_balance.intravascular_volume_ml < 0.0
-        or severe.bleeding.total_flow_ml_s != 0.0
-    ):
-        raise AssertionError("Exsanguination state violated fluid conservation")
-    if severe.vital_signs.clinical_status != "critical_research_state":
-        raise AssertionError("Severe hemorrhage did not reach critical state")
-
-    return {
-        "conditions": condition_results,
-        "robot_sequence": {
-            "blood_loss_before_control_ml": before["vital_signs"][
-                "cumulative_blood_loss_ml"
-            ],
-            "active_loss_before_ml_min": before["vital_signs"][
-                "active_blood_loss_ml_min"
-            ],
-            "active_loss_after_ml_min": after["vital_signs"][
-                "active_blood_loss_ml_min"
-            ],
-            "intervention_count": len(after["interventions"]),
-            "event_count": len(after["events"]),
-            "released_adhesions": after["released_adhesions"],
-            "dressing_applied": after["dressing"]["applied"],
-        },
-        "severe_hemorrhage": {
-            "status": severe.vital_signs.clinical_status,
-            "baseline_blood_volume_ml": severe.fluid_balance.baseline_blood_volume_ml,
-            "cumulative_blood_loss_ml": severe.fluid_balance.cumulative_blood_loss_ml,
-            "remaining_intravascular_volume_ml": severe.fluid_balance.intravascular_volume_ml,
-            "active_flow_ml_s": severe.bleeding.total_flow_ml_s,
-            "fluid_conservation_passed": True,
-        },
-    }
-
-
 def validate(source_parent_revision: str | None = None) -> dict[str, Any]:
     static = _static_payload_checks()
-    physiology = _physiology_checks()
     submodule_root = REPOSITORY_ROOT / "source/extensions/orbit.surgical.assets"
     return {
         "schema": "dr.anmar.dynamic-abdominal-patient-model-sanity.v1",
@@ -691,7 +482,6 @@ def validate(source_parent_revision: str | None = None) -> dict[str, Any]:
         "passed_scope": "checks_executed_by_this_validator_only",
         "overall_qualified": False,
         "static": static,
-        "physiology": physiology,
         "source_control": {
             "parent_revision": source_parent_revision or _git_revision(REPOSITORY_ROOT),
             "asset_submodule_revision": _git_revision(submodule_root),
@@ -720,6 +510,7 @@ def validate(source_parent_revision: str | None = None) -> dict[str, Any]:
             "PhysX CUDA deformable cooking",
             "PBD fluid execution",
             "RTX sensor execution",
+            "scene-derived physiology and patient coupling",
             "physical bench calibration",
             "clinical validation",
         ],

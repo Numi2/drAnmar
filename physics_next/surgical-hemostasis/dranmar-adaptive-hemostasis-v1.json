@@ -11,14 +11,17 @@
     "no validated clip plasticity",
     "no calibrated vessel damage",
     "no qualified blood CFD",
+    "no biochemical patch cure claim",
     "no patient-care settings"
   ],
   "clip": {
     "formed_gap_m": 0.0011,
     "open_gap_m": 0.006,
-    "plastic_forming_not_simulated": true,
-    "provisional_retention_force_n": 2.8,
-    "reference_closing_force_n": 5.0
+    "physical_calibration": "not_performed",
+    "plastic_forming_geometry_not_simulated": true,
+    "reference_closing_force_n": 5.0,
+    "retention_requires_nonzero_measured_load": true,
+    "source_mechanics": "shared_clip_forming_capacity_measured_load_and_slip"
   },
   "compression": {
     "hard_release_n": 7.0,
@@ -28,17 +31,21 @@
   },
   "id": "dranmar-adaptive-hemostasis-robot-v1",
   "patch": {
+    "biochemical_cure_or_healing": "not_implemented",
     "bond_cell_count": 8,
-    "cure_time_s": 30.0,
-    "cured_break_force_n": 8.0,
-    "initial_tack_break_force_n": 0.8,
+    "physical_calibration": "not_performed",
     "size_m": [
       0.026,
       0.02
-    ]
+    ],
+    "source_mechanics": "exact_latest_shared_cohesive_interface"
   },
-  "schema": "dranmar.adaptive-hemostasis-profile.v1",
-  "status": "simulation_training_model",
+  "runtime": {
+    "native_scene_evidence_provider": "not_implemented",
+    "scene_evidence_adapter": "dranmar.hemostasis.scene-evidence@3.0.0"
+  },
+  "schema": "dranmar.adaptive-hemostasis-profile.v2",
+  "status": "source_hardened_native_scene_evidence_provider_missing",
   "tool": {
     "clip_capacity": 8,
     "irrigation_ports": 8,

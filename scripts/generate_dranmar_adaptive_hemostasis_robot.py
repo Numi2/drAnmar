@@ -1487,20 +1487,46 @@ def mount_contract() -> dict[str,object]:
 
 
 def task_contract() -> dict[str,object]:
-    return {"schema":"dranmar.adaptive-hemostasis-task.v1","phases":["inspect","clear","compress","temporary_control_check","clip","release_compression","patch","pressure_challenge","verify","complete","abort"],"success_metrics":["residual_flow_ml_min","time_to_temporary_control_s","time_to_durable_control_s","clip_retained","patch_bond_fraction","compression_force_n","collected_blood_ml","spilled_blood_ml","pressure_challenge_pass","vessel_damage_proxy"],"failure_modes":["source_not_localized","insufficient_temporary_compression","clip_misalignment","clip_slip","incomplete_occlusion","patch_delamination","continued_bleeding","excess_compression","vessel_rupture_proxy","suction_overcapture"],"clinical_validation":False}
+    return {
+        "schema":"dranmar.adaptive-hemostasis-task.v2",
+        "phases":["inspect","clear","compress","temporary_control_check","clip","release_compression","patch","pressure_challenge","verify","complete","abort"],
+        "provisional_task_signals":[
+            "scene_measured_residual_flow_ml_min",
+            "scene_measured_compression_force_n",
+            "mechanically_qualified_clip",
+            "mechanically_qualified_patch",
+            "measured_clip_load_capacity_and_slip",
+            "vessel_mass_balance_residual_m3_s",
+            "collected_blood_ml","spilled_blood_ml",
+            "provisional_pressure_challenge_result"
+        ],
+        "failure_modes":["source_not_localized","insufficient_temporary_compression","clip_misalignment","clip_slip","incomplete_occlusion","patch_delamination","continued_bleeding","excess_compression","vessel_rupture_proxy","suction_overcapture"],
+        "required_scene_evidence":[
+            "exact_vessel_observation","exact_bilateral_compression_contacts",
+            "exact_clip_mechanics_and_attachments",
+            "exact_patch_cohesive_interface_and_attachments",
+            "raw_native_record_identity",
+            "episode_environment_topology_step_and_time"
+        ],
+        "native_scene_evidence_provider":"not_implemented",
+        "clinical_hemostasis_verified":False,
+        "simulator_task_completion_verified":False,
+        "clinical_validation":False,
+    }
 
 
 def physics_profile(bundle: ToolBundle) -> dict[str,object]:
     return {
-        "schema":"dranmar.adaptive-hemostasis-profile.v1","id":"dranmar-adaptive-hemostasis-robot-v1","version":VERSION,"status":"simulation_training_model",
+        "schema":"dranmar.adaptive-hemostasis-profile.v2","id":"dranmar-adaptive-hemostasis-robot-v1","version":VERSION,"status":"source_hardened_native_scene_evidence_provider_missing",
         "tool":{"mount":"panda_link8","joint_count":len(bundle.joints),"clip_capacity":CLIP_CAPACITY,"patch_capacity":PATCH_CAPACITY,"suction_ports":SUCTION_PORT_COUNT,"irrigation_ports":IRRIGATION_PORT_COUNT},
         "compression":{"target_force_per_pad_n":1.8,"soft_limit_n":4.0,"hard_release_n":7.0,"maximum_travel_m":0.030},
-        "clip":{"open_gap_m":0.0060,"formed_gap_m":0.0011,"reference_closing_force_n":5.0,"provisional_retention_force_n":2.8,"plastic_forming_not_simulated":True},
-        "patch":{"size_m":[0.026,0.020],"bond_cell_count":PATCH_BOND_CELL_COUNT,"cure_time_s":30.0,"initial_tack_break_force_n":0.8,"cured_break_force_n":8.0},
+        "clip":{"open_gap_m":0.0060,"formed_gap_m":0.0011,"reference_closing_force_n":5.0,"source_mechanics":"shared_clip_forming_capacity_measured_load_and_slip","retention_requires_nonzero_measured_load":True,"plastic_forming_geometry_not_simulated":True,"physical_calibration":"not_performed"},
+        "patch":{"size_m":[0.026,0.020],"bond_cell_count":PATCH_BOND_CELL_COUNT,"source_mechanics":"exact_latest_shared_cohesive_interface","biochemical_cure_or_healing":"not_implemented","physical_calibration":"not_performed"},
         "blood":{"density_kg_m3":1060.0,"reference_pressure_pa":10665.8,"dynamic_viscosity_pa_s":0.0035,"defect_area_m2":1.8e-6,"particle_nominal_volume_ml":0.002},
         "verification":{"challenge_pressure_pa":26664.5,"maximum_residual_flow_ml_min":0.1,"observation_window_s":5.0},
         "vessel":{"length_m":0.070,"outer_diameter_m":0.0064,"wall_thickness_m":0.00062,"representation":"portable_watertight_surface_for_runtime_deformable_cooking"},
-        "boundaries":["no clinical hemostasis claim","no validated clip plasticity","no calibrated vessel damage","no qualified blood CFD","no patient-care settings"]
+        "runtime":{"scene_evidence_adapter":"dranmar.hemostasis.scene-evidence@3.0.0","native_scene_evidence_provider":"not_implemented"},
+        "boundaries":["no clinical hemostasis claim","no validated clip plasticity","no calibrated vessel damage","no qualified blood CFD","no biochemical patch cure claim","no patient-care settings"]
     }
 
 
@@ -1514,10 +1540,27 @@ def collider_coverage(bundle: ToolBundle) -> dict[str,object]:
 
 
 def author_integration_module() -> str:
-    # Keep the audited runtime module as the source of truth. This avoids
-    # maintaining a second embedded copy that can silently drift.
-    if INTEGRATION_PATH.exists():
-        return INTEGRATION_PATH.read_text(encoding="utf-8")
+    """Preserve the reviewed evidence-bound runtime and fail closed."""
+    if not INTEGRATION_PATH.is_file():
+        raise RuntimeError(
+            "reviewed adaptive_hemostasis_robot.py is required; the legacy "
+            "embedded template is not admissible"
+        )
+    source = INTEGRATION_PATH.read_text(encoding="utf-8")
+    required_markers = (
+        "HemostasisSceneEvidence",
+        "def update_from_scene(",
+        "measured_tangential_force_n",
+        "caller-authored closure, retention, seal",
+    )
+    missing = tuple(marker for marker in required_markers if marker not in source)
+    if missing:
+        raise RuntimeError(
+            "adaptive hemostasis integration source lacks reviewed evidence "
+            f"markers: {missing}"
+        )
+    return source
+    # Unreachable legacy template retained only for source provenance.
     return r'''# Copyright (c) 2026, DrAnmar Project Developers.
 # SPDX-License-Identifier: Apache-2.0
 """Isaac Lab integration for the DrAnmar Adaptive Hemostasis Robot.
@@ -1911,7 +1954,7 @@ class AdaptiveHemostasisSequenceController:
 def readme() -> str:
     return f'''# {ASSET_NAME} v{VERSION}
 
-DrAnmar-owned OpenUSD research system for robotic field clearing, temporary vascular compression, physical clip retention, hemostatic patch reinforcement, and post-seal leak verification. It integrates with NVIDIA Isaac Lab and Isaac Sim while remaining provider-independent at the asset-contract layer.
+DrAnmar-owned OpenUSD research system for robotic field clearing, temporary vascular compression, clip and patch mechanics research, and provisional residual-flow observation. It integrates with NVIDIA Isaac Lab and Isaac Sim while remaining provider-independent at the asset-contract layer.
 
 ## Catalog path
 
@@ -1932,7 +1975,7 @@ DrAnmar-owned OpenUSD research system for robotic field clearing, temporary vasc
 
 `inspect → clear → compress → temporary control check → clip → release compression → patch → pressure challenge → verify → complete or abort`
 
-All geometry, mechanics, flow, retention, bond, pressure, and damage values are provisional research parameters. This asset is not clinically validated and is not approved for patient care.
+Production control now requires exact vessel, compression, clip, cohesive patch, attachment, raw-record and clock evidence. The native provider is not implemented, so no current runtime record qualifies retention, seal, durable control, or task completion. All parameters are provisional. This asset is not clinically validated and is not approved for patient care.
 '''
 
 
@@ -1946,22 +1989,22 @@ The payload replaces the Panda hand at `panda_link8`. Eleven active joints contr
 def docs_physical_hemostasis() -> str:
     return '''# Physical hemostasis contract
 
-The vessel endpoints are held by two explicit fixture-anchor meshes and current-schema vertex attachments. Temporary control uses two independent deformable-to-pad attachments. The pads move through articulated carriages and therefore transmit solver forces into the vessel rather than rewriting vessel transforms. The task-level force envelope targets 1.8 N per pad, flags a soft limit above 4.0 N, and releases both temporary bonds above the 7.0 N hard limit.
+The vessel endpoints are held by two explicit fixture-anchor meshes and current-schema vertex attachments. Temporary control uses two independent deformable-to-pad attachments. The pads move through articulated carriages rather than rewriting vessel transforms. Overload release consumes exact bilateral post-physics compression evidence; caller-authored force is not accepted.
 
-A deployed formed clip is an independent rigid body. Two separate attachment volumes on its legs bond to opposite vessel-wall regions. The temporary pad attachments can then be removed while the clip remains load-bearing. A provisional pullout controller removes both leg bonds only when supplied load exceeds its configured threshold.
+A deployed formed clip is an independent rigid body with two vessel attachment regions. Source qualification uses the shared clip's formed span, gap, damage, contact area/pressure, measured tangential load, constitutive capacity, slip, exact contact keys and exact attachments. Retention requires a nonzero observed load within capacity and remains provisional; attachment presence alone is not retention.
 
-The patch has eight independent bond cells. Initial placement creates physical vessel-to-patch attachments; cure progression raises the task-level break-force envelope from 0.8 N to 8.0 N over 30 seconds. The stable lane uses a rigid bond carrier, while a portable triangular patch surface is provided for runtime deformable cooking.
+The patch has eight independent bond cells. Qualification requires the exact latest shared cohesive-interface response, exact attachments, contact fraction/pressure, separation and nonfailed damage state. There is no authored cure progression, biochemical adhesion or healing claim.
 '''
 
 
 def docs_flow() -> str:
     return '''# Blood-flow and leak model
 
-The package separates particle transport from the reduced-order source model. The source computes an orifice-flow estimate from pressure, effective defect area, density, and a discharge coefficient. Temporary compression, clip occlusion, and patch sealing reduce the effective area multiplicatively.
+The shared reduced-order vessel derives inlet/outlet/leak/storage flows, lumen area, damage and a continuity residual from pressure boundaries and contact loads. It is a quasi-steady unidirectional model, not blood CFD.
 
 PhysX PBD particles represent emitted blood in the field. `HemorrhageLedger` conserves reservoir, active, suctioned, spilled, and discarded volumes. `AnnularSuctionController` accelerates particles toward the authored suction center and transfers captured particle volume into the collection ledger.
 
-The verification controller integrates residual flow over a pressure-challenge observation window. It is a research benchmark and not proof of clinical hemostasis.
+The verification controller integrates exact envelope-bound residual flow and pressure over a challenge window. It is a provisional simulator benchmark and not proof of retained repair or clinical hemostasis.
 '''
 
 
@@ -2064,7 +2107,7 @@ def write_asset_files(bundle: ToolBundle) -> list[Path]:
     files+=generate_textures();files+=export_glbs(bundle);files+=[make_preview(bundle),make_full_arm_preview(bundle)]
     files += [write_json(ASSET_ROOT/"interaction_frames.json",interaction_frames(bundle)),write_json(ASSET_ROOT/"franka_mount_contract.json",mount_contract()),write_json(ASSET_ROOT/"adaptive_hemostasis_task_contract.json",task_contract()),write_json(ASSET_ROOT/"physics_profile.json",physics_profile(bundle)),write_json(ASSET_ROOT/"collider_coverage.json",collider_coverage(bundle))]
     write_json(PHYSICS_PROFILE_PATH,physics_profile(bundle));files.append(PHYSICS_PROFILE_PATH)
-    INTEGRATION_PATH.write_text(author_integration_module(),encoding="utf-8");files.append(INTEGRATION_PATH)
+    author_integration_module();files.append(INTEGRATION_PATH)
     for name,text in [("MECHANISM.md",docs_mechanism()),("PHYSICAL_HEMOSTASIS.md",docs_physical_hemostasis()),("FLOW_AND_LEAK_MODEL.md",docs_flow()),("FRANKA_INTEGRATION.md",docs_franka())]:p=DOCS_ROOT/name;p.write_text(text,encoding="utf-8");files.append(p)
     ex=EXAMPLE_ROOT/"franka_adaptive_hemostasis_scene.py";ex.write_text(example_scene(),encoding="utf-8");files.append(ex)
     installer=PACKAGE_ROOT/"scripts/install_into_dranmar.py";installer.write_text(author_installer(),encoding="utf-8");installer.chmod(0o755);files.append(installer)

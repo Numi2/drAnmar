@@ -2,7 +2,9 @@
 
 Run through the Isaac Lab launcher on CUDA. The example spawns the combined
 Franka robot and layered dissection substrate. Runtime physical attachments,
-particle systems, and controller actions remain explicit host-task steps.
+surface cooking, and particle systems remain explicit host-task steps.
+Outcome-driving dissection actions are unavailable until an exact-step
+SceneEvidenceEnvelope and shared-mechanics bridge is implemented.
 """
 from isaaclab.app import AppLauncher
 app_launcher = AppLauncher(headless=False)

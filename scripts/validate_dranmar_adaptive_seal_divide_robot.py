@@ -98,11 +98,10 @@ def validate(
         ]
         python_paths = [
             root / "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_seal_divide_robot.py",
+            root / "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_seal_divide_scene_evidence.py",
             root / "examples/franka_adaptive_seal_divide_scene.py",
-            root / "examples/validate_adaptive_seal_divide_runtime.py",
             root / "scripts/generate_dranmar_adaptive_seal_divide_robot.py",
             root / "scripts/validate_dranmar_adaptive_seal_divide_robot.py",
-            root / "tests/test_adaptive_seal_divide_robot.py",
         ]
         hygiene_roots = [asset_root, root / "docs/adaptive_seal_divide_robot"]
     else:
@@ -137,6 +136,11 @@ def validate(
         raise AssertionError("Vessel must expose exactly 8 bridge cells")
 
     manifest = json.loads((asset_root / "asset_manifest.json").read_text())
+    if str(manifest.get("integrity_status", "")).startswith("stale_"):
+        raise AssertionError(
+            "Manifest is explicitly stale after source-only hardening; "
+            "regenerate it only during an authorized qualification run"
+        )
     entries = manifest["files"]
     if manifest["file_count"] != len(entries):
         raise AssertionError("Manifest file_count mismatch")

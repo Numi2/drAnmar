@@ -89,11 +89,10 @@ def main() -> None:
         if package_mode or any(
             part in {
                 "adaptive_hemostasis_robot.py",
+                "adaptive_hemostasis_scene_evidence.py",
                 "generate_dranmar_adaptive_hemostasis_robot.py",
                 "install_into_dranmar.py",
                 "validate_dranmar_adaptive_hemostasis_robot.py",
-                "validate_adaptive_hemostasis_runtime.py",
-                "test_adaptive_hemostasis_robot.py",
             }
             for part in path.parts
         ):

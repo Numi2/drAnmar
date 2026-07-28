@@ -20,7 +20,7 @@ import numpy as np
 
 
 SCHEMA = "dr.anmar.autonomous-rescue-imitation.v1"
-OUTCOME_AUTHORITY = "post_physics_filtered_local_contact"
+OUTCOME_AUTHORITY = "prim_bound_post_physics_scene_evidence"
 
 CONTACT_FEATURES = (
     "left_normal_force_n",
@@ -32,8 +32,7 @@ CONTACT_FEATURES = (
 VESSEL_FEATURES = (
     "residual_flow_ml_s",
     "distal_perfusion_fraction",
-    "cumulative_blood_loss_ml",
-    "blood_volume_ml",
+    "modeled_cumulative_leak_volume_ml",
     "transient_compression_fraction",
     "retained_clip_fraction",
     "patch_seal_fraction",
@@ -64,6 +63,10 @@ FLUID_BALANCE_FEATURES = (
     "baseline_blood_volume_ml",
     "intravascular_volume_ml",
     "interstitial_volume_ml",
+    "plasma_excess_ml",
+    "interstitial_excess_ml",
+    "hemoglobin_mass_g",
+    "hemoglobin_g_dl",
     "crystalloid_input_ml",
     "colloid_input_ml",
     "transfused_red_cell_ml",

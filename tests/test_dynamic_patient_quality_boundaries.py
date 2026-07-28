@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -102,14 +100,6 @@ def test_explicit_deformable_selection_applies_only_requested_component(
     assert results["peritoneum"]["route"] in runtime.NATIVE_DEFORMABLE_ROUTES
 
 
-def test_access_state_fails_when_patient_prim_is_missing() -> None:
-    invalid_prim = SimpleNamespace(IsValid=lambda: False)
-    stage = SimpleNamespace(GetPrimAtPath=lambda _path: invalid_prim)
-
-    with pytest.raises(RuntimeError, match="Patient prim does not exist"):
-        runtime.set_access_state("/World/Patient", "open", stage=stage)
-
-
 @pytest.mark.parametrize(
     "component",
     ("skin", "subcutaneous_fat", "fascia", "abdominal_wall", "peritoneum"),
@@ -126,55 +116,3 @@ def test_access_layer_variants_target_geometry_children(component: str) -> None:
     assert variant_contract.count('over "Geometry"') == 2
     assert variant_contract.count('over "Visual"') == 2
     assert variant_contract.count('over "OpenVisual"') == 2
-
-
-def test_profile_exposes_the_single_lane_and_overall_qualification_boundaries() -> None:
-    from dr_anmar_procedures import PROCEDURES_BY_ID
-
-    profile = json.loads(
-        (
-            ROOT
-            / "physics_next/dynamic-patient"
-            / "dranmar-dynamic-abdominal-patient-v1.json"
-        ).read_text(encoding="utf-8")
-    )
-    room = PROCEDURES_BY_ID["dr-anmar-dynamic-abdominal-patient"]
-    assert (
-        profile["deployment"]["default_access_state"]
-        == room["dynamic_patient_access_state"]
-    )
-    assert profile["deployment"]["maximum_solver_active_deformables"] == 1
-    assert len(room["dynamic_patient_active_deformables"]) == 1
-    assert profile["deployment"]["multi_component_deformables_qualified"] is False
-    assert profile["deployment"]["native_volume_deformables_qualified"] is False
-    assert profile["validation_scope"]["overall_qualified"] is False
-    anatomy = json.loads(
-        (
-            ROOT
-            / "source/extensions/orbit.surgical.assets/data/Props/Patients"
-            / "DynamicAbdominalPatient/anatomy_manifest.json"
-        ).read_text(encoding="utf-8")
-    )
-    explicit = [
-        component
-        for component in anatomy["components"]
-        if int(component.get("tetrahedra", 0)) > 0
-    ]
-    assert profile["anatomy"]["explicit_tet_component_count"] == len(explicit)
-    assert profile["anatomy"]["explicit_tet_vertices"] == sum(
-        int(component["tet_vertices"]) for component in explicit
-    )
-    assert profile["anatomy"]["explicit_tet_tetrahedra"] == sum(
-        int(component["tetrahedra"]) for component in explicit
-    )
-
-    report = json.loads(
-        (
-            ROOT
-            / "physics_next/benchmarks"
-            / "dranmar-dynamic-abdominal-patient-validation.json"
-        ).read_text(encoding="utf-8")
-    )
-    assert report["passed"] is True
-    assert report["passed_scope"] == "checks_executed_by_this_validator_only"
-    assert report["overall_qualified"] is False

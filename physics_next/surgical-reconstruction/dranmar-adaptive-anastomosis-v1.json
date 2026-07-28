@@ -5,11 +5,14 @@
     "no_validated_tissue_penetration_or_damage",
     "no_biochemical_adhesive_or_healing_model",
     "no_clinical_leak_threshold_claim",
-    "native_simulator_evidence_required"
+    "no_flow_connected_patency_claim",
+    "native_scene_evidence_provider_not_implemented"
   ],
   "capture": {
     "attachment_model": "six_current_vertex_to_xform_attachment_cells_per_side",
+    "caller_force_input": "rejected",
     "hard_release_n": 6.0,
+    "overload_release_authority": "unavailable_until_prim_bound_capture_contact_sources_exist",
     "soft_limit_n": 3.5,
     "target_force_per_side_n": 1.6
   },
@@ -522,19 +525,21 @@
     "target_minimum_lumen_radius_m": 0.0085
   },
   "reinforcement_collar": {
-    "cure_time_s": 45.0,
-    "final_sector_break_force_n": 2.2,
-    "initial_sector_tack_force_n": 0.18,
+    "biochemical_cure_or_healing": "not_implemented",
+    "physical_calibration": "not_performed",
+    "source_mechanics": "exact_shared_cohesive_interface_per_bilateral_sector",
     "stable_bond_carrier": "rigid_proxy_with_independent_left_and_right_sector_attachments",
     "surface_representation": "connected_triangular_circumferential_ribbon"
   },
   "schema": "dranmar.adaptive-anastomosis-profile.v1",
   "staples": {
     "forming": "discrete_open_to_formed_state_pending_plasticity_backend_evidence",
-    "provisional_pullout_force_per_staple_n": 1.4,
-    "representation": "sixteen_independent_rigid_formed_staples_with_left_and_right_attachment_regions"
+    "missing": "calibrated_proof_load_and_pullout",
+    "representation": "sixteen_independent_rigid_formed_staples_with_left_and_right_attachment_regions",
+    "retention_verified": false,
+    "source_mechanics": "exact_shared_rod_result_and_bilateral_attachment_evidence"
   },
-  "status": "simulation_training_model",
+  "status": "source_hardened_native_scene_evidence_provider_missing",
   "tissue_demo": {
     "constitutive_parameters": "provisional_category_level_seeds",
     "initial_gap_m": 0.02,

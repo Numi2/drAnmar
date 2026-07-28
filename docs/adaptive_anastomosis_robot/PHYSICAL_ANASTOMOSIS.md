@@ -14,10 +14,20 @@ The lumen mandrel is inserted before final approximation. Eversion rings then mo
 
 ## Staple retention
 
-Sixteen formed staple bodies are spawned around the seam. Each staple owns two independent attachment volumes: one for the left tissue and one for the right. The 12 temporary capture constraints can then be released while the 32 staple-leg attachments remain the load-bearing bridge. Pullout is represented by removing a staple's tissue attachments when the caller reports load above a provisional threshold.
+Sixteen formed staple bodies are spawned around the seam. Each staple owns two
+independent attachment volumes: one for the left tissue and one for the right.
+Source qualification now requires the exact shared rod result, exact bilateral
+attachment set, intact topology, and observed bilateral reactions. Retention
+remains false because no calibrated proof-load or pullout criterion exists.
+Caller-authored pullout loads are not accepted.
 
 Continuous metal plasticity, penetration, puncture damage, wall crushing, ischemia and cut-through require calibrated solver and specimen data and are not claimed by this release.
 
 ## Reinforcement collar
 
-The reinforcement collar is supplied as a connected triangular surface and as a stable rigid bond carrier. The rigid carrier contains 16 independent left and 16 independent right bond cells. Bond strength rises from a provisional 0.18 N sector tack value to 2.2 N over 45 seconds. This models the mechanical result of reinforcement but not biochemical adhesion or healing.
+The reinforcement collar is supplied as a connected triangular surface and as
+a rigid bond carrier with 16 independent left and 16 independent right cells.
+A sector qualifies only from the exact latest shared cohesive-interface
+response, exact bilateral attachments, nonfailed topology, positive contact
+area, and positive bilateral reactions. This is provisional source mechanics,
+not calibrated bonding, biochemical adhesion, cure, or healing.

@@ -1753,7 +1753,11 @@ def main() -> int:
         "straight_failure_load_n": derived.straight_failure_load_n,
         "knot_failure_load_n": derived.knot_failure_load_n,
         "runtime_material_history_controller": None,
-        "runtime_physics_authority": "OpenUSD_PhysX",
+        "report_scope": "openusd_physx_compatibility_payload_asset_inspection",
+        "runtime_physics_authority": "OpenUSD_PhysX_compatibility_payload_only",
+        "promoted_knotting_runtime_physics_authority": (
+            "NVIDIA_Warp_dr-anmar-warp-xpbd-segment-capsule-v1"
+        ),
         "runtime_observation_source": profile["runtime_detection"]["observation_source"],
         "runtime_self_contact_broadphase": profile["runtime_detection"]["self_contact_broadphase"],
         "clinical_validation": False,

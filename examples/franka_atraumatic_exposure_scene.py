@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal DrAnmar atraumatic exposure scene for Isaac Lab."""
+"""Visual scene scaffold; it does not cook tissue or run exposure control."""
 import argparse
 from isaaclab.app import AppLauncher
 

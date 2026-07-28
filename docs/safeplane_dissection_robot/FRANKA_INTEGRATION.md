@@ -4,4 +4,6 @@
 
 The payload preserves the standard Panda-hand mounting rotation of −45 degrees around local Z. Tool joints are appended to the same articulation and grouped into traction, pad-compliance, spreader, hydro, scissors, energy-tip, and valve actuator sets.
 
-The rigid proxy is available for perception, synthetic data, collision-aware planning, and handover tasks.
+The rigid proxy is a geometry-only planning/perception representation. It does
+not provide calibrated sensors, measured payload dynamics, collision-safety
+qualification, synthetic-data ground truth, or dissection outcome evidence.

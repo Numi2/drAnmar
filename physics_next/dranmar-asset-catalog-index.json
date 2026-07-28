@@ -53,9 +53,11 @@
       "asset_id": "dranmar-safeplane-dissection-robot-v1",
       "catalog_subpath": "Props/SurgicalDissection/SafePlaneDissectionRobot",
       "file_count": 58,
+      "hash_status": "stale_requires_regeneration_after_source_evidence_boundary_update",
       "primary_usd": "dranmar_safeplane_dissection_tool_standalone.usda",
       "sha256": "cfd1c5deff76d8ca2df4d0414b68b52f05d60915f170ad417f4bbd1fb4d34dfc",
-      "usd_references_checked": 3
+      "usd_references_checked": 3,
+      "usd_references_check_status": "historical_not_reverified_in_current_source_review"
     },
     "wound_preparation": {
       "asset_id": "dranmar-wound-preparation-robot-v1",

@@ -1,13 +1,14 @@
 {
   "clinical_validation": false,
+  "completion_available": false,
   "guarded_scissors": {
     "blade_closure_deg": 34.0,
-    "cut_contract": "nearest_unreleased_bridge_continuity_joint_removed_only_after_guard_and_clearance_interlocks_pass",
+    "cut_contract": "public_cut_unavailable_until_exact_step_guard_blade_contact_and_topology_evidence_exists_private_geometric_task_proxy_only",
     "guard_retraction_m": 0.01,
-    "minimum_protected_structure_clearance_m": 0.005
+    "minimum_centerline_distance_proxy_m": 0.005
   },
   "hydrodissection": {
-    "bridge_dose_model": "distance_weighted_volume_threshold_proxy",
+    "bridge_dose_model": "private_task_proxy_distance_weighted_caller_volume_not_scene_derived_deposition",
     "jet_count": 7,
     "nominal_jet_speed_m_s": 1.35,
     "particle_radius_m": 0.00072,
@@ -18,21 +19,35 @@
   "low_energy_dissection": {
     "maximum_power_w": 22.0,
     "maximum_temperature_c": 95.0,
-    "model": "lumped_thermal_dose_proxy",
+    "model": "private_task_proxy_lumped_thermal_dose_from_caller_force_time_and_power",
     "qualification": "not_electrosurgical_tissue_physics",
     "target_temperature_c": 72.0
   },
+  "outcome_evidence": {
+    "required": [
+      "one_exact_step_SceneEvidenceEnvelope_with_registry_provenance",
+      "stable_source_prim_ids_raw_sample_ids_adapter_version_and_scene_epoch",
+      "physics_step_time_and_monotonic_topology_revision_cursor",
+      "shared_layered_soft_tissue_and_cohesive_interface_state",
+      "live_attachment_identity_force_and_disconnect_evidence",
+      "tool_contact_hydro_deposition_scissor_crossing_and_energy_delivery_evidence",
+      "shared_vessel_duct_and_nerve_mechanics",
+      "same_step_patient_blood_and_bile_ledger_binding"
+    ],
+    "status": "unavailable_no_safeplane_scene_evidence_bridge"
+  },
+  "patient_outcome_authoritative": false,
   "protected_structures": {
     "duct": {
-      "injury_consequence": "continuity_joint_removed_and_duct_leak_ledger_activated",
+      "injury_consequence": "private_task_proxy_only_public_injury_mutation_unavailable",
       "radius_m": 0.0026
     },
     "nerve": {
-      "injury_consequence": "continuity_joint_removed_and_conduction_fraction_set_to_zero",
+      "injury_consequence": "private_task_proxy_only_public_injury_mutation_unavailable",
       "radius_m": 0.0021
     },
     "vessel": {
-      "injury_consequence": "continuity_joint_removed_and_blood_loss_ledger_activated",
+      "injury_consequence": "private_task_proxy_only_public_injury_mutation_unavailable",
       "radius_m": 0.0031
     }
   },
@@ -41,8 +56,8 @@
     "NVIDIA PhysX",
     "NVIDIA Isaac Lab"
   ],
-  "schema": "dranmar.safeplane-dissection-profile.v1",
-  "status": "research_informed_engineering_model_pending_runtime_metrology_and_clinical_validation",
+  "schema": "dranmar.safeplane-dissection-profile.v2",
+  "status": "asset_and_physical_setup_model_outcome_entrypoints_fail_closed_pending_scene_evidence_shared_mechanics_runtime_metrology_and_clinical_validation",
   "tissue_substrate": {
     "adhesion_bridge_count": 28,
     "bridge_classes": [
@@ -50,7 +65,7 @@
       "loose_connective_fibre",
       "vascularized_adhesion"
     ],
-    "physics_contract": "two_deformable_surfaces_each_bridge_uses_two_rigid_anchors_and_one_removable_continuity_joint",
+    "physics_contract": "runtime_cooked_surface_meshes_with_rigid_anchor_and_fixed_joint_proxies_not_shared_cohesive_tissue_mechanics",
     "superficial_mesh": {
       "triangles": 864,
       "vertices": 475
@@ -96,7 +111,7 @@
   "traction": {
     "hard_release_limit_per_pad_n": 5.0,
     "nominal_force_per_pad_n": 1.4,
-    "qualification": "provisional_unmeasured",
+    "qualification": "private_task_proxy_thresholds_provisional_unmeasured_public_force_release_unavailable",
     "soft_force_limit_per_pad_n": 3.0
   },
   "units": "metres_kilograms_seconds",

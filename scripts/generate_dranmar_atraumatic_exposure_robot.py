@@ -44,6 +44,10 @@ DOCS_ROOT = PACKAGE_ROOT / "docs" / "atraumatic_exposure_robot"
 EXAMPLE_ROOT = PACKAGE_ROOT / "examples"
 EXTENSION_ROOT = PACKAGE_ROOT / "source/extensions/orbit.surgical.assets"
 INTEGRATION_PATH = EXTENSION_ROOT / "orbit/surgical/assets/atraumatic_exposure_robot.py"
+EVIDENCE_PATH = (
+    EXTENSION_ROOT
+    / "orbit/surgical/assets/atraumatic_exposure_scene_evidence.py"
+)
 
 # Tool coordinate convention: +Z approaches the surgical field, +X opens the
 # exposure laterally, +Y follows the long axis of the exposed region.
@@ -1302,11 +1306,174 @@ def mount_contract() -> dict[str,object]:
 
 
 def task_contract() -> dict[str,object]:
-    return {"schema":"dr.anmar.surgical-exposure-task.v1","phases":["stowed","approach","deploy","contact","capture","retract","hold","overload_relief","release"],"success_metrics":["roi_visible_fraction","left_pad_force_n","right_pad_force_n","force_asymmetry_n","capture_cell_count","flap_edge_separation_m","retraction_stability","overload_events"],"failure_events":["capture_loss","pad_overload","force_asymmetry","roi_reocclusion","tissue_attachment_break","joint_limit_contact"],"required_observations":["tool_joint_state","pad_compliance_state","pad_contact_force","camera_or_segmentation_roi_visibility","capture_attachment_state"],"clinical_validation":False}
+    return {
+        "schema": "dr.anmar.surgical-exposure-task.v2",
+        "phases": [
+            "stowed", "approach", "deploy", "contact", "capture",
+            "retract", "hold", "overload_relief", "release",
+        ],
+        "provisional_task_signals": [
+            "prim_bound_roi_visible_fraction",
+            "summed_cell_normal_force_per_pad_n",
+            "conservative_contact_plus_attachment_reaction_load_per_pad_n",
+            "force_asymmetry_n",
+            "scene_confirmed_capture_cell_count",
+            "overload_release_events",
+        ],
+        "failure_events": [
+            "capture_loss", "capture_epoch_latched",
+            "evidence_registration_change", "evidence_replay",
+            "measured_pad_overload", "force_asymmetry",
+            "roi_reocclusion", "scene_attachment_loss", "joint_limit_contact",
+            "unsafe_control_interval",
+        ],
+        "required_scene_evidence": [
+            "exact_contact_cell_and_tissue_prim_pair",
+            "exact_attachment_prim_identity",
+            "exact_contact_force_area_and_relative_motion",
+            "exact_attachment_reaction_vector_on_cell",
+            "fixed_workcell_cell_visibility_roi_and_calibration_registration",
+            "integer_roi_visibility_counts",
+            "exact_post_physics_carriage_lift_pitch_and_compliance_joint_positions",
+            "nonreused_raw_native_record_identity_per_source",
+            "episode_environment_topology_step_and_time",
+            "adjacent_preflight_and_consecutive_confirmation_intervals",
+        ],
+        "completion_authority": "prim_bound_scene_evidence_only",
+        "native_scene_evidence_provider": "not_implemented",
+        "simulator_task_completion_verified": False,
+        "tissue_safety_verified": False,
+        "clinical_validation": False,
+    }
 
 
 def physics_profile(bundle: ToolBundle) -> dict[str,object]:
-    return {"schema":"dr.anmar.atraumatic-exposure-profile.v1","id":"dranmar-atraumatic-exposure-robot-v1","version":VERSION,"status":"research_informed_engineering_model_pending_physical_and_clinical_validation","units":"MKS","mechanism":{"lateral_retraction_range_m":0.040,"independent_lift_range_m":[-0.025,0.030],"pad_pitch_ranges_deg":{"left":[-42,72],"right":[-72,42]},"compliance_travel_m":0.006,"compliance_stiffness_n_m":1250.0,"compliance_damping_n_s_m":38.0,"capture_cells_per_pad":PAD_CAPTURE_CELL_COUNT,"pad_contact_area_m2_seed":0.0015},"force_control":{"nominal_target_force_per_pad_n":1.25,"soft_limit_force_per_pad_n":2.5,"hard_release_force_per_pad_n":4.0,"maximum_force_asymmetry_n":1.0,"controller":"independent_force_limited_impedance_plus_roi_visibility_outer_loop","all_values":"provisional_engineering_seeds"},"capture":{"fenestrated":"geometric_trapping_plus_distributed_overlap_attachments","microcup":"distributed_low_vacuum_proxy_plus_overlap_attachments","attachment_cells":"independent_runtime_deformable_attachments","release":"progressive_outer_cell_release_then_full_release_on_hard_overload"},"tissue":{"representation":"two portable triangle surfaces cooked at runtime by the current surface-deformable route","youngs_modulus_pa_seed":60000.0,"poissons_ratio_seed":0.45,"surface_thickness_m_seed":0.006,"density_kg_m3_seed":1050.0,"self_collision":True},"runtime":{"observed_stack":"Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16","franka_mount":"stock panda_hand_joint frame with unique panda_link8 compatibility fallback","status":"composition_observed_physical_effect_unqualified"},"clinical_validation":False,"medical_device":False}
+    return {
+        "schema": "dr.anmar.atraumatic-exposure-profile.v2",
+        "id": "dranmar-atraumatic-exposure-robot-v1",
+        "version": VERSION,
+        "status": "source_hardened_native_evidence_provider_missing",
+        "units": "MKS",
+        "mechanism": {
+            "lateral_retraction_range_m": 0.040,
+            "independent_lift_range_m": [-0.025, 0.030],
+            "pad_pitch_ranges_deg": {
+                "left": [-42, 72],
+                "right": [-72, 42],
+            },
+            "compliance_travel_m": 0.006,
+            "compliance_stiffness_n_m": 1250.0,
+            "compliance_damping_n_s_m": 38.0,
+            "capture_cells_per_pad": PAD_CAPTURE_CELL_COUNT,
+            "pad_contact_area_m2_seed": 0.0015,
+        },
+        "force_control": {
+            "nominal_target_force_per_pad_n": 1.25,
+            "soft_limit_force_per_pad_n": 2.5,
+            "hard_release_force_per_pad_n": 4.0,
+            "max_cell_slip_speed_m_s": 0.012,
+            "maximum_control_interval_s": 1.0 / 30.0,
+            "maximum_force_asymmetry_n": 1.0,
+            "controller": (
+                "independent_force_limited_impedance_plus_"
+                "roi_visibility_outer_loop"
+            ),
+            "production_input": (
+                "exact_post_physics_contact_attachment_reaction_and_"
+                "visibility_envelope"
+            ),
+            "state_synchronization": (
+                "capture_confirmation_and_each_hold_interval_use_exact_"
+                "post_physics_articulation_state"
+            ),
+            "compliance_axis_force_estimator": (
+                "task_proxy_only_not_admissible_evidence"
+            ),
+            "all_values": "provisional_engineering_seeds",
+        },
+        "capture": {
+            "fenestrated": (
+                "visual_geometry_identity_only_shared_box_capture_proxy_"
+                "does_not_establish_geometric_trapping"
+            ),
+            "microcup": (
+                "visual_geometry_identity_only_shared_box_capture_proxy_"
+                "does_not_establish_vacuum_retention"
+            ),
+            "attachment_cells": (
+                "independent_runtime_deformable_attachments"
+            ),
+            "release": (
+                "exact_scene_attachment_loss_contact_below_retention_floor_"
+                "slip_or_measured_transmitted_overload"
+            ),
+            "release_behavior": (
+                "any_release_latches_safe_relief_until_explicit_full_recapture"
+            ),
+            "source_body_identity": (
+                "actor_roots_resolve_to_exact_simulation_mesh_before_"
+                "attachment_and_evidence_binding"
+            ),
+            "transaction_boundary": (
+                "all_exact_targets_registered_partial_recapture_rolled_back_"
+                "evidence_preflighted_before_release_commit"
+            ),
+            "capture_confirmation_linear_tolerance_m_seed": 0.0015,
+            "capture_confirmation_angular_tolerance_rad_seed": math.radians(1.0),
+            "minimum_capture_cell_normal_force_n_seed": 0.02,
+            "minimum_capture_cell_contact_area_m2_seed": 1.0e-6,
+            "capture_confirmation_intervals_required_seed": 3,
+            "capture_confirmation_min_dwell_s_seed": 1.0 / 30.0,
+            "capture_maximum_evidence_interval_s_seed": 1.0 / 30.0,
+            "capture_handshake": (
+                "command_pose_then_adjacent_no_attachment_preflight_then_"
+                "author_before_clock_advance_then_consecutive_dwell_confirmation"
+            ),
+            "transmitted_load_proxy": (
+                "contact_resultant_norm_plus_attachment_reaction_norm_"
+                "deliberately_may_double_count"
+            ),
+            "pad_variant_physics": (
+                "shared_capture_cell_colliders_material_and_attachment_contract_"
+                "visual_variants_only"
+            ),
+            "pad_variant_physics_comparison_valid": False,
+            "retention_strength_calibrated": False,
+        },
+        "tissue": {
+            "representation": (
+                "two portable triangle surfaces cooked at runtime by the "
+                "current surface-deformable route"
+            ),
+            "youngs_modulus_pa_seed": 60000.0,
+            "poissons_ratio_seed": 0.45,
+            "surface_thickness_m_seed": 0.006,
+            "density_kg_m3_seed": 1050.0,
+            "self_collision": True,
+            "injury_model": "not_implemented",
+        },
+        "runtime": {
+            "observed_stack": (
+                "Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16"
+            ),
+            "franka_mount": (
+                "stock panda_hand_joint frame with unique panda_link8 "
+                "compatibility fallback"
+            ),
+            "scene_evidence_adapter": (
+                "dranmar.atraumatic-exposure.scene-evidence@3.0.0"
+            ),
+            "scene_registration": (
+                "locked_per_capture_epoch_across_workcell_cells_visibility_"
+                "roi_and_calibration"
+            ),
+            "native_scene_evidence_provider": "not_implemented",
+            "status": "source_contract_only_runtime_effect_unqualified",
+        },
+        "physical_calibration": "not_performed",
+        "clinical_validation": False,
+        "medical_device": False,
+    }
 
 
 def collider_coverage(bundle: ToolBundle) -> dict[str,object]:
@@ -1321,7 +1488,7 @@ def collider_coverage(bundle: ToolBundle) -> dict[str,object]:
 
 # ---------------------------- Isaac integration source ----------------------------
 
-def author_integration_module() -> str:
+def _legacy_author_integration_module_template() -> str:
     return r'''# Copyright (c) 2026, DrAnmar Project Developers.
 # SPDX-License-Identifier: Apache-2.0
 """Isaac Lab integration for the DrAnmar atraumatic surgical exposure robot.
@@ -1337,6 +1504,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 import math
+
+from .atraumatic_exposure_scene_evidence import (
+    AtraumaticExposureEvidenceCursor,
+    AtraumaticExposureSceneEvidence,
+)
 
 CATALOG_SUBPATH = "Props/SurgicalExposure/AtraumaticExposureRobot"
 ASSET_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
@@ -1924,10 +2096,32 @@ class DistributedPadCaptureController:
     stage: Any = None
     soft_cell_release_force_n: float = 0.75
     hard_pad_release_force_n: float = 4.0
+    max_cell_slip_speed_m_s: float = 0.012
     cells: list[CaptureCell] = field(default_factory=list)
     events: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self):
+        for name in ("tool_path", "left_tissue_path", "right_tissue_path"):
+            value = str(getattr(self, name)).rstrip("/")
+            if not value.startswith("/") or value == "":
+                raise ValueError(f"{name} must be an absolute scene path")
+            setattr(self, name, value)
+        soft = _nonnegative_finite(
+            self.soft_cell_release_force_n,
+            "soft_cell_release_force_n",
+        )
+        hard = _nonnegative_finite(
+            self.hard_pad_release_force_n,
+            "hard_pad_release_force_n",
+        )
+        slip = _nonnegative_finite(
+            self.max_cell_slip_speed_m_s,
+            "max_cell_slip_speed_m_s",
+        )
+        if soft <= 0.0 or hard <= soft or slip <= 0.0:
+            raise ValueError(
+                "release thresholds require 0 < soft < hard and positive slip"
+            )
         self.stage = _current_stage(self.stage)
 
     def capture(self) -> list[CaptureCell]:
@@ -1974,34 +2168,133 @@ class DistributedPadCaptureController:
         left_cell_forces_n: Sequence[float] | None = None,
         right_cell_forces_n: Sequence[float] | None = None,
     ) -> dict[str, Any]:
-        result = {"released": [], "hard_release": []}
-        for side, total, values in (
-            ("left", left_total_force_n, left_cell_forces_n),
-            ("right", right_total_force_n, right_cell_forces_n),
+        del (
+            left_total_force_n,
+            right_total_force_n,
+            left_cell_forces_n,
+            right_cell_forces_n,
+        )
+        raise RuntimeError(
+            "caller-authored pad loads are not admissible mechanics evidence; "
+            "use update_from_scene() with a prim-bound exposure envelope"
+        )
+
+    def update_from_scene(
+        self,
+        evidence: AtraumaticExposureSceneEvidence,
+    ) -> dict[str, Any]:
+        """Release capture cells only from exact post-physics contact evidence."""
+        if not isinstance(evidence, AtraumaticExposureSceneEvidence):
+            raise TypeError(
+                "capture control requires AtraumaticExposureSceneEvidence"
+            )
+        result: dict[str, Any] = {
+            "released": [],
+            "hard_release": [],
+        }
+        totals: dict[str, float] = {}
+        for side, tissue_path in (
+            ("left", self.left_tissue_path),
+            ("right", self.right_tissue_path),
         ):
-            total = _nonnegative_finite(total, f"{side}_total_force_n")
+            side_title = side.capitalize()
+            samples = evidence.cells(side)
+            total = _nonnegative_finite(
+                evidence.total_force_n(side),
+                f"{side}_total_force_n",
+            )
+            totals[side] = total
+            for sample in samples:
+                expected_rigid_path = (
+                    f"{self.tool_path}/Links/{side_title}Pad/Collisions/"
+                    f"TissueCaptureCell_{sample.index:02d}"
+                )
+                expected_attachment_path = (
+                    f"{self.tool_path}/RuntimeAttachments/"
+                    f"{side_title}Capture_{sample.index:02d}"
+                )
+                source = sample.source
+                if (
+                    source.contact_cell_prim_path != expected_rigid_path
+                    or source.tissue_prim_path != tissue_path
+                    or source.attachment_prim_path
+                    != expected_attachment_path
+                ):
+                    raise ValueError(
+                        f"{side} capture cell {sample.index} is not bound to "
+                        "this controller's exact scene prims"
+                    )
+                active_matches = [
+                    cell
+                    for cell in self.active_cells(side)
+                    if (
+                        cell.index == sample.index
+                        and cell.rigid_cell_path == expected_rigid_path
+                        and cell.attachment_path == expected_attachment_path
+                    )
+                ]
+                if len(active_matches) > 1:
+                    raise RuntimeError(
+                        f"duplicate active {side} capture cell {sample.index}"
+                    )
+                if sample.attachment_present and not active_matches:
+                    raise RuntimeError(
+                        f"scene reports unowned active {side} attachment "
+                        f"{sample.index}"
+                    )
+                if active_matches and not sample.attachment_present:
+                    if self.release_cell(
+                        side,
+                        sample.index,
+                        "attachment_missing_from_scene",
+                    ):
+                        result["released"].append((side, sample.index))
+
             if total >= self.hard_pad_release_force_n:
-                for cell in self.active_cells(side):
-                    self.release_cell(side, cell.index, "hard_pad_overload")
-                    result["hard_release"].append((side, cell.index))
+                for cell in list(self.active_cells(side)):
+                    if self.release_cell(
+                        side,
+                        cell.index,
+                        "measured_hard_pad_overload",
+                    ):
+                        result["hard_release"].append((side, cell.index))
                 continue
-            if values is not None:
-                for index, force in enumerate(values[:CAPTURE_CELL_COUNT]):
-                    force = _nonnegative_finite(force, f"{side}_cell_force_n[{index}]")
-                    if force >= self.soft_cell_release_force_n:
-                        if self.release_cell(side, index, "local_cell_overload"):
-                            result["released"].append((side, index))
-            elif total > 0:
-                active = self.active_cells(side)
-                estimate = total / max(1, len(active))
-                if estimate >= self.soft_cell_release_force_n and active:
-                    # Release the furthest longitudinal cell first.
-                    order = [0, 3, 2, 5, 1, 4]
-                    chosen = next((i for i in order if any(c.index == i for c in active)), active[0].index)
-                    if self.release_cell(side, chosen, "estimated_distributed_overload"):
-                        result["released"].append((side, chosen))
-        result["active_left"] = len(self.active_cells("left"))
-        result["active_right"] = len(self.active_cells("right"))
+            for sample in samples:
+                if not sample.attachment_present:
+                    continue
+                release_reason: str | None = None
+                if (
+                    sample.normal_force_n <= 0.0
+                    or sample.contact_area_m2 <= 0.0
+                ):
+                    release_reason = "measured_contact_loss"
+                elif sample.slip_speed_m_s >= self.max_cell_slip_speed_m_s:
+                    release_reason = "measured_local_cell_slip"
+                elif sample.normal_force_n >= self.soft_cell_release_force_n:
+                    release_reason = "measured_local_cell_overload"
+                if release_reason is not None:
+                    if self.release_cell(
+                        side,
+                        sample.index,
+                        release_reason,
+                    ):
+                        result["released"].append((side, sample.index))
+
+        result.update(
+            {
+                "active_left": len(self.active_cells("left")),
+                "active_right": len(self.active_cells("right")),
+                "left_total_force_n": totals["left"],
+                "right_total_force_n": totals["right"],
+                "physics_step": evidence.physics_step,
+                "simulation_time_s": evidence.simulation_time_s,
+                "evidence_digest_sha256": evidence.evidence_digest_sha256,
+                "scope": (
+                    "simulator_mechanics_only_not_tissue_injury_or_clinical_"
+                    "safety"
+                ),
+            }
+        )
         return result
 
 
@@ -2012,7 +2305,7 @@ def estimate_pad_force_n(
     stiffness_n_m: float = 1_250.0,
     damping_n_s_m: float = 38.0,
 ) -> float:
-    """Estimate normal pad load from the authored compliant-axis deflection."""
+    """Return a task proxy; this estimate is not admissible force evidence."""
     compression = max(0.0, -_finite(compression_m, "compression_m"))
     closing_velocity = max(
         0.0, -_finite(compression_velocity_m_s, "compression_velocity_m_s")
@@ -2297,6 +2590,9 @@ class ExposureSequenceController:
     phase: str = "stowed"
     capture: DistributedPadCaptureController = field(init=False)
     force_controller: ForceControlledRetractionController = field(default_factory=ForceControlledRetractionController)
+    evidence_cursor: AtraumaticExposureEvidenceCursor = field(
+        default_factory=AtraumaticExposureEvidenceCursor
+    )
     history: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self):
@@ -2322,30 +2618,18 @@ class ExposureSequenceController:
 
     def hold_update(
         self,
-        *,
-        dt: float,
-        visible_fraction: float,
-        left_compression_m: float,
-        right_compression_m: float,
-        left_compression_velocity_m_s: float = 0.0,
-        right_compression_velocity_m_s: float = 0.0,
-        left_cell_forces_n: Sequence[float] | None = None,
-        right_cell_forces_n: Sequence[float] | None = None,
+        evidence: AtraumaticExposureSceneEvidence,
     ) -> dict[str, Any]:
-        left_force = estimate_pad_force_n(left_compression_m, left_compression_velocity_m_s)
-        right_force = estimate_pad_force_n(right_compression_m, right_compression_velocity_m_s)
+        evidence = self.evidence_cursor.consume(evidence)
+        left_force = evidence.total_force_n("left")
+        right_force = evidence.total_force_n("right")
         control = self.force_controller.update(
-            dt=dt,
-            visible_fraction=visible_fraction,
+            dt=evidence.dt_s,
+            visible_fraction=evidence.visible_fraction,
             left_force_n=left_force,
             right_force_n=right_force,
         )
-        release = self.capture.update_loads(
-            left_total_force_n=left_force,
-            right_total_force_n=right_force,
-            left_cell_forces_n=left_cell_forces_n,
-            right_cell_forces_n=right_cell_forces_n,
-        )
+        release = self.capture.update_from_scene(evidence)
         if control.overload["left_hard"] or control.overload["right_hard"]:
             self.phase = "overload_relief"
         else:
@@ -2353,7 +2637,7 @@ class ExposureSequenceController:
         result = {
             "phase": self.phase,
             "joint_targets": control.joint_targets,
-            "visible_fraction": float(visible_fraction),
+            "visible_fraction": evidence.visible_fraction,
             "left_force_n": left_force,
             "right_force_n": right_force,
             "force_error_n": control.force_error_n,
@@ -2361,12 +2645,82 @@ class ExposureSequenceController:
             "overload": control.overload,
             "capture_release": release,
             "mode": control.mode,
+            "physics_step": evidence.physics_step,
+            "simulation_time_s": evidence.simulation_time_s,
+            "evidence_digest_sha256": evidence.evidence_digest_sha256,
+            "scope": (
+                "simulator_mechanics_only_not_tissue_injury_or_clinical_safety"
+            ),
         }
         self.history.append({"event": "hold_update", **result})
         return result
 '''
 
 # ---------------------------- Documentation and packaging ----------------------------
+
+
+def author_integration_module() -> str:
+    """Preserve the reviewed evidence-bound runtime and fail closed."""
+    missing_sources = tuple(
+        path
+        for path in (INTEGRATION_PATH, EVIDENCE_PATH)
+        if not path.is_file()
+    )
+    if missing_sources:
+        raise RuntimeError(
+            "reviewed exposure runtime sources are required before generation: "
+            f"{missing_sources}"
+        )
+    source = INTEGRATION_PATH.read_text(encoding="utf-8")
+    evidence_source = EVIDENCE_PATH.read_text(encoding="utf-8")
+    required_runtime_markers = (
+        "AtraumaticExposureSceneEvidence",
+        "def _xyzw_from_wxyz(",
+        "def _deformable_attachment_body_path(",
+        "def update_from_scene(",
+        "def confirm_capture_from_scene(",
+        "def establish_capture(",
+        "caller-authored pad loads are not admissible",
+        "capture safety latch is active",
+        "evidence_cursor.validate(",
+        "evidence_cursor.commit(",
+        "commit_topology_transition(",
+        "def preflight_capture_from_scene(",
+        "def _require_current_capture_preflight(",
+        "minimum_capture_cell_normal_force_n",
+        "minimum_capture_cell_contact_area_m2",
+        "capture_confirmation_intervals_required",
+        "capture_confirmation_min_dwell_s",
+        "capture_maximum_evidence_interval_s",
+        "total_transmitted_load_n",
+        "measured_joint_positions_m",
+        "LEGAL_PHASE_TRANSITIONS",
+    )
+    required_evidence_markers = (
+        'ADAPTER_VERSION = "3.0.0"',
+        "attachment_reaction_on_cell_n",
+        "attachment_reaction_force_n",
+        "def transmitted_load_n(",
+        "permits double counting",
+        "class AtraumaticExposureEvidenceCursor",
+        "consumed_raw_sample_ids_by_source",
+    )
+    missing_runtime = tuple(
+        marker for marker in required_runtime_markers if marker not in source
+    )
+    missing_evidence = tuple(
+        marker
+        for marker in required_evidence_markers
+        if marker not in evidence_source
+    )
+    if missing_runtime or missing_evidence:
+        raise RuntimeError(
+            "atraumatic exposure integration source lacks reviewed evidence "
+            "markers: "
+            f"runtime={missing_runtime}, evidence={missing_evidence}"
+        )
+    return source
+
 
 def readme() -> str:
     return textwrap.dedent(f'''\
@@ -2387,8 +2741,8 @@ def readme() -> str:
     - `dranmar_atraumatic_exposure_tool_payload.usda`: hand-replacement payload for `panda_link8`.
     - `dranmar_atraumatic_exposure_tool_standalone.usda`: standalone articulation.
     - `dranmar_atraumatic_exposure_tool_rigid_proxy.usda`: perception/planning proxy.
-    - `dranmar_fenestrated_retraction_pad.usda`: replaceable geometric-trapping pad.
-    - `dranmar_microcup_retraction_pad.usda`: replaceable distributed low-vacuum proxy pad.
+    - `dranmar_fenestrated_retraction_pad.usda`: replaceable visual fenestrated pad variant.
+    - `dranmar_microcup_retraction_pad.usda`: replaceable visual microcup pad variant.
     - `dranmar_exposure_tissue_demo.usda`: two deformable flaps over an ROI target.
 
     ## Mechanism
@@ -2396,15 +2750,36 @@ def readme() -> str:
     Each side has an independent lateral carriage, vertical lift, pad-pitch axis,
     and 6 mm compliant force-sensing axis. Each pad exposes six independent
     capture cells. Tissue capture is created at runtime from overlap-prioritized,
-    explicitly verified deformable vertex attachments. Overload logic can release individual cells before
-    releasing a complete pad.
+    explicitly verified deformable vertex attachments. Any evidence-driven local
+    or whole-pad release latches safe relief; closed-loop hold cannot resume
+    until a four-stage handshake completes: commanded capture pose, immediately
+    adjacent no-attachment preflight, exact attachment authoring before the
+    evidence clock advances, and consecutive post-physics confirmation intervals
+    satisfying the configured dwell. Every capture interval must remain within
+    the configured freshness ceiling. Episode, environment, source registration,
+    and topology lineage remain locked throughout.
 
-    ## Validation
+    The fenestrated and microcup variants are visual alternatives in this
+    revision. They share the same six box capture-cell colliders, material
+    behavior, and attachment contract, so their visual geometry does not support
+    comparative claims about trapping, pressure, suction, or retention.
 
-    Static integrity gates and the optional headless CUDA diagnostic are
-    documented in `docs/atraumatic_exposure_robot/VALIDATION.md`. Runtime smoke
-    observations do not qualify pad contact, tissue capture, or exposure
-    efficacy.
+    ## Evidence status
+
+    Production hold and overload release use
+    `dranmar.atraumatic-exposure.scene-evidence@3.0.0` and require a prim-bound, post-physics
+    evidence envelope for all 12 contact cells and the registered ROI. Workcell,
+    cell, tissue-body, attachment, visibility, ROI, and calibration registration
+    are locked for the capture epoch; envelope replay, per-source raw-record
+    reuse, and clock discontinuity fail closed.
+    Each cell supplies its exact contact vector and exact attachment-reaction
+    vector. The conservative transmitted-load gate adds their magnitudes and may
+    intentionally double count overlapping load paths rather than undercount a
+    co-directed reaction.
+    The native Isaac provider that must populate this envelope is not implemented,
+    so simulator task completion, retained capture, tissue safety, and exposure
+    efficacy remain unverified. The compliance-axis force estimator is only a
+    task proxy and is not admissible evidence.
 
     ## Research boundary
 
@@ -2425,11 +2800,12 @@ def docs_mechanism() -> str:
     orient the contact surface; and the final compliant axes provide measurable
     travel between the driven arm and tissue-contact pad.
 
-    The fenestrated pad uses distributed ribs and curled edge lips for geometric
-    trapping. The microcup pad uses nine shallow cup geometries connected to a
-    visible manifold. Both modes use the same six independent runtime capture
-    cells so experiments can compare pad geometry while retaining one attachment
-    and force-control contract.
+    The fenestrated pad visually depicts distributed ribs and curled edge lips.
+    The microcup pad visually depicts nine shallow cups and a manifold. In this
+    revision the variant switch changes visible geometry only: both modes retain
+    the same six box capture-cell colliders, material behavior, and attachment
+    contract. The assets therefore do not support comparative physical claims
+    about geometric trapping, pressure distribution, suction, or retention.
 
     Mechanical states are joint states, not USD variants. The only root variant
     selects the discrete pad construction.
@@ -2440,16 +2816,49 @@ def docs_force_control() -> str:
     return textwrap.dedent('''\
     # Force-aware exposure control
 
-    Pad normal force is estimated from the authored compliance-axis displacement
-    and velocity. The supplied controller has two loops:
+    Production mechanics evidence contains, for each of six registered cells per
+    pad, the exact post-physics contact vector and the exact reaction vector on
+    the cell from its registered attachment. The release proxy is the sum of the
+    contact-resultant norm and attachment-reaction norm. Those signals can
+    overlap, so this deliberately may double count; it is a conservative gate
+    that prevents a co-directed reaction from being hidden by a maximum. ROI
+    visibility is an integer visible/total sample count bound to the registered
+    camera and ROI. The supplied controller has two loops:
 
     1. an outer ROI-visibility loop increases lateral separation and lift while
        exposure is below target;
     2. independent force limits unload either side before continuing exposure.
 
     A bilateral asymmetry correction prevents one pad from carrying a much
-    larger load than the other. Hard overload commands immediate unloading and
-    allows the capture controller to release the affected pad.
+    larger measured load than the other. Hard overload commands immediate
+    unloading and releases scene-confirmed attachments on the affected pad.
+    Every commanded phase synchronizes the controller's internal carriage and
+    lift state before closed-loop control. Every hold interval then
+    resynchronizes from exact post-physics carriage and lift positions before
+    integrating. Pitch and compliance remain fixed commanded targets during
+    hold rather than closed-loop states; all eight joints are verified only
+    during capture. Intervals longer than 1/30 s fail closed.
+
+    Any scene-confirmed attachment loss, contact below the configured
+    force/area retention floors, slip, or overload release latches safe relief.
+    Hold cannot silently resume against fewer or zero attachments; an explicit,
+    fully successful recapture is required and partial recapture is rolled back.
+
+    Capture is a four-stage handshake: (1) command the capture pose; (2) consume
+    the immediately adjacent, no-attachment post-physics preflight with the same
+    episode, environment, source registration, and topology lineage within the
+    configured maximum evidence interval; (3) author all 12 exact attachments
+    before the evidence clock advances; and (4) consume consecutive post-physics
+    confirmation intervals under one new topology, each within that maximum,
+    until both the configured interval count and dwell time are met. Every cell
+    must meet configurable nonzero normal-force and contact-area floors
+    throughout.
+    Retraction remains prohibited until that confirmation sequence completes.
+
+    `estimate_pad_force_n()` remains available only as a task-design proxy.
+    Caller-authored forces and compression-derived estimates are rejected by the
+    capture and sequence controllers. A native bridge must still supply contact,
+    attachment, visibility, raw-record, and monotonic clock evidence.
 
     The numerical thresholds are provisional research seeds, not tissue-specific
     safety limits. Calibration requires instrumented physical specimens and the
@@ -2463,19 +2872,34 @@ def docs_tissue() -> str:
 
     The included benchmark uses two portable triangular flap meshes over a
     central ROI. Runtime code cooks each flap through the current surface-
-    deformable route and anchors the outer bands to the fixture.
+    deformable route and attaches one local outer-edge vertex cluster per flap
+    to a fixture proxy.
 
     Each contact pad contains six small capture volumes. The controller ranks
     tissue vertices by capture-cell overlap and creates one verified vertex
-    attachment per cell. If a portable benchmark pose has fewer than four
-    overlapping vertices, the nearest four are selected deterministically.
-    This distributes traction spatially and allows local loss of capture without
-    making the whole pad detach at once.
+    attachment per cell. A cell with fewer than four genuinely overlapping
+    vertices fails capture; it does not substitute non-overlapping nearest
+    vertices. All 12 exact rigid targets are registered before mutation; overlap
+    is then checked while each attachment is authored. If any cell fails, every
+    attempted attachment path is removed with a verified scene-removal
+    postcondition before the controller reports failure.
 
-    The nearest-vertex fallback and capture cells are simulation contracts. They
-    do not claim to reproduce a
-    specific suction pressure, tissue injury threshold, ischemia response, or
-    clinical retractor design.
+    Actor-root tissue paths are resolved once to the exact `SimulationMesh`
+    body used by both the attachment and evidence contract. Any later local
+    loss changes the attachment topology and latches safe relief until an
+    explicit full recapture is confirmed from a fresh topology revision.
+    Merely authoring attachment prims never clears the latch.
+
+    After capture, local or whole-pad release requires exact evidence for every
+    registered cell: its contact pair, attachment prim, contact force vector,
+    attachment-reaction vector on the cell, native record identity, and
+    post-physics interval. Contact-resultant and attachment-reaction magnitudes
+    are added as a conservative transmitted-load proxy; that may double count an
+    overlapping load path, but cannot hide a co-directed reaction. The
+    overlap-ranked vertex attachment and capture cells are simulation contracts.
+    Attachment existence is not proof of retained load, and the model does not
+    reproduce calibrated suction pressure, pullout, tissue injury, ischemia, or
+    a clinical retractor design.
     ''')
 
 
@@ -2497,7 +2921,7 @@ def docs_franka() -> str:
 
 def example_scene() -> str:
     return r'''#!/usr/bin/env python3
-"""Minimal DrAnmar atraumatic exposure scene for Isaac Lab."""
+"""Visual scene scaffold; it does not cook tissue or run exposure control."""
 import argparse
 from isaaclab.app import AppLauncher
 
@@ -2558,9 +2982,8 @@ def sha256(path: Path) -> str:
 def all_payload_files() -> list[Path]:
     return sorted(
         p
-        for p in PACKAGE_ROOT.rglob("*")
+        for p in ASSET_ROOT.rglob("*")
         if p.is_file()
-        and "_repo_overlay" not in p.parts
         and "__pycache__" not in p.parts
         and p.suffix != ".pyc"
         and p.name not in {".DS_Store", "asset_manifest.json"}
@@ -2569,7 +2992,7 @@ def all_payload_files() -> list[Path]:
 
 
 def build_manifest(files: Sequence[Path]) -> dict[str,object]:
-    return {"schema":"dr.anmar.asset-manifest.v1","asset":ASSET_NAME,"version":VERSION,"catalog_subpath":CATALOG_SUBPATH.as_posix(),"files":[{"path":p.relative_to(PACKAGE_ROOT).as_posix(),"bytes":p.stat().st_size,"sha256":sha256(p)} for p in files]}
+    return {"schema":"dr.anmar.asset-manifest.v1","asset":ASSET_NAME,"version":VERSION,"catalog_subpath":CATALOG_SUBPATH.as_posix(),"files":[{"path":p.relative_to(ASSET_ROOT).as_posix(),"bytes":p.stat().st_size,"sha256":sha256(p)} for p in files]}
 
 
 def sync_extension_data() -> None:
@@ -2607,15 +3030,31 @@ def write_checksum(path: Path) -> Path:
 def build_overlay() -> Path:
     overlay=PACKAGE_ROOT.parent/"_dranmar_atraumatic_exposure_robot_overlay"
     if overlay.exists(): shutil.rmtree(overlay)
-    for top in ("source","physics_next","docs","examples","tests"):
-        src=PACKAGE_ROOT/top
-        if src.exists():
+    relative_payloads = (
+        INTEGRATION_PATH.relative_to(PACKAGE_ROOT),
+        EVIDENCE_PATH.relative_to(PACKAGE_ROOT),
+        (EXTENSION_ROOT/"data"/CATALOG_SUBPATH).relative_to(PACKAGE_ROOT),
+        Path("physics_next/surgical-exposure/dranmar-atraumatic-exposure-robot-v1.json"),
+        Path("docs/atraumatic_exposure_robot"),
+        Path("examples/franka_atraumatic_exposure_scene.py"),
+        Path("tests/test_bench_robot_systems.py"),
+        Path("tests/test_surgical_attachment_fail_closed.py"),
+    )
+    for relative in relative_payloads:
+        src=PACKAGE_ROOT/relative
+        if not src.exists():
+            continue
+        destination=overlay/relative
+        if src.is_dir():
             shutil.copytree(
                 src,
-                overlay/top,
+                destination,
                 dirs_exist_ok=True,
                 ignore=shutil.ignore_patterns("__pycache__","*.pyc",".DS_Store"),
             )
+        else:
+            destination.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(src,destination)
     (overlay/"scripts").mkdir(parents=True,exist_ok=True)
     for name in (
         SCRIPT_PATH.name,
@@ -2630,6 +3069,10 @@ def build_overlay() -> Path:
 
 
 def generate() -> dict[str,object]:
+    # Verify both reviewed runtime sources before deleting or overwriting any
+    # generated payload.  Generation must fail without mutating the package if
+    # the evidence/capture contract has drifted.
+    author_integration_module()
     for cache in sorted(PACKAGE_ROOT.rglob("__pycache__"),reverse=True):
         shutil.rmtree(cache)
     for junk in PACKAGE_ROOT.rglob(".DS_Store"):
@@ -2648,11 +3091,12 @@ def generate() -> dict[str,object]:
         write_json(ASSET_ROOT/"collider_coverage.json",collider_coverage(bundle)),
     ]
     (ASSET_ROOT/"README.md").write_text(readme(),encoding="utf-8")
-    shutil.copy2(ASSET_ROOT/"README.md",PACKAGE_ROOT/"README.md")
     (ASSET_ROOT/"LICENSE.txt").write_text("Copyright 2026 DrAnmar Project Developers\n\nLicensed under the Apache License, Version 2.0.\n",encoding="utf-8")
-    (PACKAGE_ROOT/"LICENSE").write_text("Apache License 2.0\n",encoding="utf-8")
-    (PACKAGE_ROOT/"NOTICE").write_text("DrAnmar Atraumatic Surgical Exposure Robot. Independently generated simulation-training asset.\n",encoding="utf-8")
-    INTEGRATION_PATH.write_text(author_integration_module(),encoding="utf-8")
+    (ASSET_ROOT/"NOTICE.txt").write_text(
+        "DrAnmar Atraumatic Surgical Exposure Robot. Independently generated "
+        "simulation-training asset.\n",
+        encoding="utf-8",
+    )
     (DOCS_ROOT/"MECHANISM.md").write_text(docs_mechanism(),encoding="utf-8")
     (DOCS_ROOT/"FORCE_CONTROL.md").write_text(docs_force_control(),encoding="utf-8")
     (DOCS_ROOT/"TISSUE_CAPTURE.md").write_text(docs_tissue(),encoding="utf-8")
@@ -2664,10 +3108,15 @@ def generate() -> dict[str,object]:
     manifest=ASSET_ROOT/"asset_manifest.json"; write_json(manifest,build_manifest(all_payload_files())); sync_extension_data()
 
     parent=PACKAGE_ROOT.parent
-    dev=zip_tree(PACKAGE_ROOT,parent/"dranmar_atraumatic_exposure_robot_v0.1.0.zip",prefix=PACKAGE_ROOT.name)
-    catalog=zip_tree(PACKAGE_ROOT/"assets",parent/"dranmar_atraumatic_exposure_robot_catalog_v0.1.0.zip")
-    overlay=build_overlay(); overlay_zip=zip_tree(overlay,parent/"dranmar_atraumatic_exposure_robot_repo_overlay_v0.1.0.zip")
-    release={"schema":"dr.anmar.release.v1","asset":ASSET_NAME,"version":VERSION,"catalog_subpath":CATALOG_SUBPATH.as_posix(),"development_package":{"path":str(dev),"sha256":sha256(dev)},"catalog_package":{"path":str(catalog),"sha256":sha256(catalog)},"repository_overlay":{"path":str(overlay_zip),"sha256":sha256(overlay_zip)},"main_assets":[p.name for p in assets],"glb_exports":[p.name for p in glbs],"previews":[p.name for p in previews],"mechanism":"bilateral distributed-capture force-controlled surgical exposure system","runtime_validation":"headless_cuda_qualification_script_included","clinical_validation":False,"medical_device":False}
+    overlay=build_overlay()
+    dev=zip_tree(overlay,parent/"dranmar_atraumatic_exposure_robot_v0.1.0.zip",prefix=PACKAGE_ROOT.name)
+    catalog=zip_tree(
+        ASSET_ROOT,
+        parent/"dranmar_atraumatic_exposure_robot_catalog_v0.1.0.zip",
+        prefix=CATALOG_SUBPATH.as_posix(),
+    )
+    overlay_zip=zip_tree(overlay,parent/"dranmar_atraumatic_exposure_robot_repo_overlay_v0.1.0.zip")
+    release={"schema":"dr.anmar.release.v1","asset":ASSET_NAME,"version":VERSION,"catalog_subpath":CATALOG_SUBPATH.as_posix(),"development_package":{"path":str(dev),"sha256":sha256(dev)},"catalog_package":{"path":str(catalog),"sha256":sha256(catalog)},"repository_overlay":{"path":str(overlay_zip),"sha256":sha256(overlay_zip)},"main_assets":[p.name for p in assets],"glb_exports":[p.name for p in glbs],"previews":[p.name for p in previews],"mechanism":"bilateral distributed-capture force-controlled surgical exposure system","runtime_validation":"not_performed_native_scene_evidence_provider_missing","clinical_validation":False,"medical_device":False}
     release_path=parent/"dranmar_atraumatic_exposure_robot_release_v0.1.0.json"; write_json(release_path,release)
     checksums=[write_checksum(p) for p in (dev,catalog,overlay_zip)]
     return {"asset_files":len(assets),"texture_files":len(textures),"glb_files":len(glbs),"package":str(dev),"catalog":str(catalog),"overlay":str(overlay_zip),"release":str(release_path),"checksums":[str(x) for x in checksums]}

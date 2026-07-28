@@ -105,12 +105,11 @@ def validate(root: Path, *, installed: bool, require_usdchecker: bool, skip_arch
             root / "physics_next/dr-anmar-assets.json",
         ]
         python_paths = [
+            root / "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_anastomosis_scene_evidence.py",
             root / "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_anastomosis_robot.py",
             root / "examples/franka_adaptive_anastomosis_scene.py",
-            root / "examples/validate_adaptive_anastomosis_runtime.py",
             root / "scripts/generate_dranmar_adaptive_anastomosis_robot.py",
             root / "scripts/validate_dranmar_adaptive_anastomosis_robot.py",
-            root / "tests/test_adaptive_anastomosis_robot.py",
         ]
         hygiene_roots = [
             asset_root,

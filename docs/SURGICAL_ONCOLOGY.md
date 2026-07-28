@@ -1,9 +1,10 @@
 # DrAnmar surgical oncology
 
-DrAnmar's OncoSurgery Cell is a research integration for adaptive liver-tumor
-resection and margin assurance. It connects an articulated 22-joint tool, a
-registered 3-D tumor field, protected resection bonds, specimen handling,
-multimodal sensing, and a contract-gated procedure episode.
+DrAnmar's OncoSurgery Cell is a research asset package for adaptive
+liver-tumor resection and margin-assurance work. It packages an articulated
+22-joint tool, a registered 3-D tumor field, resection-bond and specimen task
+proxies, and sensor integration requirements. It does not currently connect
+those proxies to authoritative patient outcomes.
 
 It is not a clinical tumor model, a medical device, or a patient-care system.
 
@@ -39,13 +40,13 @@ It exposes standalone, rigid-proxy, Franka, liver, specimen-bag, and workcell
 Isaac Lab configurations. Isaac imports are lazy, so deterministic task and
 safety tests run outside Kit.
 
-## Executable mechanics
+## Task proxies and evidence ceiling
 
 ### Registered multimodal fusion
 
-RGB/depth, NIR fluorescence, hyperspectral, ultrasound, OCT, and Raman samples
-share one registration and timing contract. Fusion requires at least two
-modalities and rejects:
+The private fusion proxy describes RGB/depth, NIR fluorescence, hyperspectral,
+ultrasound, OCT, and Raman registration/timing thresholds. Its provisional
+algorithm rejects:
 
 - sample age above 250 ms;
 - cross-modality skew above 50 ms;
@@ -53,9 +54,11 @@ modalities and rejects:
 - probability disagreement above 0.25; or
 - fused confidence below 0.55.
 
-This is an engineering abstention policy, not a diagnostic threshold. Portable
-USD cameras can be attached at the four optical frames; ultrasound, OCT, and
-Raman remain explicit host bridges or calibrated proxies.
+There is no workcell-owned sensor adapter, raw-sample identity, common
+post-physics envelope, or calibrated modality bridge. Public fusion therefore
+always abstains. Portable USD camera prims can be authored at four optical
+frames, but cameras are not annotators or outcome evidence; ultrasound, OCT,
+and Raman are frames/contracts only.
 
 ### Tumor and margin state
 
@@ -66,43 +69,42 @@ Raman remain explicit host bridges or calibrated proxies.
 - 32 tumor-core cells; and
 - 220 cells in the initial resection plan.
 
-The episode computes resected volume, healthy tissue loss, removed and residual
-modeled tumor volume, minimum margin, and fifth-percentile margin. Clearing
-only the initial plan is not automatically called a successful margin: missed
-satellites or an inadequate modeled boundary remain failures until corrected.
+Private task-proxy code can compute resected volume, healthy tissue loss,
+removed and residual modeled tumor volume, and grid-distance margin summaries.
+The roughly 9-10 mm cell spacing, full-voxel accounting, and uncalibrated field
+make these curriculum features, not geometric, pathological, or clinical
+margin evidence.
 
 ### Protected pedicles and detachment
 
-`resection_topology.json` contains 96 boundary bonds: 79 parenchymal, five
-fibrous, seven vascular, and five bile-duct pedicles. Each bond retains its
-authored modality and work threshold. Protected pedicles reject division until
-a bounded compression-and-energy seal is confirmed. The specimen detaches only
-after all bonds are released and all 12 protected pedicles are sealed.
+`resection_topology.json` contains 96 task-proxy boundary bonds: 79
+parenchymal, five fibrous, seven vascular, and five bile-duct pedicles. Each
+bond retains an authored modality and work threshold. No bond is connected to
+same-step tool contact, tissue/cohesive mechanics, vessel or duct response,
+thermal dose, or patient loss ledgers. Public seal, release, injury, and
+detachment mutation therefore fail closed.
 
-The thresholds are provisional simulation values. They are deliberately
-fail-closed, but they are not validated electrosurgical prescriptions.
+The private thresholds are provisional curriculum values, not validated
+electrosurgical prescriptions.
 
 ### Specimen and final result
 
-The state machine requires bag deployment, capture of a detached specimen,
-closure, and six orientation markers. The final report also requires a
-registered cavity scan, correction of residual modeled tumor, hemostasis/bile
-verification, blood loss at or below 5 ml, bile loss at or below 0.2 ml, no
-protected-structure injury, and a modeled minimum margin of at least 10 mm.
+The specimen bag is a rigid open/closed visual proxy without collision,
+deformation, attachment, or containment mechanics. The former task state
+tracks deployment, capture, closure, and six orientation strings privately,
+but no public final patient result is available. Reports expose explicitly
+non-authoritative task-proxy diagnostics and always return `success: false`.
 
 ## Isaac Lab training boundary
 
-`OncologicResectionEpisode.observation()` exposes 12 normalized task terms:
-phase, bond release, pedicle sealing, residual tumor, healthy-tissue loss,
-margin, blood, bile, sensor disagreement, confidence, bag closure, and
-orientation completeness. `reward()` shapes progress while retaining the final
-result as the success authority.
+`OncologicResectionEpisode.observation()`, `reward()`, phase progression, and
+finalization fail closed until the oncology scene-evidence bridge exists. The
+former 12-term observation and dense reward remain private task-proxy
+algorithms only.
 
-`sample_domain_parameters()` supplies bounded reset-time perturbations for
-registration, tissue stiffness, friction, sensor bias/dropout, and fluid-loss
-scales. These correspond to Isaac Lab event-manager reset semantics; USD-level
-startup randomization and tensor-level per-environment reset randomization must
-remain distinct when scene replication is active.
+`sample_domain_parameters()` returns bounded proposals for registration,
+tissue stiffness, friction, sensor bias/dropout, and fluid-loss scales. No
+source applies them to the scene, mechanics, sensors, or patient ledgers yet.
 
 The curriculum starts with a visible solitary lesion, then adds multifocal
 pathology, registration noise, protected pedicles, modality dropout,
@@ -123,17 +125,14 @@ whole-patient path:
 
 1. deactivate the demo liver;
 2. activate exactly one Dynamic Patient liver volume deformable;
-3. bind oncology state to the Dynamic Patient liver and tumor;
-4. preserve the patient's vessel and gallbladder/bile paths;
-5. use the shared blood and bile ledgers; and
-6. retain the mapping, resection, and cavity-scan registration frames.
+3. return a manifest of required oncology prim paths and frames.
 
-The deformable solver owns continuous nodal motion, collision, and contact.
-It does not perform arbitrary live mesh cutting. The registered tumor-cell
-field and 96-bond resection graph remain the explicit, deterministic authority
-for irreversible removal, protected-pedicle interlocks, and specimen
-detachment. This hybrid boundary follows NVIDIA's deformable guidance without
-inflating the implementation into an unsupported topology-changing FEM claim.
+The function does not bind oncology state to the liver/tumor, vessel or duct
+mechanics, shared blood/bile ledgers, or scene evidence. The deformable solver
+can own continuous nodal motion and collision, but it does not perform
+arbitrary live mesh cutting. The tumor-cell field and 96-bond graph remain
+non-authoritative task proxies until a workcell integration establishes those
+connections.
 
 The 18 kPa Young's-modulus, 0.47 Poisson-ratio, 1,060 kg/m3 density, damping,
 and solver-iteration values are research seeds. Native CUDA stability is not
@@ -157,11 +156,12 @@ python examples/validate_oncologic_resection_runtime.py \
   --representation franka --device cuda:0 --headless
 ```
 
-Native CUDA execution proves composition, articulation, joint targets,
-registered cameras, a live volume-deformable tensor view, finite liver nodal
-state, and finite simulator state for that exact runtime. Physical payload,
-contact, constitutive tissue response, sensing, sealing, cutting, specimen,
-margin, and clinical validity require separate evidence.
+The recorded native CUDA evidence proves composition, articulation discovery,
+a one-step finite setpoint sweep, a live volume-deformable tensor view, and
+bounded non-contact liver state for that exact runtime. Physical payload,
+contact, joint convergence, rendered sensing, constitutive tissue response,
+sealing, cutting, specimen containment, margins, and clinical validity require
+separate evidence.
 
 The recorded 25 July 2026 RTX 4090 stability lane passed with 274 live
 tetrahedral nodes, 6.146729e-8 m maximum nodal displacement,

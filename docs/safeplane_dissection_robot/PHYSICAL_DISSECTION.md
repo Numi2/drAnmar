@@ -8,13 +8,26 @@ The target bed is attached to two explicit kinematic fixtures. Surface
 self-collision is disabled by default for portable GPU deformable cooking and
 can be enabled explicitly only on a qualified solver configuration.
 
-Releasing a bridge removes its continuity joint. The anchor halves remain attached to their respective tissue layers, so separation is produced by the physics solver and traction mechanism rather than by directly rewriting the tissue transform.
+The authored representation permits a continuity joint to be removed while its
+anchor halves remain attached to their respective tissue layers. That is an
+asset-level topology mechanism, not evidence that a bridge failed under tool
+contact. Public bridge release currently fails closed because no exact-step
+scene-evidence adapter derives cohesive damage or disconnect state from the
+physics solver. The former caller-supplied release logic is retained only as a
+private task proxy.
 
-## Four release mechanisms
+## Proposed release modalities
 
-- blunt spreading accumulates mechanical contact work;
-- hydrodissection accumulates local delivered fluid volume and weakens mechanical thresholds;
-- guarded scissors release the bridge nearest the cut volume after guard and safety interlocks pass;
-- low-energy dissection accumulates a provisional local thermal-energy dose.
+- blunt spreading requires contact-derived force, relative motion, and integrated
+  work;
+- hydrodissection requires particle/tissue contact, deposited volume, and fluid
+  mass balance;
+- guarded scissors require live guard/blade transforms, contact/crossing
+  evidence, and a topology event;
+- low-energy dissection requires measured electrical/thermal delivery and shared
+  tissue damage state.
 
-All bridge thresholds are category-level engineering seeds and are not biomechanical or clinical claims.
+None of those evidence bridges exists in this package today. The static
+distance-weighted work, volume, and energy thresholds remain private,
+non-authoritative task proxies. All bridge thresholds are category-level
+engineering seeds and are not biomechanical or clinical claims.

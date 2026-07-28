@@ -202,13 +202,14 @@ def main() -> int:
         png_files = sorted(asset_root.rglob("*.png"))
         python_files = [
             root / "examples/franka_atraumatic_exposure_scene.py",
-            root / "examples/validate_atraumatic_exposure_runtime.py",
             root / "scripts/generate_dranmar_atraumatic_exposure_robot.py",
             root / "scripts/validate_dranmar_atraumatic_exposure_robot.py",
             root
             / "source/extensions/orbit.surgical.assets/orbit/surgical/assets"
+            / "atraumatic_exposure_scene_evidence.py",
+            root
+            / "source/extensions/orbit.surgical.assets/orbit/surgical/assets"
             / "atraumatic_exposure_robot.py",
-            root / "tests/test_atraumatic_exposure_robot.py",
         ]
         require(all(path.is_file() for path in python_files), "installed Python surface is incomplete")
     for path in json_files:
@@ -236,8 +237,8 @@ def main() -> int:
         "docs/atraumatic_exposure_robot/FRANKA_INTEGRATION.md",
         "docs/atraumatic_exposure_robot/FORCE_CONTROL.md",
         "docs/atraumatic_exposure_robot/TISSUE_CAPTURE.md",
-        "examples/validate_atraumatic_exposure_runtime.py",
-        "tests/test_atraumatic_exposure_robot.py",
+        "source/extensions/orbit.surgical.assets/orbit/surgical/assets/"
+        "atraumatic_exposure_scene_evidence.py",
     }
     if package_mode:
         require(
