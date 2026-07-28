@@ -6364,6 +6364,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 torch.inf,
                 device=env.unwrapped.device,
             ),
+            "receiver_swept_tool_guard_active_steps": torch.zeros(
+                (),
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "ever_receiver_swept_tool_guard_active": torch.zeros_like(
+                first_unresolved
+            ),
+            "minimum_receiver_swept_orientation_scale": torch.ones(
+                env.unwrapped.num_envs,
+                device=env.unwrapped.device,
+            ),
             "deadline_option_step_counts": torch.zeros(
                 3,
                 dtype=torch.int64,
@@ -7558,6 +7570,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "last_receiver_distal_tool_distance_m",
                         None,
                     )
+                    swept_tool_guard_active = getattr(
+                        controller,
+                        "last_receiver_swept_tool_guard_active",
+                        None,
+                    )
+                    swept_orientation_scale = getattr(
+                        controller,
+                        "last_receiver_swept_orientation_scale",
+                        None,
+                    )
                     if (
                         shaft_guard_active is not None
                         and shaft_guard_eligible is not None
@@ -7650,6 +7672,40 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 (
                                     "minimum_receiver_"
                                     "distal_tool_distance_m"
+                                )
+                            ],
+                        )
+                    if (
+                        swept_tool_guard_active is not None
+                        and swept_orientation_scale is not None
+                    ):
+                        counted_swept_tool_guard = (
+                            was_first_unresolved
+                            & swept_tool_guard_active
+                        )
+                        first_handover_history[
+                            "receiver_swept_tool_guard_active_steps"
+                        ] += counted_swept_tool_guard.sum()
+                        first_handover_history[
+                            "ever_receiver_swept_tool_guard_active"
+                        ] |= counted_swept_tool_guard
+                        first_handover_history[
+                            "minimum_receiver_swept_orientation_scale"
+                        ] = torch.where(
+                            was_first_unresolved,
+                            torch.minimum(
+                                first_handover_history[
+                                    (
+                                        "minimum_receiver_swept_"
+                                        "orientation_scale"
+                                    )
+                                ],
+                                swept_orientation_scale,
+                            ),
+                            first_handover_history[
+                                (
+                                    "minimum_receiver_swept_"
+                                    "orientation_scale"
                                 )
                             ],
                         )
@@ -9642,6 +9698,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                             ]
                                         )
                                     ]
+                                )
+                            ),
+                        },
+                        "swept_se3_guard": {
+                            "active_steps": int(
+                                first_handover_history[
+                                    (
+                                        "receiver_swept_tool_"
+                                        "guard_active_steps"
+                                    )
+                                ].item()
+                            ),
+                            "environments_activated": int(
+                                first_handover_history[
+                                    (
+                                        "ever_receiver_swept_"
+                                        "tool_guard_active"
+                                    )
+                                ][first_completed]
+                                .sum()
+                                .item()
+                            ),
+                            "minimum_orientation_scale": (
+                                handover_scalar_quantiles(
+                                    first_handover_history[
+                                        (
+                                            "minimum_receiver_swept_"
+                                            "orientation_scale"
+                                        )
+                                    ][first_completed]
                                 )
                             ),
                         },

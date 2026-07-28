@@ -84,6 +84,7 @@ class HandoverAnalyticController(nn.Module):
         self.receiver_distal_tool_guard_end_from_tip_m = 0.025
         self.receiver_distal_tool_guard_activation_distance_m = 0.012
         self.receiver_distal_tool_guard_minimum_distance_m = 0.008
+        self.receiver_swept_tool_guard_enabled = False
         self.register_buffer(
             "last_recovery_receiver_shaft_guard_active",
             torch.empty(0, dtype=torch.bool),
@@ -117,6 +118,26 @@ class HandoverAnalyticController(nn.Module):
         self.register_buffer(
             "last_receiver_distal_tool_distance_m",
             torch.empty(0),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_receiver_swept_tool_guard_active",
+            torch.empty(0, dtype=torch.bool),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_receiver_swept_orientation_scale",
+            torch.empty(0),
+            persistent=False,
+        )
+        self.register_buffer(
+            "receiver_swept_guard_orientation_scales",
+            torch.tensor((1.0, 0.5, 0.0)),
+            persistent=False,
+        )
+        self.register_buffer(
+            "receiver_swept_guard_time_fractions",
+            torch.tensor((0.5, 1.0)),
             persistent=False,
         )
         self.register_buffer(
@@ -220,6 +241,7 @@ class HandoverAnalyticController(nn.Module):
         self.custody_quality_stop_threshold = 0.30
         self.custody_quality_centering_action_limit = 0.02
         self.custody_quality_minimum_transport_scale = 0.20
+        self.custody_quality_axial_centering_enabled = False
         self.controller_profile_name = "unbundled-source-default"
         self.controller_profile_sha256 = None
 
@@ -418,6 +440,204 @@ class HandoverAnalyticController(nn.Module):
             action[:, :3],
         )
         return projected_action, active
+
+    @staticmethod
+    def _quaternion_from_axis_angle(
+        axis_angle: torch.Tensor,
+    ) -> torch.Tensor:
+        """Convert an axis-angle command to an (x, y, z, w) quaternion."""
+        angle = torch.linalg.vector_norm(
+            axis_angle,
+            dim=-1,
+            keepdim=True,
+        )
+        half_angle = 0.5 * angle
+        vector_scale = torch.where(
+            angle > 1.0e-8,
+            torch.sin(half_angle) / angle.clamp_min(1.0e-8),
+            0.5 - angle.square() / 48.0,
+        )
+        return torch.cat(
+            (
+                axis_angle * vector_scale,
+                torch.cos(half_angle),
+            ),
+            dim=-1,
+        )
+
+    def _receiver_tool_capsule_distances(
+        self,
+        giver_ee: torch.Tensor,
+        receiver_ee_in_giver: torch.Tensor,
+        receiver_orientation: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Measure receiver jaw clearance from proximal and distal tool capsules."""
+        giver_to_rcm_direction = -giver_ee
+        giver_to_rcm_direction = (
+            giver_to_rcm_direction
+            / torch.linalg.vector_norm(
+                giver_to_rcm_direction,
+                dim=-1,
+                keepdim=True,
+            ).clamp_min(1.0e-8)
+        )
+        receiver_jaw_offset = torch.zeros_like(
+            receiver_ee_in_giver
+        )
+        receiver_jaw_offset[..., 2] = (
+            self.receiver_jaw_proximal_offset_m
+        )
+        flat_receiver_orientation = receiver_orientation.reshape(-1, 4)
+        flat_receiver_jaw_offset = receiver_jaw_offset.reshape(-1, 3)
+        receiver_jaw_proximal = (
+            receiver_ee_in_giver
+            + quat_apply(
+                flat_receiver_orientation,
+                flat_receiver_jaw_offset,
+            ).reshape_as(receiver_jaw_offset)
+        )
+        giver_shaft_start = (
+            giver_ee
+            + giver_to_rcm_direction
+            * self.recovery_receiver_shaft_guard_start_from_tip_m
+        )
+        receiver_from_shaft = self._segment_to_segment_delta(
+            giver_shaft_start,
+            torch.zeros_like(giver_shaft_start),
+            receiver_ee_in_giver,
+            receiver_jaw_proximal,
+        )
+        giver_distal_start = (
+            giver_ee
+            + giver_to_rcm_direction
+            * self.receiver_distal_tool_guard_start_from_tip_m
+        )
+        giver_distal_end = (
+            giver_ee
+            + giver_to_rcm_direction
+            * self.receiver_distal_tool_guard_end_from_tip_m
+        )
+        receiver_from_distal = self._segment_to_segment_delta(
+            giver_distal_start,
+            giver_distal_end,
+            receiver_ee_in_giver,
+            receiver_jaw_proximal,
+        )
+        return (
+            torch.linalg.vector_norm(receiver_from_shaft, dim=-1),
+            torch.linalg.vector_norm(receiver_from_distal, dim=-1),
+        )
+
+    def _collision_safe_receiver_orientation_scale(
+        self,
+        *,
+        giver_ee: torch.Tensor,
+        receiver_ee_in_giver: torch.Tensor,
+        receiver_orientation: torch.Tensor,
+        giver_translation: torch.Tensor,
+        receiver_translation: torch.Tensor,
+        receiver_orientation_action: torch.Tensor,
+        current_shaft_distance: torch.Tensor,
+        current_distal_distance: torch.Tensor,
+        eligible: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Select the largest sampled orientation fraction with safe swept clearance."""
+        count = giver_ee.shape[0]
+        orientation_scales = (
+            self.receiver_swept_guard_orientation_scales.to(
+                dtype=giver_ee.dtype,
+                device=giver_ee.device,
+            )
+        )
+        time_fractions = self.receiver_swept_guard_time_fractions.to(
+            dtype=giver_ee.dtype,
+            device=giver_ee.device,
+        )
+        candidate_count = orientation_scales.numel()
+        sample_count = time_fractions.numel()
+        time_grid = time_fractions.view(1, 1, sample_count, 1)
+        orientation_grid = orientation_scales.view(
+            1,
+            candidate_count,
+            1,
+            1,
+        )
+        sampled_giver_ee = (
+            giver_ee[:, None, None, :]
+            + time_grid
+            * giver_translation[:, None, None, :]
+            * self.position_scale
+        ).expand(-1, candidate_count, -1, -1)
+        sampled_receiver_ee = (
+            receiver_ee_in_giver[:, None, None, :]
+            + time_grid
+            * receiver_translation[:, None, None, :]
+            * self.position_scale
+        ).expand(-1, candidate_count, -1, -1)
+        sampled_axis_angle = (
+            receiver_orientation_action[:, None, None, :]
+            * self.orientation_scale
+            * orientation_grid
+            * time_grid
+        )
+        sampled_delta_orientation = self._quaternion_from_axis_angle(
+            sampled_axis_angle
+        )
+        sampled_receiver_orientation = quat_mul(
+            sampled_delta_orientation.reshape(-1, 4),
+            receiver_orientation[:, None, None, :]
+            .expand(-1, candidate_count, sample_count, -1)
+            .reshape(-1, 4),
+        ).reshape(count, candidate_count, sample_count, 4)
+        sampled_shaft_distance, sampled_distal_distance = (
+            self._receiver_tool_capsule_distances(
+                sampled_giver_ee,
+                sampled_receiver_ee,
+                sampled_receiver_orientation,
+            )
+        )
+        required_shaft_distance = torch.minimum(
+            current_shaft_distance,
+            torch.full_like(
+                current_shaft_distance,
+                self.recovery_receiver_shaft_guard_minimum_distance_m,
+            ),
+        )
+        required_distal_distance = torch.minimum(
+            current_distal_distance,
+            torch.full_like(
+                current_distal_distance,
+                self.receiver_distal_tool_guard_minimum_distance_m,
+            ),
+        )
+        candidate_safe = (
+            sampled_shaft_distance
+            >= required_shaft_distance[:, None, None] - 1.0e-6
+        )
+        if self.receiver_distal_tool_guard_enabled:
+            candidate_safe &= (
+                sampled_distal_distance
+                >= required_distal_distance[:, None, None] - 1.0e-6
+            )
+        candidate_safe = candidate_safe.all(dim=-1)
+        any_safe = candidate_safe.any(dim=-1)
+        selected_index = torch.argmax(
+            candidate_safe.to(dtype=torch.int64),
+            dim=-1,
+        )
+        selected_scale = orientation_scales[selected_index]
+        selected_scale = torch.where(
+            any_safe,
+            selected_scale,
+            torch.zeros_like(selected_scale),
+        )
+        selected_scale = torch.where(
+            eligible,
+            selected_scale,
+            torch.ones_like(selected_scale),
+        )
+        active = eligible & (selected_scale < 1.0 - 1.0e-6)
+        return selected_scale, active
 
     def _select_role(
         self,
@@ -1185,10 +1405,13 @@ class HandoverAnalyticController(nn.Module):
                 -self.custody_quality_centering_action_limit,
                 self.custody_quality_centering_action_limit,
             )
-            giver_carry[:, :2] += (
-                giver_centering_error[:, :2]
+            giver_centering_correction = (
+                giver_centering_error
                 * (1.0 - custody_transport_scale).unsqueeze(-1)
             )
+            if not self.custody_quality_axial_centering_enabled:
+                giver_centering_correction[:, 2] = 0.0
+            giver_carry += giver_centering_correction
         else:
             custody_transport_scale = torch.ones_like(
                 custody_transport_scale
@@ -1649,6 +1872,56 @@ class HandoverAnalyticController(nn.Module):
             receiver_orientation_active.unsqueeze(-1),
             receiver_orientation_action,
             torch.zeros_like(receiver_orientation_action),
+        )
+        receiver_swept_tool_guard_eligible = (
+            receiver_shaft_guard_context
+            & (receiver_preposition_active | receiver_approach_active)
+            & torch.full_like(
+                receiver_shaft_guard_context,
+                self.receiver_swept_tool_guard_enabled,
+            )
+        )
+        if self.receiver_swept_tool_guard_enabled:
+            (
+                receiver_swept_orientation_scale,
+                receiver_swept_tool_guard_active,
+            ) = self._collision_safe_receiver_orientation_scale(
+                giver_ee=giver_ee,
+                receiver_ee_in_giver=receiver_ee_in_giver,
+                receiver_orientation=receiver_orientation,
+                giver_translation=giver_translation,
+                receiver_translation=receiver_translation,
+                receiver_orientation_action=receiver_orientation_action,
+                current_shaft_distance=receiver_shaft_distance,
+                current_distal_distance=receiver_distal_tool_distance,
+                eligible=receiver_swept_tool_guard_eligible,
+            )
+        else:
+            receiver_swept_orientation_scale = torch.ones_like(
+                receiver_shaft_distance
+            )
+            receiver_swept_tool_guard_active = torch.zeros_like(
+                receiver_shaft_guard_context
+            )
+        receiver_orientation_action *= (
+            receiver_swept_orientation_scale.unsqueeze(-1)
+        )
+        self.last_receiver_swept_tool_guard_active = (
+            receiver_swept_tool_guard_active.detach()
+        )
+        self.last_receiver_swept_orientation_scale = (
+            receiver_swept_orientation_scale.detach()
+        )
+        self.last_recovery_receiver_shaft_guard_active = (
+            self.last_recovery_receiver_shaft_guard_active
+            | receiver_swept_tool_guard_active.detach()
+        )
+        self.last_receiver_preposition_shaft_guard_active = (
+            self.last_receiver_preposition_shaft_guard_active
+            | (
+                receiver_swept_tool_guard_active
+                & receiver_preposition_active
+            ).detach()
         )
 
         giver_action = torch.cat(

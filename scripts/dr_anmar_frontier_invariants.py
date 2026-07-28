@@ -442,6 +442,72 @@ def _assert_finite_segment_collision_geometry(
         raise AssertionError(
             "interior crossing retained an unsafe inward action"
         )
+    controller.receiver_distal_tool_guard_enabled = True
+    giver_ee = torch.tensor(
+        [[0.0, 0.0, -0.1]],
+        dtype=dtype,
+        device=device,
+    )
+    receiver_ee = torch.tensor(
+        [[0.0081, 0.0, -0.09]],
+        dtype=dtype,
+        device=device,
+    )
+    identity_orientation = torch.tensor(
+        [[0.0, 0.0, 0.0, 1.0]],
+        dtype=dtype,
+        device=device,
+    )
+    shaft_distance, distal_distance = (
+        controller._receiver_tool_capsule_distances(
+            giver_ee,
+            receiver_ee,
+            identity_orientation,
+        )
+    )
+    zero_translation = torch.zeros_like(giver_ee)
+    inward_orientation_action = torch.tensor(
+        [[0.0, -0.6, 0.0]],
+        dtype=dtype,
+        device=device,
+    )
+    inward_scale, swept_active = (
+        controller._collision_safe_receiver_orientation_scale(
+            giver_ee=giver_ee,
+            receiver_ee_in_giver=receiver_ee,
+            receiver_orientation=identity_orientation,
+            giver_translation=zero_translation,
+            receiver_translation=zero_translation,
+            receiver_orientation_action=inward_orientation_action,
+            current_shaft_distance=shaft_distance,
+            current_distal_distance=distal_distance,
+            eligible=torch.ones(1, dtype=torch.bool, device=device),
+        )
+    )
+    if not bool(swept_active.item()) or float(inward_scale.item()) >= 1.0:
+        raise AssertionError(
+            "swept guard retained a full unsafe orientation command"
+        )
+    outward_scale, outward_active = (
+        controller._collision_safe_receiver_orientation_scale(
+            giver_ee=giver_ee,
+            receiver_ee_in_giver=receiver_ee,
+            receiver_orientation=identity_orientation,
+            giver_translation=zero_translation,
+            receiver_translation=zero_translation,
+            receiver_orientation_action=-inward_orientation_action,
+            current_shaft_distance=shaft_distance,
+            current_distal_distance=distal_distance,
+            eligible=torch.ones(1, dtype=torch.bool, device=device),
+        )
+    )
+    if bool(outward_active.item()) or not torch.allclose(
+        outward_scale,
+        torch.ones_like(outward_scale),
+    ):
+        raise AssertionError(
+            "swept guard altered an orientation command that increases clearance"
+        )
 
     separated_delta = HandoverAnalyticController._segment_to_segment_delta(
         first_start,
@@ -476,6 +542,8 @@ def _assert_finite_segment_collision_geometry(
         "crossing_projected_inward_action": float(
             projected_inward_action.item()
         ),
+        "unsafe_orientation_scale": float(inward_scale.item()),
+        "safe_orientation_scale": float(outward_scale.item()),
     }
 
 

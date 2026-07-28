@@ -41,6 +41,7 @@ _V23_VALUES: dict[str, bool | float | int] = {
     "receiver_distal_tool_guard_end_from_tip_m": 0.025,
     "receiver_distal_tool_guard_activation_distance_m": 0.012,
     "receiver_distal_tool_guard_minimum_distance_m": 0.008,
+    "receiver_swept_tool_guard_enabled": False,
     "transport_custody_latch_enabled": True,
     "receiver_preposition_enabled": True,
     "receiver_preposition_height": 0.025,
@@ -93,6 +94,7 @@ _V23_VALUES: dict[str, bool | float | int] = {
     "custody_quality_stop_threshold": 0.30,
     "custody_quality_centering_action_limit": 0.02,
     "custody_quality_minimum_transport_scale": 0.20,
+    "custody_quality_axial_centering_enabled": False,
 }
 
 _PROFILE_VALUES: dict[str, dict[str, bool | float | int]] = {
@@ -118,6 +120,10 @@ _PROFILE_VALUES: dict[str, dict[str, bool | float | int]] = {
         # Cover that distinct 10--25 mm region with its own asset-sized
         # capsule while leaving the needle-acquisition corridor at the tip.
         "receiver_distal_tool_guard_enabled": True,
+        # Translation-only projection cannot protect against a simultaneous
+        # receiver orientation sweep. Evaluate the combined SE(3) command and
+        # retain the largest collision-safe orientation fraction.
+        "receiver_swept_tool_guard_enabled": True,
         # A two-jaw grasp can be usable while briefly asymmetric.  This score
         # slows transport before physical custody is lost; it does not create
         # contact, success, or permission to open the giver.
@@ -127,6 +133,9 @@ _PROFILE_VALUES: dict[str, dict[str, bool | float | int]] = {
         # A custody barrier must be able to remove transport authority
         # completely.  A non-zero floor kept pulling after incipient slip.
         "custody_quality_minimum_transport_scale": 0.0,
+        # The stop must actively restore the 3-D grasp frame rather than only
+        # centering laterally and waiting below the presentation height.
+        "custody_quality_axial_centering_enabled": True,
     },
 }
 

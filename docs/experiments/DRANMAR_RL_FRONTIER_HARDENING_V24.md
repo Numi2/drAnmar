@@ -98,8 +98,11 @@ giver receives a small bounded centering correction. The giver never opens in
 mid-air, contact is not fabricated, and the existing three-attempt physical
 regrasp/re-lift recovery remains authoritative. At or below the stop threshold,
 v24 removes transport authority completely; the previous 20% floor continued
-pulling during incipient slip. Evidence separately records minimum quality,
-minimum transport scale, and episodes where the governor was active.
+pulling during incipient slip. The stopped controller applies the same bounded
+grasp-frame correction on all three translation axes; lateral-only centering
+reduced slip but could leave the needle below the presentation trajectory.
+Evidence separately records minimum quality, minimum transport scale, and
+episodes where the governor was active.
 
 Phase-two lateral transport and receiver acquisition additionally require
 current native bilateral giver custody. A latched phase label cannot command
@@ -121,6 +124,30 @@ cross-sections plus clearance, rather than inflating the full shaft through the
 valid needle-acquisition corridor. Exact segment crossings use a stable
 receiver-side separating normal, so a zero-distance intersection cannot
 silently produce a zero correction.
+
+Translation projection alone is insufficient because the receiver translates
+and rotates in the same relative-IK action. v24 samples the combined giver and
+receiver SE(3) step at its midpoint and endpoint, then keeps the largest of
+the full, half, or zero receiver-orientation commands that preserves both
+capsule clearances. This is a bounded local safety layer, not a claim that it
+replaces global cuRobo/cuMotion planning.
+
+### Causal audit after guarded preposition
+
+The seed-17, 256-environment, 1,200-frame zero-residual baseline at commit
+`33f3eb5` rejected PPO. Compared with guarded preposition, making the custody
+floor a true stop reduced sustained three-step mid-air losses from 120 to 108
+and produced the first recovered success, but retained success fell from 18 to
+10. Stable presentation fell from 157 to 149. The distal capsule activated in
+only 9 environments and safety changed only from 21 to 20 terminations; all 20
+remaining events were receiver collisions against giver roll/pitch bodies.
+
+The result proves two missing controller terms rather than a reward problem:
+the custody stop needs axial reseating to regain the presentation trajectory,
+and the collision barrier must cover receiver orientation sweep. The evidence
+is retained under
+`output/frontier-hardening-v24/nominal-baseline-distal-custody-stop-seed17`
+on Numi. It is rejected evidence, not a promoted policy.
 
 ### The new residual is narrow and exact-zero
 
