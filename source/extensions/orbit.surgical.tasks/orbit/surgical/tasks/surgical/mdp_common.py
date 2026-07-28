@@ -85,8 +85,11 @@ def contact_force_magnitude(env: ManagerBasedRLEnv, sensor_name: str) -> torch.T
     return torch.linalg.vector_norm(forces.reshape(env.num_envs, -1, 3), dim=-1).amax(dim=-1)
 
 
-def non_object_contact_force_magnitude(env: ManagerBasedRLEnv, sensor_name: str) -> torch.Tensor:
-    """Magnitude of native jaw force not accounted for by the filtered object.
+def non_object_contact_force_vector(
+    env: ManagerBasedRLEnv,
+    sensor_name: str,
+) -> torch.Tensor:
+    """Native jaw-force vector not accounted for by the filtered object.
 
     This uses the vector residual between the sensor's total force and its
     object-filtered force. It avoids unsupported GPU filtering against complex
@@ -96,12 +99,20 @@ def non_object_contact_force_magnitude(env: ManagerBasedRLEnv, sensor_name: str)
     net = as_torch(sensor.data.net_forces_w) if sensor.data.net_forces_w is not None else None
     filtered = as_torch(sensor.data.force_matrix_w) if sensor.data.force_matrix_w is not None else None
     if net is None:
-        return torch.zeros(env.num_envs, device=env.device)
+        return torch.zeros((env.num_envs, 3), device=env.device)
     net_vector = net.reshape(env.num_envs, -1, 3).sum(dim=1)
     if filtered is None:
-        return torch.linalg.vector_norm(net_vector, dim=-1)
+        return net_vector
     object_vector = filtered.reshape(env.num_envs, -1, 3).sum(dim=1)
-    return torch.linalg.vector_norm(net_vector - object_vector, dim=-1)
+    return net_vector - object_vector
+
+
+def non_object_contact_force_magnitude(env: ManagerBasedRLEnv, sensor_name: str) -> torch.Tensor:
+    """Magnitude of native jaw force not accounted for by the filtered object."""
+    return torch.linalg.vector_norm(
+        non_object_contact_force_vector(env, sensor_name),
+        dim=-1,
+    )
 
 
 def paired_contact_forces(

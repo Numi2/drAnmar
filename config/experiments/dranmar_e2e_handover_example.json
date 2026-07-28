@@ -838,12 +838,12 @@
     "qualification_boundary": "rejected_no_measurable_effect_at_scale"
   },
   "protected_contact_collider_attribution_v22": {
-    "status": "native_contact_event_stream_implemented_awaiting_exact_runtime_evaluation",
+    "status": "pre_reset_geometric_attribution_implemented_awaiting_exact_runtime_evaluation",
     "purpose": "resolve_the_remaining_receiver_non_object_force_into_counterpart_psm_collision_geometry_or_support_table_before_any_further_control_change",
-    "backend_contract": "native_physx_contact_report_subscription_with_collider0_and_collider1_identity",
+    "backend_contract": "native_contact_force_vector_plus_pre_reset_rigid_body_poses",
     "capture_point": "same_control_step_as_the_pre_reset_hard_termination",
     "force_source": "unchanged_gpu_contact_sensor_total_minus_needle_vector_residual",
-    "partner_identity_source": "native_physx_contact_header_collider_pair",
+    "partner_identity_source": "force_direction_and_responsible_jaw_distance_to_table_object_own_jaw_and_counterpart_tool_bodies",
     "rejected_instrumentation": [
       {
         "method": "body_path_force_matrix_filters",
@@ -852,6 +852,10 @@
       {
         "method": "explicit_collider_force_matrix_filters",
         "reason": "gpu_physx_reported_complex_table_and_articulation_collider_filters_as_unsupported"
+      },
+      {
+        "method": "native_physx_contact_report_subscription",
+        "reason": "exact_gpu_direct_replay_reproduced_all_five_terminals_but_emitted_no_python_contact_report_events"
       }
     ],
     "unchanged": [
@@ -864,11 +868,12 @@
       "hard_termination_limit"
     ],
     "runtime_sequence": [
-      "validate_native_contact_events_on_small_population",
       "replay_exact_seed_2361_on_2000_environments",
-      "select_narrow_control_fix_only_from_dominant_partner_evidence"
+      "classify_force_direction_and_nearest_tool_or_support_geometry",
+      "select_narrow_control_fix_only_from_dominant_geometric_evidence"
     ],
-    "qualification_boundary": "diagnostics_must_preserve_the_1164_of_2000_outcome_and_identify_the_dominant_partner_for_all_five_protected_surface_terminals"
+    "interpretation_boundary": "body_origin_proximity_is_diagnostic_geometry_not_direct_collider_identity",
+    "qualification_boundary": "diagnostics_must_preserve_the_1164_of_2000_outcome_and_geometrically_explain_all_five_protected_surface_terminals"
   },
   "current_recovery_frontier": {
     "status": "performance_frontier_not_formally_promoted",

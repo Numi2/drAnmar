@@ -33,10 +33,9 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         "protected_contact_collider_attribution_v22"
     ]
     assert collider_attribution["backend_contract"] == (
-        "native_physx_contact_report_subscription_with_collider0_and_"
-        "collider1_identity"
+        "native_contact_force_vector_plus_pre_reset_rigid_body_poses"
     )
-    assert len(collider_attribution["rejected_instrumentation"]) == 2
+    assert len(collider_attribution["rejected_instrumentation"]) == 3
     assert "policy_actions" in collider_attribution["unchanged"]
     assert "rewards" in collider_attribution["unchanged"]
     baseline = contract["known_good_baseline"]
@@ -490,9 +489,17 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
         "_dr_anmar_terminal_protected_surface_forces_n"
         in termination_source
     )
-    assert '"contact_report_event_attribution"' in benchmark_source
-    assert '"physx_contact_header_collider_pair"' in benchmark_source
-    assert "PhysxJawContactAttributionCollector" in benchmark_source
+    assert (
+        "_dr_anmar_terminal_protected_surface_force_vectors_w_n"
+        in termination_source
+    )
+    assert (
+        "_dr_anmar_terminal_protected_surface_{robot_name}_body_poses_w"
+        in termination_source
+    )
+    assert '"pre_reset_geometric_attribution"' in benchmark_source
+    assert '"minimum_counterpart_body_origin_distance_m"' in benchmark_source
+    assert "PhysxJawContactAttributionCollector" not in benchmark_source
     assert '"terminal_pickup_attempt_histogram"' in benchmark_source
     assert "--receiver_crossing_angle_rad" in benchmark_source
     assert "--receiver_grasp_retain_residual" in benchmark_source

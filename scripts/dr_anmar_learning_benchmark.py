@@ -5252,11 +5252,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     lift_mdp_common = None
     handover_mdp_common = None
     handover_non_object_sensor_names: tuple[str, ...] = ()
-    physx_contact_collector = None
-    first_terminal_protected_contact_reports: dict[
-        int,
-        list[dict[str, Any]],
-    ] = {}
+    handover_protected_attribution_body_names: tuple[str, ...] = ()
     procedure_diagnostic_trace = None
     diagnostic_trace_frames = {
         0,
@@ -5316,9 +5312,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     first_handover_max_phase = None
     first_handover_history = None
     if "Handover-" in args.task:
-        from dr_anmar_physx_contact_attribution import (
-            PhysxJawContactAttributionCollector,
-        )
         from orbit.surgical.tasks.surgical import (
             mdp_common as handover_mdp_common,
         )
@@ -5333,8 +5326,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "robot_2_jaw_1_object_contact",
             "robot_2_jaw_2_object_contact",
         )
-        physx_contact_collector = PhysxJawContactAttributionCollector(
-            env.unwrapped.num_envs
+        handover_protected_attribution_body_names = (
+            "psm_main_insertion_link_3",
+            "psm_tool_roll_link",
+            "psm_tool_pitch_link",
+            "psm_tool_yaw_link",
+            "psm_tool_gripper1_link",
+            "psm_tool_gripper2_link",
         )
         receiver_grasp_offset = needle_geometry_grasp_offset_m(0.65)
         receiver_roll_offset_rad = float(
@@ -5369,6 +5367,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "terminal_protected_surface_force_by_sensor_n": torch.zeros(
                 env.unwrapped.num_envs,
                 len(handover_non_object_sensor_names),
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_force_vector_w_n": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_non_object_sensor_names),
+                3,
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_robot_1_body_poses_w": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_protected_attribution_body_names),
+                7,
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_robot_2_body_poses_w": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_protected_attribution_body_names),
+                7,
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_object_position_w": torch.zeros(
+                env.unwrapped.num_envs,
+                3,
                 device=env.unwrapped.device,
             ),
             "ever_giver_bilateral_contact": torch.zeros_like(
@@ -5698,8 +5719,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "initial_object_xy": initial_object_xy,
             "initial_target_xy": initial_target_xy,
         }
-    if physx_contact_collector is not None:
-        physx_contact_collector.start()
     started = time.perf_counter()
     try:
         for frame_index in range(args.num_frames):
@@ -6561,8 +6580,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                     ],
                                     counted_norm.max(),
                                 )
-                if physx_contact_collector is not None:
-                    physx_contact_collector.begin_control_step()
                 obs, reward, dones, extras = env.step(actions)
                 if first_handover_history is not None:
                     assert handover_mdp_common is not None
@@ -6666,16 +6683,40 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 protected_surface_dones
                             ]
                         )
-                    if physx_contact_collector is not None:
-                        protected_environment_indices = torch.nonzero(
-                            protected_surface_dones,
-                            as_tuple=False,
-                        ).flatten().tolist()
-                        first_terminal_protected_contact_reports.update(
-                            physx_contact_collector.events_for_environments(
-                                protected_environment_indices
-                            )
+                    protected_terminal_attributes = (
+                        (
+                            "terminal_protected_surface_force_vector_w_n",
+                            "_dr_anmar_terminal_protected_surface_"
+                            "force_vectors_w_n",
+                        ),
+                        (
+                            "terminal_protected_surface_robot_1_body_poses_w",
+                            "_dr_anmar_terminal_protected_surface_"
+                            "robot_1_body_poses_w",
+                        ),
+                        (
+                            "terminal_protected_surface_robot_2_body_poses_w",
+                            "_dr_anmar_terminal_protected_surface_"
+                            "robot_2_body_poses_w",
+                        ),
+                        (
+                            "terminal_protected_surface_object_position_w",
+                            "_dr_anmar_terminal_protected_surface_"
+                            "object_position_w",
+                        ),
+                    )
+                    for history_key, environment_attribute in (
+                        protected_terminal_attributes
+                    ):
+                        terminal_value = getattr(
+                            env.unwrapped,
+                            environment_attribute,
+                            None,
                         )
+                        if terminal_value is not None:
+                            first_handover_history[history_key][
+                                protected_surface_dones
+                            ] = terminal_value[protected_surface_dones]
                     post_handover_state = getattr(
                         env.unwrapped,
                         "_dr_anmar_handover_state",
@@ -7593,8 +7634,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 protected_surface_mask,
                 as_tuple=False,
             ).flatten().tolist()
-            protected_contact_report_episodes = []
-            protected_contact_report_category_counts: dict[str, int] = {}
+            protected_geometric_episodes = []
+            table_surface_world_z_m = 0.00019999074935913
             for environment_index in protected_environment_indices:
                 terminal_forces = first_handover_history[
                     "terminal_protected_surface_force_by_sensor_n"
@@ -7602,18 +7643,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 responsible_sensor_index = int(
                     terminal_forces.argmax().item()
                 )
-                step_events = first_terminal_protected_contact_reports.get(
-                    environment_index,
-                    [],
+                force_vectors = first_handover_history[
+                    "terminal_protected_surface_force_vector_w_n"
+                ][environment_index]
+                responsible_force_vector = force_vectors[
+                    responsible_sensor_index
+                ]
+                responsible_force_norm = torch.linalg.vector_norm(
+                    responsible_force_vector
                 )
-                responsible_event = next(
-                    (
-                        event
-                        for event in step_events
-                        if event["sensor_index"]
-                        == responsible_sensor_index
-                    ),
-                    None,
+                vertical_force_fraction = (
+                    float(
+                        (
+                            responsible_force_vector[2].abs()
+                            / responsible_force_norm
+                        ).item()
+                    )
+                    if float(responsible_force_norm.item()) > 0.0
+                    else 0.0
                 )
                 giver_is_robot_1 = bool(
                     first_handover_history["giver_is_robot_1"][
@@ -7626,21 +7673,49 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     if reporter_is_robot_1 == giver_is_robot_1
                     else "receiver"
                 )
-                partner_category = (
-                    responsible_event["partner_category"]
-                    if responsible_event is not None
-                    else "unattributed"
+                reporter_robot_name = (
+                    "robot_1" if reporter_is_robot_1 else "robot_2"
                 )
-                protected_contact_report_category_counts[
-                    partner_category
-                ] = (
-                    protected_contact_report_category_counts.get(
-                        partner_category,
-                        0,
-                    )
-                    + 1
+                counterpart_robot_name = (
+                    "robot_2" if reporter_is_robot_1 else "robot_1"
                 )
-                protected_contact_report_episodes.append(
+                reporter_body_poses = first_handover_history[
+                    "terminal_protected_surface_"
+                    f"{reporter_robot_name}_body_poses_w"
+                ][environment_index]
+                counterpart_body_poses = first_handover_history[
+                    "terminal_protected_surface_"
+                    f"{counterpart_robot_name}_body_poses_w"
+                ][environment_index]
+                responsible_jaw_body_index = (
+                    4 + (responsible_sensor_index % 2)
+                )
+                responsible_jaw_position = reporter_body_poses[
+                    responsible_jaw_body_index,
+                    :3,
+                ]
+                counterpart_distances = torch.linalg.vector_norm(
+                    counterpart_body_poses[:, :3]
+                    - responsible_jaw_position.unsqueeze(0),
+                    dim=-1,
+                )
+                minimum_counterpart_body_index = int(
+                    counterpart_distances.argmin().item()
+                )
+                other_jaw_body_index = (
+                    5 if responsible_jaw_body_index == 4 else 4
+                )
+                own_other_jaw_distance = torch.linalg.vector_norm(
+                    reporter_body_poses[other_jaw_body_index, :3]
+                    - responsible_jaw_position
+                )
+                object_position = first_handover_history[
+                    "terminal_protected_surface_object_position_w"
+                ][environment_index]
+                object_center_distance = torch.linalg.vector_norm(
+                    object_position - responsible_jaw_position
+                )
+                protected_geometric_episodes.append(
                     {
                         "environment_index": environment_index,
                         "responsible_sensor": (
@@ -7654,9 +7729,81 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 responsible_sensor_index
                             ].item()
                         ),
-                        "partner_category": partner_category,
-                        "responsible_contact_event": responsible_event,
-                        "all_same_step_jaw_contact_events": step_events,
+                        "terminal_force_vector_w_n": [
+                            float(value)
+                            for value in responsible_force_vector.tolist()
+                        ],
+                        "force_vertical_fraction": vertical_force_fraction,
+                        "all_terminal_force_vectors_w_n": [
+                            [float(value) for value in vector]
+                            for vector in force_vectors.tolist()
+                        ],
+                        "reporter_robot": reporter_robot_name,
+                        "counterpart_robot": counterpart_robot_name,
+                        "responsible_jaw_body": (
+                            handover_protected_attribution_body_names[
+                                responsible_jaw_body_index
+                            ]
+                        ),
+                        "responsible_jaw_pose_w": [
+                            float(value)
+                            for value in reporter_body_poses[
+                                responsible_jaw_body_index
+                            ].tolist()
+                        ],
+                        "responsible_jaw_origin_height_above_table_m": float(
+                            responsible_jaw_position[2].item()
+                            - table_surface_world_z_m
+                        ),
+                        "object_position_w": [
+                            float(value) for value in object_position.tolist()
+                        ],
+                        "responsible_jaw_to_object_center_distance_m": float(
+                            object_center_distance.item()
+                        ),
+                        "responsible_jaw_to_own_other_jaw_origin_distance_m": (
+                            float(own_other_jaw_distance.item())
+                        ),
+                        "minimum_counterpart_body": (
+                            handover_protected_attribution_body_names[
+                                minimum_counterpart_body_index
+                            ]
+                        ),
+                        "minimum_counterpart_body_origin_distance_m": float(
+                            counterpart_distances[
+                                minimum_counterpart_body_index
+                            ].item()
+                        ),
+                        "counterpart_body_origin_distances_m": {
+                            body_name: float(
+                                counterpart_distances[index].item()
+                            )
+                            for index, body_name in enumerate(
+                                handover_protected_attribution_body_names
+                            )
+                        },
+                        "reporter_body_poses_w": {
+                            body_name: [
+                                float(value)
+                                for value in reporter_body_poses[
+                                    index
+                                ].tolist()
+                            ]
+                            for index, body_name in enumerate(
+                                handover_protected_attribution_body_names
+                            )
+                        },
+                        "counterpart_body_poses_w": {
+                            body_name: [
+                                float(value)
+                                for value in counterpart_body_poses[
+                                    index
+                                ].tolist()
+                            ]
+                            for index, body_name in enumerate(
+                                handover_protected_attribution_body_names
+                            )
+                        },
                     }
                 )
 
@@ -7712,21 +7859,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     if protected_surface_sensor_forces.numel()
                     else 0,
                 },
-                "contact_report_event_attribution": {
-                    "backend": "native_physx_contact_report_subscription",
+                "pre_reset_geometric_attribution": {
+                    "backend": "native_contact_force_plus_rigid_body_state",
                     "scope": (
                         "same_control_step_as_pre_reset_hard_termination"
                     ),
                     "force_source": (
                         "unchanged_native_contact_sensor_vector_residual"
                     ),
-                    "partner_identity_source": (
-                        "physx_contact_header_collider_pair"
+                    "geometry_source": (
+                        "simulator_owned_articulation_body_poses"
                     ),
-                    "episodes_by_partner_category": (
-                        protected_contact_report_category_counts
+                    "interpretation_boundary": (
+                        "body_origin_distance_is_diagnostic_proximity_not_"
+                        "direct_collider_identity"
                     ),
-                    "episodes": protected_contact_report_episodes,
+                    "table_surface_world_z_m": table_surface_world_z_m,
+                    "body_names": list(
+                        handover_protected_attribution_body_names
+                    ),
+                    "episodes": protected_geometric_episodes,
                 },
             }
 
@@ -8548,8 +8700,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         _write_evidence(Path(args.output_path), "dranmar_play", evidence)
         return 0
     finally:
-        if physx_contact_collector is not None:
-            physx_contact_collector.close()
         env.close()
 
 
