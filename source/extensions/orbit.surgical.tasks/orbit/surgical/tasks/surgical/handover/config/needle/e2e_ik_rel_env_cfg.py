@@ -195,3 +195,26 @@ class NeedleHandoverRecoveryReceiverGraspRetainEnvCfg(
             "recovery_carry_lateral_action_limit": 0.10,
             "recovery_receiver_preposition_height": 0.015,
         }
+
+
+@configclass
+class NeedleHandoverJointTransferAcquisitionEnvCfg(
+    NeedleHandoverReceiverGraspRetainEnvCfg
+):
+    """Learn coupled giver presentation and receiver acquisition from custody."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Cache as soon as a physics-owned lift has custody. The option must
+        # learn the complete presentation-to-acquisition transition instead
+        # of starting only after the analytic presentation has already won.
+        self.dr_anmar_receiver_curriculum_capture_stage = "lifted_custody"
+        self.dr_anmar_receiver_curriculum_restore_probability = 0.95
+        self.dr_anmar_joint_transfer_acquisition_curriculum = True
+        self.dr_anmar_joint_transfer_acquisition_objective = (
+            "retained_handover_from_physics_owned_lifted_custody"
+        )
+        self.dr_anmar_joint_transfer_acquisition_controller = {
+            "recovery_carry_lateral_action_limit": 0.10,
+            "recovery_receiver_preposition_height": 0.015,
+        }

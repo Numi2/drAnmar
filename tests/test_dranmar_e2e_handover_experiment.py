@@ -22,7 +22,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         ).read_text()
     )
     assert contract["status"] == "isolated_research_example_not_stage_qualified"
-    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.7"
+    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.8"
     assert contract["architecture"]["actor"].startswith("frozen_pickup_lift")
     assert contract["architecture"]["learned_authority"].startswith(
         "receiver_xyz"
@@ -199,6 +199,15 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert hashlib.sha256(recovery_receiver_path.read_bytes()).hexdigest() == (
         recovery_receiver["evidence_sha256"]
     )
+    joint_transfer = contract["joint_transfer_acquisition_v8"]
+    assert joint_transfer["capture_stage"] == "lifted_custody"
+    assert joint_transfer["optimizer_schedule"] == "fixed"
+    assert joint_transfer["zero_initialized_joint_adapter"] is True
+    assert joint_transfer["frozen_promoted_pickup_recovery_policy"] is True
+    assert "giver_release" in joint_transfer["analytic_authority"]
+    assert joint_transfer["qualification_boundary"].startswith(
+        "no_performance_claim"
+    )
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -238,13 +247,18 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "self.phase_network(latent, phase)" in source
     assert "class _PhaseHeadedNetwork(nn.Module):" in source
     assert "class _RecoveryReceiverAdapter(nn.Module):" in source
+    assert "class _JointTransferAcquisitionAdapter(nn.Module):" in source
     assert "handover_task_features(" in source
     assert "receiver_policy_grasp_offset" in source
     assert "recovery_receiver_canonical_grasp_features" in source
+    assert "joint_transfer_acquisition_features" in source
     assert "nn.init.zeros_(self.output.weight)" in source
     assert "nn.init.zeros_(self.output.bias)" in source
     assert "self.recovery_receiver_adapter(" in source
     assert "adapter_role_residual[:, 7:13]" in source
+    assert "joint_role_residual[:, 0:6]" in source
+    assert "joint_role_residual[:, 7:13]" in source
+    assert "joint_physical_action_mask" in source
     assert "parameter.requires_grad_(True)" in source
     assert "quat_apply(" in source
     assert "HandoverAnalyticController" in source
@@ -266,6 +280,10 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "configure_receiver_grasp_retain_adaptation" in source
     assert (
         "configure_recovery_receiver_grasp_retain_adaptation"
+        in source
+    )
+    assert (
+        "configure_joint_transfer_acquisition_adaptation"
         in source
     )
     assert "receiver_se3_row_mask[7:13] = 1.0" in source
@@ -409,11 +427,23 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         in environment_source
     )
     assert (
+        "NeedleHandoverJointTransferAcquisitionEnvCfg"
+        in environment_source
+    )
+    assert (
         "dr_anmar_receiver_curriculum_require_pickup_recovery = True"
         in environment_source
     )
     assert (
         '"retained_handover_from_recovered_stable_presentation"'
+        in environment_source
+    )
+    assert (
+        '"retained_handover_from_physics_owned_lifted_custody"'
+        in environment_source
+    )
+    assert (
+        'dr_anmar_receiver_curriculum_capture_stage = "lifted_custody"'
         in environment_source
     )
     assert '"presentation_use_filtered_custody": True' in environment_source
@@ -433,6 +463,10 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     )
     assert (
         "DrAnmar-Handover-Needle-Recovery-Receiver-Grasp-Retain-v0"
+        in registration_source
+    )
+    assert (
+        "DrAnmar-Handover-Needle-Joint-Transfer-Acquisition-v0"
         in registration_source
     )
     assert "HandoverNeedleEndToEndPPORunnerCfg" in agent_source
@@ -459,7 +493,7 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         in state_source
     )
     assert '"_dr_anmar_receiver_curriculum_cache"' in state_source
-    assert "presentation_stable & ~cache" in state_source
+    assert "capture = capture_ready & ~cache" in state_source
     assert 'cache["reset_restores"] +=' in state_source
     assert '"cross_environment_restores"' in state_source
     assert (
@@ -468,6 +502,13 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     )
     assert 'capture &= state["pickup_recovery_count"] > 0' in state_source
     assert '"recovery_conditioned_captures"' in state_source
+    assert "_RECEIVER_CURRICULUM_STATE_FIELDS" in state_source
+    assert '"_dr_anmar_receiver_curriculum_restored"' in state_source
+    assert '"restored_source_env_ids"' in state_source
+    assert '"markov_state_restores"' in state_source
+    assert '"recovery_context_restores"' in state_source
+    assert '"last_action"' in state_source
+    assert 'capture_stage == "lifted_custody"' in state_source
     assert "presentation_custody" in state_source
     assert '"receiver_approach_step_count"' in state_source
     assert "receiver_approach_stalled" in state_source
@@ -477,6 +518,8 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert '"receiver_curriculum_reset_refreshes"' in benchmark_source
     assert '"receiver_curriculum_restore_probability"' in benchmark_source
     assert "agent_cfg.save_interval = 1" in benchmark_source
+    assert 'agent_cfg.algorithm.schedule = "fixed"' in benchmark_source
+    assert '"optimizer_learning_rates_final"' in benchmark_source
     assert '"receiver_curriculum_checkpoint_interval"' in benchmark_source
     assert '"receiver_curriculum_adaptation_contract"' in benchmark_source
     assert '"pickup_lift_presentation_policy_frozen": True' in benchmark_source
@@ -487,6 +530,15 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         "configure_recovery_receiver_grasp_retain_adaptation"
         in benchmark_source
     )
+    assert (
+        "configure_joint_transfer_acquisition_adaptation"
+        in benchmark_source
+    )
+    assert '"joint_transfer_acquisition_adaptation_contract"' in (
+        benchmark_source
+    )
+    assert '"initial_state_population_sha256"' in benchmark_source
+    assert '"tracked_patch_sha256"' in benchmark_source
     assert (
         '"pickup_recovery_policy_frozen_and_active"'
         in benchmark_source

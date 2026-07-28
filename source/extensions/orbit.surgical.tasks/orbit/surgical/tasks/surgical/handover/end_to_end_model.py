@@ -28,6 +28,7 @@ from .residual_model import HandoverAnalyticController
 
 _TASK_FEATURE_DIM = 24
 _RECOVERY_RECEIVER_ADAPTER_FEATURE_DIM = 12
+_JOINT_TRANSFER_ACQUISITION_FEATURE_DIM = 31
 _RECEIVER_POLICY_GRASP_OFFSET, _ = needle_geometry_grasp_frame(
     0.65,
     grasp_z_m=-0.003,
@@ -287,6 +288,38 @@ def recovery_receiver_canonical_grasp_features(
     ).clamp(-5.0, 5.0)
 
 
+def joint_transfer_acquisition_features(
+    role_observation: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
+    """Describe coupled giver stabilization and receiver acquisition.
+
+    The compact option sees the needle-local receiver grasp error, the
+    presentation error, object twist, giver contact confidence/history, and
+    both tools' previous Cartesian actions. It cannot command either gripper;
+    release remains owned by the physics-derived capture contract.
+    """
+    task_features = handover_task_features(
+        role_observation,
+        receiver_policy_grasp_offset,
+    )
+    return torch.cat(
+        (
+            recovery_receiver_canonical_grasp_features(
+                role_observation,
+                receiver_policy_grasp_offset,
+            ),
+            task_features[:, 6:9],
+            role_observation[:, 60:66],
+            role_observation[:, 66:68],
+            role_observation[:, 99:101],
+            role_observation[:, 84:87],
+            role_observation[:, 91:94],
+        ),
+        dim=-1,
+    ).clamp(-5.0, 5.0)
+
+
 class PhaseMaskedGaussianDistribution(GaussianDistribution):
     """Gaussian exploration with near-zero variance on structurally inactive actions."""
 
@@ -358,6 +391,25 @@ class _RecoveryReceiverAdapter(nn.Module):
         return torch.tanh(self.output(self.encoder(features)))
 
 
+class _JointTransferAcquisitionAdapter(nn.Module):
+    """Zero-impact coupled SE(3) residual for the two tools."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_JOINT_TRANSFER_ACQUISITION_FEATURE_DIM, 128),
+            nn.ELU(),
+            nn.Linear(128, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 12)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return torch.tanh(self.output(self.encoder(features)))
+
+
 class EndToEndHandoverMLPModel(MLPModel):
     """Physics-structured servo plus bounded phase-specialized learned residual."""
 
@@ -390,6 +442,7 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.pickup_recovery_adaptation_enabled = False
         self.receiver_adaptation_enabled = False
         self.recovery_receiver_grasp_retain_adaptation_enabled = False
+        self.joint_transfer_acquisition_adaptation_enabled = False
         self.register_buffer(
             "receiver_policy_grasp_offset",
             torch.tensor(_RECEIVER_POLICY_GRASP_OFFSET),
@@ -397,6 +450,11 @@ class EndToEndHandoverMLPModel(MLPModel):
         )
         self.recovery_receiver_adapter = _RecoveryReceiverAdapter()
         for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(False)
+        self.joint_transfer_acquisition_adapter = (
+            _JointTransferAcquisitionAdapter()
+        )
+        for parameter in self.joint_transfer_acquisition_adapter.parameters():
             parameter.requires_grad_(False)
         self.recovery_receiver_reference_network: (
             _PhaseHeadedNetwork | None
@@ -409,6 +467,15 @@ class EndToEndHandoverMLPModel(MLPModel):
             state_dict = state_dict.copy()
             for key, value in self.recovery_receiver_adapter.state_dict().items():
                 state_dict[f"{adapter_prefix}{key}"] = value
+        joint_adapter_prefix = "joint_transfer_acquisition_adapter."
+        if not any(
+            key.startswith(joint_adapter_prefix) for key in state_dict
+        ):
+            state_dict = state_dict.copy()
+            for key, value in (
+                self.joint_transfer_acquisition_adapter.state_dict().items()
+            ):
+                state_dict[f"{joint_adapter_prefix}{key}"] = value
         if (
             self.recovery_receiver_reference_network is None
             and any(
@@ -458,6 +525,7 @@ class EndToEndHandoverMLPModel(MLPModel):
             and not self.giver_adaptation_enabled
             and not self.pickup_recovery_adaptation_enabled
             and not self.receiver_adaptation_enabled
+            and not self.joint_transfer_acquisition_adaptation_enabled
         ):
             role_observation, _ = self._role_latent(obs)
             self.obs_normalizer.update(role_observation)
@@ -573,6 +641,37 @@ class EndToEndHandoverMLPModel(MLPModel):
                 if parameter is not None:
                     parameter.requires_grad_(False)
 
+    def configure_joint_transfer_acquisition_adaptation(self) -> None:
+        """Learn coupled tool motion without altering the promoted option.
+
+        The loaded pickup-recovery policy remains active and frozen. A new
+        exact-zero adapter alone receives gradients, and it is gated to phase
+        two SE(3) motion for both tools. Gripper closure and giver release are
+        still fully analytic and require the unchanged filtered contact
+        contract.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.joint_transfer_acquisition_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(False)
+        for parameter in (
+            self.joint_transfer_acquisition_adapter.parameters()
+        ):
+            parameter.requires_grad_(True)
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def configure_giver_adaptation(self) -> None:
         """Learn giver XY while preserving the promoted receiver policy."""
         self.giver_adaptation_enabled = True
@@ -648,6 +747,7 @@ class EndToEndHandoverMLPModel(MLPModel):
             self.phase_network(latent, phase)
         )
         learned_role_residual = current_role_residual
+        joint_role_residual = torch.zeros_like(learned_role_residual)
         if self.recovery_receiver_grasp_retain_adaptation_enabled:
             if self.recovery_receiver_reference_network is None:
                 raise RuntimeError(
@@ -680,8 +780,34 @@ class EndToEndHandoverMLPModel(MLPModel):
                 + pickup_recovery_context.unsqueeze(-1)
                 * adapter_role_residual
             ).clamp(-1.0, 1.0)
+        joint_active = phase == 2
+        if self.joint_transfer_acquisition_adaptation_enabled:
+            role_observation = role_normalize_handover_observation(raw)
+            joint_adapter = self.joint_transfer_acquisition_adapter(
+                joint_transfer_acquisition_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            joint_role_residual[:, 0:6] = joint_adapter[:, 0:6]
+            joint_role_residual[:, 7:13] = joint_adapter[:, 6:12]
+            joint_role_residual *= joint_active.unsqueeze(-1)
         physical_residual = role_action_to_physical(
             learned_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        joint_physical_residual = role_action_to_physical(
+            joint_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        joint_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        joint_role_action_mask[:, 0:6] = joint_active.unsqueeze(-1)
+        joint_role_action_mask[:, 7:13] = joint_active.unsqueeze(-1)
+        joint_physical_action_mask = role_action_to_physical(
+            joint_role_action_mask,
             raw[:, 82] > 0.5,
         )
         (
@@ -707,11 +833,18 @@ class EndToEndHandoverMLPModel(MLPModel):
                 giver_residual_mask | receiver_residual_mask
             )
             exploration_mask = giver_residual_mask
+        if self.joint_transfer_acquisition_adaptation_enabled:
+            exploration_mask = (
+                exploration_mask | joint_physical_action_mask
+            )
         physical_mean = (
             base_action
             + self.residual_scale
             * physical_residual
             * physical_action_mask.to(base_action.dtype)
+            + self.residual_scale
+            * joint_physical_residual
+            * joint_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         if self.distribution is None:
             return physical_mean
@@ -750,11 +883,17 @@ class _EndToEndHandoverExport(nn.Module):
         self.recovery_receiver_grasp_retain_adaptation_enabled = (
             model.recovery_receiver_grasp_retain_adaptation_enabled
         )
+        self.joint_transfer_acquisition_adaptation_enabled = (
+            model.joint_transfer_acquisition_adaptation_enabled
+        )
         self.recovery_receiver_reference_network = copy.deepcopy(
             model.recovery_receiver_reference_network
         )
         self.recovery_receiver_adapter = copy.deepcopy(
             model.recovery_receiver_adapter
+        )
+        self.joint_transfer_acquisition_adapter = copy.deepcopy(
+            model.joint_transfer_acquisition_adapter
         )
         self.register_buffer(
             "receiver_policy_grasp_offset",
@@ -785,6 +924,7 @@ class _EndToEndHandoverExport(nn.Module):
             self.phase_network(latent, phase)
         )
         learned_role_residual = current_role_residual
+        joint_role_residual = torch.zeros_like(learned_role_residual)
         if self.recovery_receiver_grasp_retain_adaptation_enabled:
             if self.recovery_receiver_reference_network is None:
                 raise RuntimeError(
@@ -815,8 +955,33 @@ class _EndToEndHandoverExport(nn.Module):
                 + pickup_recovery_context.unsqueeze(-1)
                 * adapter_role_residual
             ).clamp(-1.0, 1.0)
+        joint_active = phase == 2
+        if self.joint_transfer_acquisition_adaptation_enabled:
+            joint_adapter = self.joint_transfer_acquisition_adapter(
+                joint_transfer_acquisition_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            joint_role_residual[:, 0:6] = joint_adapter[:, 0:6]
+            joint_role_residual[:, 7:13] = joint_adapter[:, 6:12]
+            joint_role_residual *= joint_active.unsqueeze(-1)
         physical_residual = role_action_to_physical(
             learned_role_residual,
+            giver_is_robot_1,
+        )
+        joint_physical_residual = role_action_to_physical(
+            joint_role_residual,
+            giver_is_robot_1,
+        )
+        joint_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        joint_role_action_mask[:, 0:6] = joint_active.unsqueeze(-1)
+        joint_role_action_mask[:, 7:13] = joint_active.unsqueeze(-1)
+        joint_physical_action_mask = role_action_to_physical(
+            joint_role_action_mask,
             giver_is_robot_1,
         )
         (
@@ -837,6 +1002,9 @@ class _EndToEndHandoverExport(nn.Module):
             + self.residual_scale
             * physical_residual
             * physical_action_mask.to(base_action.dtype)
+            + self.residual_scale
+            * joint_physical_residual
+            * joint_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         return self.deterministic_output(physical_mean)
 

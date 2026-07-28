@@ -15,9 +15,9 @@ HARD_FAILURES = (
     "object_dropping",
     "needle_dropped_after_pickup",
     "excessive_object_force",
-    "protected_surface_force",
     "premature_giver_release",
 )
+PROTECTED_SURFACE_FAILURE = "protected_surface_force"
 
 
 def _sha256(path: Path) -> str:
@@ -93,6 +93,8 @@ def evaluate_multiseed(
     required_seeds: set[int],
     minimum_success_rate: float,
     maximum_seed_regression: float,
+    maximum_protected_surface_rate_increase: float = 0.001,
+    require_paired_population: bool = True,
 ) -> dict[str, Any]:
     baseline = _by_seed(baseline_paths)
     candidate = _by_seed(candidate_paths)
@@ -112,6 +114,9 @@ def evaluate_multiseed(
     total_episodes = 0
     total_baseline_successes = 0
     hard_failure_totals = {name: 0 for name in HARD_FAILURES}
+    baseline_protected_surface_failures = 0
+    candidate_protected_surface_failures = 0
+    paired_population_gate = True
     for seed in sorted(required_seeds):
         baseline_item = baseline[seed]
         candidate_item = candidate[seed]
@@ -120,6 +125,25 @@ def evaluate_multiseed(
                 raise ValueError(
                     f"seed {seed}: baseline and candidate {field} differ"
                 )
+        baseline_population = baseline_item.get(
+            "initial_state_population_sha256"
+        )
+        candidate_population = candidate_item.get(
+            "initial_state_population_sha256"
+        )
+        if require_paired_population and (
+            not baseline_population or not candidate_population
+        ):
+            raise ValueError(
+                f"seed {seed}: paired initial-state population hash is required"
+            )
+        population_matches = (
+            bool(baseline_population)
+            and baseline_population == candidate_population
+        )
+        paired_population_gate &= (
+            population_matches if require_paired_population else True
+        )
         baseline_rate = (
             baseline_item["successful_episodes"]
             / baseline_item["completed_episodes"]
@@ -137,6 +161,20 @@ def evaluate_multiseed(
         }
         for name, count in seed_hard.items():
             hard_failure_totals[name] += count
+        baseline_protected = int(
+            baseline_item["failure_distribution"].get(
+                PROTECTED_SURFACE_FAILURE,
+                0,
+            )
+        )
+        candidate_protected = int(
+            candidate_item["failure_distribution"].get(
+                PROTECTED_SURFACE_FAILURE,
+                0,
+            )
+        )
+        baseline_protected_surface_failures += baseline_protected
+        candidate_protected_surface_failures += candidate_protected
         total_successes += int(candidate_item["successful_episodes"])
         total_episodes += int(candidate_item["completed_episodes"])
         total_baseline_successes += int(
@@ -154,6 +192,10 @@ def evaluate_multiseed(
                     seed_regression <= maximum_seed_regression
                 ),
                 "candidate_hard_failures": seed_hard,
+                "baseline_protected_surface_failures": baseline_protected,
+                "candidate_protected_surface_failures": candidate_protected,
+                "initial_state_population_sha256": baseline_population,
+                "paired_population_gate_passed": population_matches,
                 "baseline_evidence_path": str(
                     baseline_item["_path"].resolve()
                 ),
@@ -179,10 +221,29 @@ def evaluate_multiseed(
     per_seed_gate = all(
         item["seed_regression_gate_passed"] for item in per_seed
     )
-    safety_gate = not any(hard_failure_totals.values())
-    promotable = success_gate and per_seed_gate and safety_gate
+    catastrophic_safety_gate = not any(hard_failure_totals.values())
+    baseline_protected_rate = (
+        baseline_protected_surface_failures / total_episodes
+    )
+    candidate_protected_rate = (
+        candidate_protected_surface_failures / total_episodes
+    )
+    protected_surface_noninferiority_gate = (
+        candidate_protected_rate - baseline_protected_rate
+        <= maximum_protected_surface_rate_increase
+    )
+    safety_gate = (
+        catastrophic_safety_gate
+        and protected_surface_noninferiority_gate
+    )
+    promotable = (
+        success_gate
+        and per_seed_gate
+        and safety_gate
+        and paired_population_gate
+    )
     return {
-        "schema_version": "dranmar-handover-multiseed-promotion-1.0",
+        "schema_version": "dranmar-handover-multiseed-promotion-1.1",
         "decision": (
             "candidate_promoted"
             if promotable
@@ -199,13 +260,36 @@ def evaluate_multiseed(
             "candidate_minus_baseline": aggregate_rate - baseline_rate,
             "candidate_success_wilson_95": [lower, upper],
             "hard_failures": hard_failure_totals,
+            "baseline_protected_surface_failures": (
+                baseline_protected_surface_failures
+            ),
+            "candidate_protected_surface_failures": (
+                candidate_protected_surface_failures
+            ),
+            "baseline_protected_surface_failure_rate": (
+                baseline_protected_rate
+            ),
+            "candidate_protected_surface_failure_rate": (
+                candidate_protected_rate
+            ),
         },
         "gates": {
             "minimum_success_rate": minimum_success_rate,
             "maximum_seed_regression": maximum_seed_regression,
             "success_gate_passed": success_gate,
             "per_seed_regression_gate_passed": per_seed_gate,
-            "zero_hard_failure_gate_passed": safety_gate,
+            "require_paired_population": require_paired_population,
+            "paired_population_gate_passed": paired_population_gate,
+            "zero_catastrophic_failure_gate_passed": (
+                catastrophic_safety_gate
+            ),
+            "maximum_protected_surface_rate_increase": (
+                maximum_protected_surface_rate_increase
+            ),
+            "protected_surface_noninferiority_gate_passed": (
+                protected_surface_noninferiority_gate
+            ),
+            "safety_gate_passed": safety_gate,
         },
         "per_seed": per_seed,
     }
@@ -235,6 +319,15 @@ def main() -> int:
         type=float,
         default=0.0,
     )
+    parser.add_argument(
+        "--maximum-protected-surface-rate-increase",
+        type=float,
+        default=0.001,
+    )
+    parser.add_argument(
+        "--allow-unpaired-populations",
+        action="store_true",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     required_seeds = {
@@ -248,6 +341,10 @@ def main() -> int:
         required_seeds=required_seeds,
         minimum_success_rate=args.minimum_success_rate,
         maximum_seed_regression=args.maximum_seed_regression,
+        maximum_protected_surface_rate_increase=(
+            args.maximum_protected_surface_rate_increase
+        ),
+        require_paired_population=not args.allow_unpaired_populations,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(

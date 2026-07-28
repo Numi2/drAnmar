@@ -1,5 +1,5 @@
 {
-  "schema_version": "dranmar-e2e-handover-experiment-1.7",
+  "schema_version": "dranmar-e2e-handover-experiment-1.8",
   "status": "isolated_research_example_not_stage_qualified",
   "baseline_commit": "c17d97c6a5e798998321b394ece2fc6642edb53b",
   "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
@@ -325,6 +325,29 @@
       "absolute_robot_root_yaw_rotated_receiver_offset"
     ],
     "next_required_representation": "canonical_needle_local_se3_grasp_pose_shared_by_controller_observations_replay_and_training"
+  },
+  "joint_transfer_acquisition_v8": {
+    "status": "implemented_awaiting_clean_runtime_qualification",
+    "initial_checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+    "source_states": "physics_owned_lifted_custody_with_complete_markov_state",
+    "restore_probability": 0.95,
+    "capture_stage": "lifted_custody",
+    "optimizer_schedule": "fixed",
+    "requested_learning_rate_must_remain_constant": true,
+    "frozen_promoted_pickup_recovery_policy": true,
+    "zero_initialized_joint_adapter": true,
+    "joint_adapter_features": "needle_local_receiver_grasp_error_presentation_error_object_twist_giver_contact_confidence_and_history_both_previous_cartesian_actions",
+    "joint_adapter_outputs": "giver_se3_and_receiver_se3_during_lifted_acquisition_only",
+    "analytic_authority": [
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "replay_contract": "robot_object_previous_action_latched_giver_phase_filters_counters_offsets_and_recovery_context_restored_together",
+    "evaluation_contract": "same_seed_same_initial_state_population_hash_complete_first_terminal_population",
+    "safety_contract": "zero_catastrophic_events_and_protected_surface_rate_noninferior_to_incumbent",
+    "qualification_boundary": "no_performance_claim_until_clean_multiseed_held_out_play_promotes_the_frozen_checkpoint"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",

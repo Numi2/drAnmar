@@ -19,16 +19,51 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
+_RECEIVER_CURRICULUM_STATE_FIELDS = (
+    "phase",
+    "progress_phase",
+    "rewarded_phase",
+    "giver_is_robot_1",
+    "receiver_only_consecutive",
+    "giver_contact_history",
+    "receiver_contact_history",
+    "presentation_stable_consecutive",
+    "presentation_qualified",
+    "receiver_capture_consecutive",
+    "giver_release_confirmation_consecutive",
+    "giver_release_authorized",
+    "receiver_capture_offset_w",
+    "receiver_attempt_active",
+    "receiver_attempt_step_count",
+    "receiver_approach_step_count",
+    "receiver_pre_release_loss_consecutive",
+    "receiver_retry_step_count",
+    "receiver_retry_count",
+    "receiver_release_abort_count",
+    "receiver_loss_consecutive",
+    "giver_release_observed",
+    "pickup_attempt_count",
+    "pickup_recovery_count",
+    "pickup_contact_loss_consecutive",
+    "recovery_open_step_count",
+    "pickup_attempts_exhausted",
+    "giver_acquisition_offset_w",
+    "receiver_acquisition_offset_w",
+)
+
+
 def reset_receiver_curriculum_from_cache(
     env: ManagerBasedRLEnv,
     env_ids: torch.Tensor | None,
 ) -> None:
-    """Restore reset-time states captured at physical stable presentation.
+    """Restore complete Markov states captured during physical handover.
 
-    The cache is training-only and contains states each environment reached
-    through the normal pickup, lift, and presentation sequence. It never
-    modifies an active episode and is not enabled by the end-to-end
-    qualification task.
+    A replayed rigid-body state without its latched giver, phase, contact
+    filters, counters, acquisition offsets, and previous action is not the
+    state that generated the transition. The cache therefore restores both
+    simulator state here and the corresponding logical state on the next
+    ``handover_state`` update. This remains training-only and never modifies
+    an active end-to-end qualification episode.
     """
     cache = getattr(env, "_dr_anmar_receiver_curriculum_cache", None)
     if cache is None:
@@ -39,6 +74,23 @@ def reset_receiver_curriculum_from_cache(
             dtype=torch.long,
             device=env.device,
         )
+    restored_mask = getattr(
+        env,
+        "_dr_anmar_receiver_curriculum_restored",
+        None,
+    )
+    if restored_mask is None:
+        restored_mask = torch.zeros(
+            env.num_envs,
+            dtype=torch.bool,
+            device=env.device,
+        )
+        setattr(
+            env,
+            "_dr_anmar_receiver_curriculum_restored",
+            restored_mask,
+        )
+    restored_mask[env_ids] = False
     valid = cache["valid"][env_ids]
     restore_probability = float(
         getattr(
@@ -110,6 +162,19 @@ def reset_receiver_curriculum_from_cache(
         cache["object_root_velocity_w"][source_env_ids],
         env_ids=target_env_ids,
     )
+    cache["restored_source_env_ids"][target_env_ids] = source_env_ids
+    cache["markov_state_restores"] += int(target_env_ids.numel())
+    cache["recovery_context_restores"] += int(
+        (
+            cache["handover_state"]["pickup_recovery_count"][
+                source_env_ids
+            ]
+            > 0
+        )
+        .sum()
+        .item()
+    )
+    restored_mask[target_env_ids] = True
 
 
 def reset_pickup_recovery_curriculum_from_cache(
@@ -616,6 +681,49 @@ def handover_state(
             env,
             "_dr_anmar_pickup_recovery_curriculum_restored",
         )[restored_recovery] = False
+    restored_receiver = getattr(
+        env,
+        "_dr_anmar_receiver_curriculum_restored",
+        None,
+    )
+    if restored_receiver is not None:
+        restored_receiver = reset & restored_receiver
+        receiver_cache = getattr(
+            env,
+            "_dr_anmar_receiver_curriculum_cache",
+            None,
+        )
+        if receiver_cache is not None and bool(restored_receiver.any()):
+            target_env_ids = torch.nonzero(
+                restored_receiver,
+                as_tuple=False,
+            ).squeeze(-1)
+            source_env_ids = receiver_cache[
+                "restored_source_env_ids"
+            ][target_env_ids]
+            for field in _RECEIVER_CURRICULUM_STATE_FIELDS:
+                state[field][target_env_ids] = receiver_cache[
+                    "handover_state"
+                ][field][source_env_ids]
+            # Event-manager reset ordering may clear action buffers after the
+            # physical restore. Restore the transition's previous action here,
+            # when observations request the logical handover state.
+            mdp_common.as_torch(env.action_manager.action)[
+                target_env_ids
+            ] = receiver_cache["last_action"][source_env_ids]
+            # Terminal outcomes never cross an episode boundary. Every other
+            # restored tensor is part of the state that generated the cached
+            # transition and is required for a Markov-complete replay.
+            state["successful_handover"][target_env_ids] = False
+            state["premature_release"][target_env_ids] = False
+            state["receiver_retention_failed"][target_env_ids] = False
+            state["retention_failure_low_clearance"][target_env_ids] = False
+            state["retention_failure_follow_error"][target_env_ids] = False
+            state["retention_failure_contact_loss"][target_env_ids] = False
+        getattr(
+            env,
+            "_dr_anmar_receiver_curriculum_restored",
+        )[restored_receiver] = False
     state["last_reset_step"][reset] = step
     if state["last_step"] == step and not bool(torch.any(reset)):
         return state
@@ -831,6 +939,13 @@ def handover_state(
                 "reset_refreshes": 0,
                 "cross_environment_restores": 0,
                 "recovery_conditioned_captures": 0,
+                "markov_state_restores": 0,
+                "recovery_context_restores": 0,
+                "restored_source_env_ids": torch.arange(
+                    env.num_envs,
+                    dtype=torch.long,
+                    device=env.device,
+                ),
                 "robot_1_joint_pos": torch.zeros_like(
                     mdp_common.as_torch(robot_1.data.joint_pos)
                 ),
@@ -853,13 +968,36 @@ def handover_state(
                     dtype=torch.float32,
                     device=env.device,
                 ),
+                "last_action": torch.zeros_like(
+                    mdp_common.as_torch(env.action_manager.action)
+                ),
+                "handover_state": {
+                    field: torch.zeros_like(state[field])
+                    for field in _RECEIVER_CURRICULUM_STATE_FIELDS
+                },
             }
             setattr(
                 env,
                 "_dr_anmar_receiver_curriculum_cache",
                 cache,
             )
-        capture = presentation_stable & ~cache["valid"]
+        capture_stage = str(
+            getattr(
+                env.cfg,
+                "dr_anmar_receiver_curriculum_capture_stage",
+                "stable_presentation",
+            )
+        )
+        if capture_stage == "stable_presentation":
+            capture_ready = presentation_stable
+        elif capture_stage == "lifted_custody":
+            capture_ready = (phase == 2) & lifted & giver_custody
+        else:
+            raise ValueError(
+                "receiver curriculum capture stage must be "
+                "'stable_presentation' or 'lifted_custody'"
+            )
+        capture = capture_ready & ~cache["valid"]
         require_pickup_recovery = bool(
             getattr(
                 env.cfg,
@@ -898,6 +1036,13 @@ def handover_state(
             cache["object_root_velocity_w"][capture, 3:6] = (
                 mdp_common.as_torch(obj.data.root_ang_vel_w)[capture]
             )
+            cache["last_action"][capture] = mdp_common.as_torch(
+                env.action_manager.action
+            )[capture]
+            for field in _RECEIVER_CURRICULUM_STATE_FIELDS:
+                cache["handover_state"][field][capture] = state[field][
+                    capture
+                ]
             cache["valid"][capture] = True
 
     retry_was_active = state["receiver_retry_step_count"] > 0

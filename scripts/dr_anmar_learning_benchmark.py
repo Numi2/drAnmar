@@ -162,6 +162,51 @@ def _peak_process_memory_mib() -> float:
     return peak / 1024
 
 
+def _initial_state_population_sha256(env) -> str:
+    """Hash the exact reset population used for paired qualification."""
+    import torch
+
+    unwrapped = env.unwrapped
+    origins = unwrapped.scene.env_origins
+    obj = unwrapped.scene["object"]
+    object_pose = torch.cat(
+        (
+            obj.data.root_pos_w - origins,
+            obj.data.root_quat_w,
+        ),
+        dim=-1,
+    )
+    named_tensors = (
+        ("robot_1_joint_pos", unwrapped.scene["robot_1"].data.joint_pos),
+        ("robot_1_joint_vel", unwrapped.scene["robot_1"].data.joint_vel),
+        ("robot_2_joint_pos", unwrapped.scene["robot_2"].data.joint_pos),
+        ("robot_2_joint_vel", unwrapped.scene["robot_2"].data.joint_vel),
+        ("object_root_pose_env", object_pose),
+        (
+            "object_root_velocity",
+            torch.cat(
+                (
+                    obj.data.root_lin_vel_w,
+                    obj.data.root_ang_vel_w,
+                ),
+                dim=-1,
+            ),
+        ),
+    )
+    digest = hashlib.sha256()
+    for name, tensor in named_tensors:
+        value = (
+            torch.as_tensor(tensor)
+            .detach()
+            .to(device="cpu", dtype=torch.float32)
+            .contiguous()
+        )
+        digest.update(name.encode("utf-8"))
+        digest.update(str(tuple(value.shape)).encode("ascii"))
+        digest.update(value.numpy().tobytes())
+    return digest.hexdigest()
+
+
 def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
     import torch
 
@@ -178,6 +223,14 @@ def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
             "--format=csv,noheader,nounits",
         ]
     )
+    worktree_status = _command_output(
+        ["git", "status", "--porcelain=v1"],
+        repo_root,
+    )
+    tracked_patch = _command_output(
+        ["git", "diff", "--binary", "HEAD"],
+        repo_root,
+    )
     return {
         "packages": packages,
         "cuda": {
@@ -187,6 +240,13 @@ def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
         },
         "source": {
             "dranmar_revision": _command_output(["git", "rev-parse", "HEAD"], repo_root),
+            "working_tree_dirty": bool(worktree_status),
+            "working_tree_status": (
+                worktree_status.splitlines() if worktree_status else []
+            ),
+            "tracked_patch_sha256": hashlib.sha256(
+                (tracked_patch or "").encode("utf-8")
+            ).hexdigest(),
             "asset_revision": _command_output(
                 ["git", "rev-parse", "HEAD"],
                 repo_root / "source/extensions/orbit.surgical.assets",
@@ -1870,6 +1930,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             False,
         )
     )
+    joint_transfer_acquisition_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_joint_transfer_acquisition_curriculum",
+            False,
+        )
+    )
     pickup_recovery_curriculum = bool(
         getattr(
             env_cfg,
@@ -1889,8 +1956,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         # cache needs several iterations to fill, while later PPO updates can
         # overfit that cache. Preserve every update so promotion can be based
         # on full-task qualification instead of assuming the final update is
-        # the best policy.
+        # the best policy. Focused option learning also uses a fixed optimizer
+        # schedule: adaptive KL scheduling previously amplified an explicitly
+        # requested 1e-5 rate to 1e-2 before the replay cache was representative.
         agent_cfg.save_interval = 1
+        agent_cfg.algorithm.schedule = "fixed"
     agent_cfg.max_iterations = args.max_iterations
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = Path(args.output_path).resolve() / "runs" / timestamp
@@ -1937,7 +2007,42 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "rnd": False,
             }
         runner.load(str(initial_checkpoint), load_cfg=load_cfg)
-        if pickup_recovery_curriculum:
+        if joint_transfer_acquisition_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_joint_transfer = getattr(
+                policy_model,
+                "configure_joint_transfer_acquisition_adaptation",
+                None,
+            )
+            if configure_joint_transfer is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support joint "
+                    "transfer-acquisition adaptation"
+                )
+            configure_joint_transfer()
+            joint_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_joint_transfer_acquisition_controller",
+                {},
+            )
+            joint_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in joint_controller_cfg.items():
+                if joint_controller is None or not hasattr(
+                    joint_controller,
+                    attribute,
+                ):
+                    env.close()
+                    return _fail(
+                        "joint transfer-acquisition curriculum controller "
+                        f"does not expose {attribute}"
+                    )
+                setattr(joint_controller, attribute, value)
+        elif pickup_recovery_curriculum:
             policy_model = runner.alg.get_policy()
             if not hasattr(
                 policy_model,
@@ -2115,6 +2220,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 if args.learning_rate is not None
                 else agent_cfg.algorithm.learning_rate
             ),
+            "policy_learning_rate_schedule": str(
+                agent_cfg.algorithm.schedule
+            ),
+            "optimizer_learning_rates_final": [
+                float(group["lr"])
+                for group in runner.alg.optimizer.param_groups
+            ],
             "handover_giver_adaptation": bool(
                 args.handover_giver_adaptation
             ),
@@ -2124,6 +2236,61 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "recovery_receiver_grasp_retain_curriculum": (
                 recovery_receiver_grasp_retain_curriculum
+            ),
+            "joint_transfer_acquisition_curriculum": (
+                joint_transfer_acquisition_curriculum
+            ),
+            "joint_transfer_acquisition_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_joint_transfer_acquisition_objective",
+                    None,
+                )
+                if joint_transfer_acquisition_curriculum
+                else None
+            ),
+            "joint_transfer_acquisition_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_joint_transfer_acquisition_controller",
+                    None,
+                )
+                if joint_transfer_acquisition_curriculum
+                else None
+            ),
+            "joint_transfer_acquisition_adaptation_contract": (
+                {
+                    "source_states": (
+                        "physics_owned_lifted_custody_with_complete_markov_state"
+                    ),
+                    "option_success": "unchanged_retained_handover_terminal",
+                    "promoted_pickup_recovery_policy_frozen_and_active": True,
+                    "optimizer_state_reset": True,
+                    "optimizer_schedule": "fixed",
+                    "observation_normalizer_frozen": True,
+                    "zero_initialized_adapter": True,
+                    "learned_giver_axes": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "learned_receiver_axes": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "analytic_gripper_authority": True,
+                    "analytic_release_authority": True,
+                    "hard_terminations_unchanged": True,
+                }
+                if joint_transfer_acquisition_curriculum
+                else None
             ),
             "recovery_receiver_grasp_retain_objective": (
                 getattr(
@@ -2247,6 +2414,27 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 if receiver_curriculum_cache is not None
                 else 0
+            ),
+            "receiver_curriculum_markov_state_restores": (
+                int(receiver_curriculum_cache["markov_state_restores"])
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_recovery_context_restores": (
+                int(receiver_curriculum_cache["recovery_context_restores"])
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_capture_stage": (
+                str(
+                    getattr(
+                        env_cfg,
+                        "dr_anmar_receiver_curriculum_capture_stage",
+                        "stable_presentation",
+                    )
+                )
+                if receiver_curriculum
+                else None
             ),
             "receiver_curriculum_restore_probability": (
                 float(
@@ -4316,15 +4504,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             bool(args.handover_giver_adaptation),
             bool(args.pickup_recovery_adaptation),
             bool(args.recovery_receiver_grasp_retain_adaptation),
+            bool(args.joint_transfer_acquisition_adaptation),
         )
     )
     if adaptation_modes > 1:
         env.close()
         return _fail(
-            "giver, pickup-recovery, and recovery-conditioned receiver "
-            "adaptation modes are mutually exclusive"
+            "giver, pickup-recovery, recovery-conditioned receiver, and "
+            "joint transfer-acquisition modes are mutually exclusive"
         )
-    if args.recovery_receiver_grasp_retain_adaptation:
+    if args.joint_transfer_acquisition_adaptation:
+        configure_joint_transfer = getattr(
+            policy_model,
+            "configure_joint_transfer_acquisition_adaptation",
+            None,
+        )
+        if configure_joint_transfer is None:
+            env.close()
+            return _fail(
+                "loaded policy does not support joint "
+                "transfer-acquisition adaptation"
+            )
+        configure_joint_transfer()
+    elif args.recovery_receiver_grasp_retain_adaptation:
         configure_recovery_receiver = getattr(
             policy_model,
             "configure_recovery_receiver_grasp_retain_adaptation",
@@ -4756,6 +4958,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
         }
     obs = env.get_observations()
+    initial_state_population_sha256 = (
+        _initial_state_population_sha256(env)
+    )
     first_handover_max_phase = None
     first_handover_history = None
     if "Handover-" in args.task:
@@ -7141,6 +7346,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "mean_reward": sum(rewards) / len(rewards) if rewards else None,
             "first_terminal_outcome_per_environment": True,
+            "initial_state_population_sha256": (
+                initial_state_population_sha256
+            ),
             "completed_episodes": first_completed_count,
             "successful_episodes": first_success_count,
             "failed_episodes": first_completed_count - first_success_count,
@@ -7211,6 +7419,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     policy_model,
                     "recovery_receiver_grasp_retain_adaptation_enabled",
                     args.recovery_receiver_grasp_retain_adaptation,
+                )
+            ),
+            "policy_joint_transfer_acquisition_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "joint_transfer_acquisition_adaptation_enabled",
+                    args.joint_transfer_acquisition_adaptation,
                 )
             ),
             "policy_residual_scale": (
@@ -7602,6 +7817,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--recovery_receiver_grasp_retain_adaptation",
+        action="store_true",
+    )
+    play.add_argument(
+        "--joint_transfer_acquisition_adaptation",
         action="store_true",
     )
     play.add_argument("--num_envs", type=int, required=True)

@@ -14,6 +14,8 @@ def _evidence(
     seed: int,
     successes: int,
     hard_failures: int = 0,
+    protected_surface_failures: int = 0,
+    population_sha256: str | None = None,
 ) -> Path:
     path.write_text(
         json.dumps(
@@ -30,13 +32,18 @@ def _evidence(
                 "failure_distribution": {
                     "object_dropping": hard_failures,
                     "excessive_object_force": 0,
-                    "protected_surface_force": 0,
+                    "protected_surface_force": (
+                        protected_surface_failures
+                    ),
                 },
                 "checkpoint": {
                     "path": "model.pt",
                     "sha256": "frozen-checkpoint",
                 },
                 "first_terminal_outcome_per_environment": True,
+                "initial_state_population_sha256": (
+                    population_sha256 or f"population-{seed}"
+                ),
             }
         )
         + "\n",
@@ -93,4 +100,67 @@ def test_multiseed_gate_requires_population_confidence_and_zero_hard_failures(
         maximum_seed_regression=0.0,
     )
     assert rejected["decision"] == "baseline_retained"
-    assert rejected["gates"]["zero_hard_failure_gate_passed"] is False
+    assert (
+        rejected["gates"]["zero_catastrophic_failure_gate_passed"]
+        is False
+    )
+
+
+def test_multiseed_gate_uses_paired_populations_and_safety_noninferiority(
+    tmp_path: Path,
+) -> None:
+    module = runpy.run_path(
+        str(ROOT / "scripts/dr_anmar_handover_multiseed_promotion.py")
+    )
+    seeds = (2361, 4099, 7919)
+    baselines = [
+        _evidence(
+            tmp_path / f"baseline-{seed}.json",
+            seed=seed,
+            successes=1200,
+            protected_surface_failures=2,
+        )
+        for seed in seeds
+    ]
+    candidates = [
+        _evidence(
+            tmp_path / f"candidate-{seed}.json",
+            seed=seed,
+            successes=1500,
+            protected_surface_failures=3,
+        )
+        for seed in seeds
+    ]
+    result = module["evaluate_multiseed"](
+        baselines,
+        candidates,
+        required_seeds=set(seeds),
+        minimum_success_rate=0.70,
+        maximum_seed_regression=0.0,
+        maximum_protected_surface_rate_increase=0.001,
+    )
+    assert result["decision"] == "candidate_promoted"
+    assert result["gates"]["paired_population_gate_passed"] is True
+    assert (
+        result["gates"][
+            "protected_surface_noninferiority_gate_passed"
+        ]
+        is True
+    )
+
+    _evidence(
+        candidates[0],
+        seed=seeds[0],
+        successes=1500,
+        protected_surface_failures=3,
+        population_sha256="different-population",
+    )
+    unpaired = module["evaluate_multiseed"](
+        baselines,
+        candidates,
+        required_seeds=set(seeds),
+        minimum_success_rate=0.70,
+        maximum_seed_regression=0.0,
+    )
+    assert unpaired["decision"] == "baseline_retained"
+    assert unpaired["gates"]["paired_population_gate_passed"] is False
