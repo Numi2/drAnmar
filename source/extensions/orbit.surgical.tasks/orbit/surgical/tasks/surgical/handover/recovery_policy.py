@@ -1713,6 +1713,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.giver_restore_dwell = torch.empty(0, dtype=torch.long)
         self.open_settle_dwell = torch.empty(0, dtype=torch.long)
+        self.clearance_retreat_dwell = torch.empty(0, dtype=torch.long)
         self.ever_bilateral = torch.empty(0, dtype=torch.bool)
         self.bilateral_contact_history = torch.empty(
             (0, 5),
@@ -1868,6 +1869,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.giver_degradation_dwell = torch.zeros_like(self.retry_count)
         self.giver_restore_dwell = torch.zeros_like(self.retry_count)
         self.open_settle_dwell = torch.zeros_like(self.retry_count)
+        self.clearance_retreat_dwell = torch.zeros_like(
+            self.retry_count
+        )
         self.ever_bilateral = torch.zeros(
             batch_size,
             dtype=torch.bool,
@@ -3315,6 +3319,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.custody_loss_dwell[failure] = 0
             self.giver_degradation_dwell[failure] = 0
             self.giver_restore_dwell[failure] = 0
+            self.clearance_retreat_dwell[failure] = 0
             self.receiver_secure_live_dwell[failure] = 0
             self.receiver_release_authorized[failure] = False
 
@@ -3444,15 +3449,21 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             receiver_is_robot_1,
             resetting,
         )
-        retry_clearance_retreat_active = (
+        retry_clearance_retreat_requested = (
             self.retry_clearance_retreat
             & resetting
-            & fully_open
-            & force_free
             & giver_any_contact
             & ~giver_bilateral_live
+        )
+        self.clearance_retreat_dwell[:] = torch.where(
+            retry_clearance_retreat_requested,
+            self.clearance_retreat_dwell + 1,
+            torch.zeros_like(self.clearance_retreat_dwell),
+        )
+        retry_clearance_retreat_active = (
+            retry_clearance_retreat_requested
             & (
-                self.open_settle_dwell
+                self.clearance_retreat_dwell
                 <= self.retry_clearance_retreat_steps
             )
         )
@@ -3557,6 +3568,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.giver_degradation_dwell[mask] = 0
         self.giver_restore_dwell[mask] = 0
         self.open_settle_dwell[mask] = 0
+        self.clearance_retreat_dwell[mask] = 0
         self.ever_bilateral[mask] = False
         self.bilateral_contact_history[mask] = False
         self.failure_forces[mask] = 0.0
