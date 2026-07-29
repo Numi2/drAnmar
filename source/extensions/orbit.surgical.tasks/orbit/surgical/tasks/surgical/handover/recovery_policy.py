@@ -1052,6 +1052,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         candidate_value_feature_std: torch.Tensor | None = None,
         candidate_corrections: torch.Tensor | None = None,
         candidate_local_offsets: torch.Tensor | None = None,
+        candidate_min_logit_advantage: float = 0.0,
         candidate_first_attempt: bool = False,
         enable_retries: bool = True,
         stabilize_giver_during_acquisition: bool = False,
@@ -1098,6 +1099,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if not 0.0 < receiver_retention_servo_action_limit <= 0.1:
             raise ValueError(
                 "receiver retention servo action limit must be in (0, 0.1]"
+            )
+        if candidate_min_logit_advantage < 0.0:
+            raise ValueError(
+                "receiver candidate logit advantage must be non-negative"
             )
         if stabilization_gate_step <= 0:
             raise ValueError(
@@ -1277,6 +1282,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.enable_retries = bool(enable_retries)
         self.candidate_first_attempt = bool(candidate_first_attempt)
+        self.candidate_min_logit_advantage = float(
+            candidate_min_logit_advantage
+        )
         self.stabilize_giver_during_acquisition = bool(
             stabilize_giver_during_acquisition
         )
@@ -1364,6 +1372,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dtype=torch.long,
         )
         self.selected_candidate_score = torch.empty(0)
+        self.selected_candidate_advantage = torch.empty(0)
+        self.selected_candidate_applied = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
         self.receiver_retention_offset = torch.empty((0, 3))
         self.receiver_retention_offset_latched = torch.empty(
             0,
@@ -1470,6 +1483,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.selected_candidate_score = torch.zeros(
             batch_size,
             dtype=dtype,
+            device=device,
+        )
+        self.selected_candidate_advantage = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
+        )
+        self.selected_candidate_applied = torch.zeros(
+            batch_size,
+            dtype=torch.bool,
             device=device,
         )
         self.receiver_retention_offset = torch.zeros(
@@ -1702,14 +1725,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     normalized_features.reshape(-1, 35)
                 ).reshape(active_context.shape[0], candidate_count)
                 best_score, best_index = candidate_scores.max(dim=-1)
+                zero_index = candidates.square().sum(dim=-1).argmin()
+                zero_score = candidate_scores[:, zero_index]
                 active_indices = torch.nonzero(
                     activation,
                     as_tuple=False,
                 ).squeeze(-1)
                 proposed = proposed.clone()
-                proposed[activation] = candidates[best_index]
                 self.selected_candidate_index[active_indices] = best_index
-                self.selected_candidate_score[active_indices] = best_score
+                selected_correction = candidates[best_index]
+                selected_score = best_score
                 if self.candidate_local_offsets.shape[0] > 0:
                     local_candidates = (
                         candidates[best_index].unsqueeze(1)
@@ -1767,16 +1792,30 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     local_best_score, local_best_index = local_scores.max(
                         dim=-1
                     )
-                    proposed[activation] = local_candidates[
+                    selected_correction = local_candidates[
                         torch.arange(
                             active_context.shape[0],
                             device=raw.device,
                         ),
                         local_best_index,
                     ]
-                    self.selected_candidate_score[active_indices] = (
-                        local_best_score
-                    )
+                    selected_score = local_best_score
+                advantage = selected_score - zero_score
+                candidate_applied = (
+                    advantage >= self.candidate_min_logit_advantage
+                )
+                proposed[activation] = torch.where(
+                    candidate_applied.unsqueeze(-1),
+                    selected_correction,
+                    candidates[zero_index].unsqueeze(0),
+                )
+                self.selected_candidate_score[active_indices] = (
+                    selected_score
+                )
+                self.selected_candidate_advantage[active_indices] = advantage
+                self.selected_candidate_applied[active_indices] = (
+                    candidate_applied
+                )
             if self._fixed_correction_delta is not None:
                 fixed_delta = self._fixed_correction_delta.to(
                     device=raw.device,
@@ -2513,6 +2552,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.stabilization_gate_probability[mask] = 0.0
         self.selected_candidate_index[mask] = -1
         self.selected_candidate_score[mask] = 0.0
+        self.selected_candidate_advantage[mask] = 0.0
+        self.selected_candidate_applied[mask] = False
         self.receiver_retention_offset[mask] = 0.0
         self.receiver_retention_offset_latched[mask] = False
 

@@ -3640,6 +3640,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "receiver local candidate refinement requires a "
             "candidate-value checkpoint"
         )
+    if args.receiver_candidate_min_logit_advantage < 0.0:
+        return _fail(
+            "receiver candidate logit advantage must be non-negative"
+        )
     if args.receiver_candidate_first_attempt and not (
         args.receiver_recovery_checkpoint
         or args.receiver_candidate_value_checkpoint
@@ -4634,6 +4638,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             candidate_value_feature_std=receiver_candidate_value_std,
             candidate_corrections=receiver_candidate_corrections,
             candidate_local_offsets=receiver_candidate_local_offsets,
+            candidate_min_logit_advantage=(
+                args.receiver_candidate_min_logit_advantage
+            ),
             candidate_first_attempt=(
                 args.receiver_candidate_first_attempt
             ),
@@ -7992,6 +7999,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 args
                                 .receiver_recovery_local_orientation_radius_deg
                             ),
+                            "minimum_logit_advantage": (
+                                args
+                                .receiver_candidate_min_logit_advantage
+                            ),
+                            "applied_episodes": int(
+                                receiver_recovery_policy
+                                .selected_candidate_applied.sum()
+                                .item()
+                            ),
+                            "mean_applied_logit_advantage": (
+                                float(
+                                    receiver_recovery_policy
+                                    .selected_candidate_advantage[
+                                        receiver_recovery_policy
+                                        .selected_candidate_applied
+                                    ]
+                                    .mean()
+                                    .item()
+                                )
+                                if receiver_recovery_policy
+                                .selected_candidate_applied.any()
+                                else None
+                            ),
                         }
                         if args.receiver_candidate_value_checkpoint
                         else None
@@ -8456,6 +8486,11 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--receiver_candidate_local_refinement",
         action="store_true",
+    )
+    play.add_argument(
+        "--receiver_candidate_min_logit_advantage",
+        type=float,
+        default=0.0,
     )
     play.add_argument(
         "--receiver_candidate_first_attempt",
