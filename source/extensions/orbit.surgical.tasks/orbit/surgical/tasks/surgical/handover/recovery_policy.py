@@ -1654,7 +1654,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             5,
         )
         self.retry_clearance_retreat = bool(retry_clearance_retreat)
-        self.retry_clearance_retreat_steps = 20
+        self.retry_clearance_retreat_steps = 10
         self.retry_clearance_retreat_action_limit = 0.01
         self.receiver_retention_contact_centering = bool(
             receiver_retention_contact_centering
@@ -3255,10 +3255,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.giver_degradation_dwell + 1,
             torch.zeros_like(self.giver_degradation_dwell),
         )
-        # A one-frame giver contact flicker occurs in otherwise successful
-        # transfers. Latch only persistent physical custody degradation.
+        # Reject one-frame giver contact flicker, but clear the receiver before
+        # a second unilateral frame becomes irreversible custody loss.
         giver_custody_degrading = (
-            self.giver_degradation_dwell >= 3
+            self.giver_degradation_dwell >= 2
         )
         if self.enable_retries:
             failure = (
