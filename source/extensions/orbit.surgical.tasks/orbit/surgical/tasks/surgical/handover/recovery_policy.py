@@ -1219,6 +1219,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         giver_stabilization_start_step: int = 0,
         receiver_secure_settle_steps: int = 0,
         receiver_custody_confirmation_steps: int = 0,
+        receiver_retention_contact_centering: bool = False,
         receiver_retention_servo: bool = False,
         receiver_retention_servo_gain: float = 50.0,
         receiver_retention_servo_action_limit: float = 0.02,
@@ -1650,6 +1651,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.retry_custody_confirmation_steps = max(
             self.receiver_custody_confirmation_steps,
             5,
+        )
+        self.receiver_retention_contact_centering = bool(
+            receiver_retention_contact_centering
         )
         self.receiver_retention_servo = bool(receiver_retention_servo)
         self.receiver_retention_servo_gain = float(
@@ -3486,6 +3490,26 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             retention_servo_action,
             receiver_is_robot_1,
             retention_servo_active,
+        )
+        retention_contact_centering_active = (
+            self.receiver_retention_contact_centering
+            & (phase == 3)
+            & ~giver_any_contact
+            & any_contact
+        )
+        retention_contact_centering_action = torch.zeros_like(
+            receiver_hold_closed
+        )
+        retention_contact_centering_action[:, 2] = (
+            torch.sign(receiver_contacts[:, 1] - receiver_contacts[:, 0])
+            * self.contact_centering_action_limit
+        )
+        retention_contact_centering_action[:, 6] = -1.0
+        result = self._replace_role_action(
+            result,
+            retention_contact_centering_action,
+            receiver_is_robot_1,
+            retention_contact_centering_active,
         )
         return result.clamp(-1.0, 1.0)
 

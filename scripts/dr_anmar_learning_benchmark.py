@@ -3620,6 +3620,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
+        or args.receiver_retention_contact_centering
         or args.receiver_retention_servo
     ) and not (
         1
@@ -3675,6 +3676,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if args.receiver_custody_confirmation_steps < 0:
         return _fail(
             "receiver custody confirmation steps must be non-negative"
+        )
+    if (
+        args.receiver_retention_contact_centering
+        and args.receiver_retention_servo
+    ):
+        return _fail(
+            "receiver retention contact centering and retention servo "
+            "are exclusive"
         )
     if args.receiver_retention_servo_gain <= 0.0:
         return _fail(
@@ -4348,6 +4357,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
+        or args.receiver_retention_contact_centering
         or args.receiver_retention_servo
         or args.receiver_recovery_fixed_correction
         or args.receiver_recovery_random_corrections
@@ -5113,6 +5123,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             receiver_custody_confirmation_steps=(
                 args.receiver_custody_confirmation_steps
+            ),
+            receiver_retention_contact_centering=(
+                args.receiver_retention_contact_centering
             ),
             receiver_retention_servo=(
                 args.receiver_retention_servo
@@ -9387,6 +9400,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .receiver_retention_servo
                     ),
+                    "retention_contact_centering": (
+                        receiver_recovery_policy
+                        .receiver_retention_contact_centering
+                    ),
                     "retention_servo_gain": (
                         receiver_recovery_policy
                         .receiver_retention_servo_gain
@@ -9926,6 +9943,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--receiver_acquisition_requires_live_contact",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_retention_contact_centering",
         action="store_true",
     )
     play.add_argument(
