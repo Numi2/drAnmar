@@ -8911,6 +8911,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 pre_min_n = pre_force_n.min(dim=-1).values
                 post_min_n = post_force_n.min(dim=-1).values
                 min_delta_n = post_min_n - pre_min_n
+                pre_imbalance_n = (
+                    pre_force_n[:, 1] - pre_force_n[:, 0]
+                ).abs()
+                post_imbalance_n = (
+                    post_force_n[:, 1] - post_force_n[:, 0]
+                ).abs()
+                post_total_force_n = post_force_n.sum(dim=-1)
                 quantiles = torch.tensor(
                     (0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0),
                     dtype=pre_force_n.dtype,
@@ -8933,6 +8940,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ).tolist(),
                     "min_force_delta_quantiles_n": torch.quantile(
                         min_delta_n,
+                        quantiles,
+                    ).tolist(),
+                    "pre_force_imbalance_quantiles_n": torch.quantile(
+                        pre_imbalance_n,
+                        quantiles,
+                    ).tolist(),
+                    "post_force_imbalance_quantiles_n": torch.quantile(
+                        post_imbalance_n,
+                        quantiles,
+                    ).tolist(),
+                    "post_total_force_quantiles_n": torch.quantile(
+                        post_total_force_n,
                         quantiles,
                     ).tolist(),
                 }
