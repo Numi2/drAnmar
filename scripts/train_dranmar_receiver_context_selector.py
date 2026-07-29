@@ -560,6 +560,14 @@ def _update(args: argparse.Namespace) -> int:
     training["before_ranking"] = before
     training["after_ranking"] = after
     training["validation_ranking"] = validation
+    training["listwise_configuration"] = {
+        "learning_rate": args.learning_rate,
+        "distillation_weight": args.distillation_weight,
+        "batch_size": args.batch_size,
+        "maximum_epochs": args.epochs,
+        "patience": args.patience,
+        "seed": args.seed,
+    }
     training["updates"] = int(training["updates"]) + 1
     _write_checkpoint(
         checkpoint,
