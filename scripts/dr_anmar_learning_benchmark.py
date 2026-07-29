@@ -3620,6 +3620,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
+        or args.receiver_retry_clearance_retreat
         or args.receiver_retention_contact_centering
         or args.receiver_retention_servo
     ) and not (
@@ -5123,6 +5124,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             receiver_custody_confirmation_steps=(
                 args.receiver_custody_confirmation_steps
+            ),
+            retry_clearance_retreat=(
+                args.receiver_retry_clearance_retreat
             ),
             receiver_retention_contact_centering=(
                 args.receiver_retention_contact_centering
@@ -9396,6 +9400,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "giver_restore_steps": (
                         receiver_recovery_policy.giver_restore_steps
                     ),
+                    "retry_clearance_retreat": (
+                        receiver_recovery_policy.retry_clearance_retreat
+                    ),
+                    "retry_clearance_retreat_steps": (
+                        receiver_recovery_policy
+                        .retry_clearance_retreat_steps
+                    ),
+                    "retry_clearance_retreat_action_limit": (
+                        receiver_recovery_policy
+                        .retry_clearance_retreat_action_limit
+                    ),
                     "retention_servo": (
                         receiver_recovery_policy
                         .receiver_retention_servo
@@ -9943,6 +9958,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--receiver_acquisition_requires_live_contact",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_retry_clearance_retreat",
         action="store_true",
     )
     play.add_argument(

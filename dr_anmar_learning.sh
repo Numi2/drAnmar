@@ -822,6 +822,11 @@ case "${command}" in
                 --receiver_retention_contact_centering
             )
         fi
+        if [[ "${DR_ANMAR_RECEIVER_RETRY_CLEARANCE_RETREAT:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_retry_clearance_retreat
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
             pickup_recovery_args+=(
                 --receiver_recovery_checkpoint
@@ -1195,6 +1200,11 @@ case "${command}" in
         if [[ "${DR_ANMAR_RECEIVER_RETENTION_CONTACT_CENTERING:-0}" == "1" ]]; then
             recovery_record_args+=(
                 --receiver_retention_contact_centering
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_RETRY_CLEARANCE_RETREAT:-0}" == "1" ]]; then
+            recovery_record_args+=(
+                --receiver_retry_clearance_retreat
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then

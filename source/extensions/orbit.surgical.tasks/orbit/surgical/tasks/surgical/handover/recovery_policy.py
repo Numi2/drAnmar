@@ -1219,6 +1219,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         giver_stabilization_start_step: int = 0,
         receiver_secure_settle_steps: int = 0,
         receiver_custody_confirmation_steps: int = 0,
+        retry_clearance_retreat: bool = False,
         receiver_retention_contact_centering: bool = False,
         receiver_retention_servo: bool = False,
         receiver_retention_servo_gain: float = 50.0,
@@ -1652,6 +1653,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.receiver_custody_confirmation_steps,
             5,
         )
+        self.retry_clearance_retreat = bool(retry_clearance_retreat)
+        self.retry_clearance_retreat_steps = 10
+        self.retry_clearance_retreat_action_limit = 0.01
         self.receiver_retention_contact_centering = bool(
             receiver_retention_contact_centering
         )
@@ -3439,6 +3443,35 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             receiver_open,
             receiver_is_robot_1,
             resetting,
+        )
+        retry_clearance_retreat_active = (
+            self.retry_clearance_retreat
+            & resetting
+            & fully_open
+            & force_free
+            & giver_any_contact
+            & ~giver_bilateral_live
+            & (
+                self.open_settle_dwell
+                <= self.retry_clearance_retreat_steps
+            )
+        )
+        retreat_direction = -receiver_relative_offset
+        retreat_direction = retreat_direction / torch.linalg.vector_norm(
+            retreat_direction,
+            dim=-1,
+            keepdim=True,
+        ).clamp_min(1.0e-6)
+        retry_clearance_retreat_action = receiver_open.clone()
+        retry_clearance_retreat_action[:, :3] = (
+            retreat_direction
+            * self.retry_clearance_retreat_action_limit
+        )
+        result = self._replace_role_action(
+            result,
+            retry_clearance_retreat_action,
+            receiver_is_robot_1,
+            retry_clearance_retreat_active,
         )
         result = self._replace_role_action(
             result,
