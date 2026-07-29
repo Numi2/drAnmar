@@ -3567,7 +3567,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         retry_force_centering_action[:, 2] = (
             retry_force_centering_action[:, 2]
             + (
-                torch.sign(receiver_force_imbalance)
+                -torch.sign(receiver_force_imbalance)
                 * self.contact_centering_action_limit
             )
         ).clamp(-1.0, 1.0)
