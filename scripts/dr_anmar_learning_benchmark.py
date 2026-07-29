@@ -9192,9 +9192,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .retry_custody_confirmation_steps
                     ),
-                    "custody_force_margin_n": (
+                    "giver_restore_force_margin_n": (
                         receiver_recovery_policy
-                        .normalized_custody_force_margin
+                        .normalized_giver_restore_force_margin
                         / 0.2
                     ),
                     "giver_restore_steps": (

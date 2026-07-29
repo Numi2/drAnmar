@@ -1675,10 +1675,12 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
         # A qualified contact at exactly 0.01 N is sufficient for phase
-        # bookkeeping but is not enough reserve for an attempted transfer.
-        # Retry custody uses a fixed two-times margin (0.02 N per jaw) before
-        # either another approach or giver release is allowed.
-        self.normalized_custody_force_margin = (
+        # bookkeeping but is not enough reserve for another approach. Wait for
+        # a fixed two-times giver margin (0.02 N per jaw) before retry motion.
+        # Release itself uses five consecutive live bilateral frames because
+        # the screen showed that simultaneous force-margin gating could never
+        # authorize a physically valid transfer.
+        self.normalized_giver_restore_force_margin = (
             2.0 * self.normalized_contact_threshold
         )
         self.giver_restore_steps = 3
@@ -2813,7 +2815,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dim=-1,
         )
         giver_force_margin_live = torch.all(
-            giver_contacts >= self.normalized_custody_force_margin,
+            giver_contacts >= self.normalized_giver_restore_force_margin,
             dim=-1,
         )
         receiver_ee_position = self._select_role(
@@ -2838,10 +2840,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.receiver_retention_offset_latched |= phase >= 3
         bilateral_live = torch.all(
             receiver_contacts > self.normalized_contact_threshold,
-            dim=-1,
-        )
-        receiver_force_margin_live = torch.all(
-            receiver_contacts >= self.normalized_custody_force_margin,
             dim=-1,
         )
         self.bilateral_contact_history = torch.roll(
@@ -2897,8 +2895,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         retry_receiver_custody = (
             basic_receiver_custody
             & giver_bilateral_live
-            & giver_force_margin_live
-            & receiver_force_margin_live
         )
         confirming_receiver_custody = torch.where(
             retry_transfer,
@@ -2937,18 +2933,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & ~bilateral_live
             & ~self.giver_release_completed
         )
-        retry_margin_lost_before_release = (
-            (phase == 3)
-            & retry_transfer
-            & giver_any_contact
-            & self.receiver_release_authorized
-            & ~receiver_force_margin_live
-            & ~self.giver_release_completed
-        )
-        release_aborted = (
-            contact_lost_before_release
-            | retry_margin_lost_before_release
-        )
+        release_aborted = contact_lost_before_release
         self.receiver_release_authorized[
             release_aborted
         ] = False
@@ -2960,10 +2945,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & self.receiver_release_authorized
             & ~giver_any_contact
             & bilateral_live
-            & (
-                ~retry_transfer
-                | receiver_force_margin_live
-            )
         )
         receiver_retry_phase = (
             (phase == 2)
@@ -3229,6 +3210,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & first_or_retry
             & ~bilateral_qualified
             & (self.close_dwell >= self.close_dwell_steps)
+            & torch.all(
+                receiver_joint_displacement
+                >= self.closed_joint_displacement_rad,
+                dim=-1,
+            )
         )
         stalled_acquisition = (
             acquisition_active
