@@ -38,6 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--validation_fraction", type=float, default=0.2)
     parser.add_argument("--validation_seed", type=int)
     parser.add_argument("--candidate_seed", type=int, default=130363)
+    parser.add_argument("--first_attempt_only", action="store_true")
     parser.add_argument("--seed", type=int, default=104729)
     return parser
 
@@ -146,14 +147,16 @@ def main(argv: list[str]) -> int:
         samples = payload.get("attempts")
         if not samples:
             raise ValueError(f"candidate dataset lacks attempts: {path}")
-        first_retry = samples["retry_count"].long() == 1
-        context = samples["context"].float()[first_retry]
-        correction = samples["correction"].float()[first_retry]
-        candidate = samples["candidate_index"].long()[first_retry]
-        state = samples["state_index"].long()[first_retry]
+        selected_attempt = samples["retry_count"].long() == (
+            0 if args.first_attempt_only else 1
+        )
+        context = samples["context"].float()[selected_attempt]
+        correction = samples["correction"].float()[selected_attempt]
+        candidate = samples["candidate_index"].long()[selected_attempt]
+        state = samples["state_index"].long()[selected_attempt]
         retained = (
-            samples["retained"].bool()[first_retry]
-            & samples["safe_acquisition"].bool()[first_retry]
+            samples["retained"].bool()[selected_attempt]
+            & samples["safe_acquisition"].bool()[selected_attempt]
         )
         if context.shape[-1] != 29 or correction.shape[-1] != 6:
             raise ValueError(f"receiver candidate shape drifted: {path}")
@@ -172,7 +175,14 @@ def main(argv: list[str]) -> int:
                 "path": str(path),
                 "sha256": _sha256(path),
                 "seed": seed,
-                "first_retry_samples": int(first_retry.sum().item()),
+                "attempt_stage": (
+                    "canonical_first_attempt"
+                    if args.first_attempt_only
+                    else "first_retry"
+                ),
+                "selected_attempt_samples": int(
+                    selected_attempt.sum().item()
+                ),
                 "states": int(torch.unique(state).numel()),
                 "retained_candidates": int(retained.sum().item()),
             }
@@ -318,6 +328,11 @@ def main(argv: list[str]) -> int:
         "orientation_cap_rad": orientation_cap,
         "training": {
             "algorithm": "candidate_retained_value_ranking",
+            "attempt_stage": (
+                "canonical_first_attempt"
+                if args.first_attempt_only
+                else "first_retry"
+            ),
             "seed": args.seed,
             "validation_seed": args.validation_seed,
             "epochs": args.epochs,

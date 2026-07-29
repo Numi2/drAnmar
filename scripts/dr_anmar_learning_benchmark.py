@@ -3641,12 +3641,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "candidate-value checkpoint"
         )
     if args.receiver_candidate_first_attempt and not (
-        args.receiver_retry_gate_checkpoint
-        and args.receiver_candidate_value_checkpoint
+        args.receiver_candidate_value_checkpoint
+        or args.receiver_recovery_fixed_correction
+        or args.receiver_recovery_random_corrections
+        or args.receiver_recovery_sobol_candidate is not None
+        or args.receiver_recovery_local_sobol_candidate is not None
+        or args.receiver_recovery_local_sweep
     ):
         return _fail(
-            "first-attempt receiver candidates require retry-gate and "
-            "candidate-value checkpoints"
+            "first-attempt receiver correction requires a candidate-value "
+            "checkpoint or explicit correction source"
         )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:

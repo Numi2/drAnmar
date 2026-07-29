@@ -1275,13 +1275,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.enable_retries = bool(enable_retries)
         self.candidate_first_attempt = bool(candidate_first_attempt)
-        if self.candidate_first_attempt and (
-            self.retry_gate is None or self.candidate_value is None
-        ):
-            raise ValueError(
-                "first-attempt receiver candidates require a retry gate "
-                "and candidate-value model"
-            )
         self.stabilize_giver_during_acquisition = bool(
             stabilize_giver_during_acquisition
         )
@@ -2089,6 +2082,37 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             torch.zeros_like(self.acquisition_dwell),
         )
         gate_retry = torch.zeros_like(acquisition_active)
+        if self.candidate_first_attempt and self.retry_gate is None:
+            candidate_activation = (
+                acquisition_active
+                & (self.retry_state == self.state_canonical)
+                & (self.retry_count == 0)
+                & ~bilateral_qualified
+                & ~self.gate_evaluated
+                & (self.acquisition_dwell >= self.gate_step)
+            )
+            if bool(candidate_activation.any()):
+                self.gate_evaluated[candidate_activation] = True
+                self.gate_triggered[candidate_activation] = True
+                self.gate_probability[candidate_activation] = 1.0
+                self.failure_forces[candidate_activation] = (
+                    receiver_contacts[candidate_activation].clamp(
+                        0.0,
+                        1.0,
+                    )
+                )
+                self.failure_loss_flags[candidate_activation] = (
+                    receiver_contacts[candidate_activation]
+                    <= self.normalized_contact_threshold
+                ).to(raw.dtype)
+                self._activate_recovery(
+                    raw,
+                    giver_is_robot_1,
+                    candidate_activation,
+                )
+                self.first_attempt_candidate_active[
+                    candidate_activation
+                ] = True
         if (
             (self.enable_retries or self.candidate_first_attempt)
             and self.retry_gate is not None
