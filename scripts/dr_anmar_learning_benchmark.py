@@ -3582,6 +3582,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "grouped receiver retry gating requires a gate checkpoint "
             "and must divide num_envs"
         )
+    if (
+        args.receiver_retry_gate_control_replica
+        and args.receiver_retry_gate_group_replicas <= 1
+    ):
+        return _fail(
+            "receiver retry gate control replica requires grouped replicas"
+        )
     if not 0.0 < args.receiver_stabilization_gate_threshold < 1.0:
         return _fail(
             "receiver stabilization gate threshold must be inside (0, 1)"
@@ -4624,6 +4631,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             gate_threshold=args.receiver_retry_gate_threshold,
             gate_group_replicas=(
                 args.receiver_retry_gate_group_replicas
+            ),
+            gate_group_control_replica=(
+                args.receiver_retry_gate_control_replica
             ),
             stabilization_gate=receiver_stabilization_gate,
             stabilization_gate_feature_mean=(
@@ -8150,6 +8160,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 receiver_recovery_policy
                                 .gate_group_replicas
                             ),
+                            "group_control_replica": (
+                                receiver_recovery_policy
+                                .gate_group_control_replica
+                            ),
                             "evaluated_episodes": int(
                                 first_receiver_gate_evaluated.sum().item()
                             ),
@@ -8598,6 +8612,10 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_retry_gate_group_replicas",
         type=int,
         default=1,
+    )
+    play.add_argument(
+        "--receiver_retry_gate_control_replica",
+        action="store_true",
     )
     play.add_argument("--receiver_stabilization_gate_checkpoint")
     play.add_argument(

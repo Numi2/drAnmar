@@ -1042,6 +1042,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         gate_step: int = 100,
         gate_threshold: float = 0.8,
         gate_group_replicas: int = 1,
+        gate_group_control_replica: bool = False,
         stabilization_gate: ReceiverRetryGate | None = None,
         stabilization_gate_feature_mean: torch.Tensor | None = None,
         stabilization_gate_feature_std: torch.Tensor | None = None,
@@ -1276,6 +1277,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.gate_step = int(gate_step)
         self.gate_threshold = float(gate_threshold)
         self.gate_group_replicas = int(gate_group_replicas)
+        self.gate_group_control_replica = bool(
+            gate_group_control_replica
+        )
         self.stabilization_gate_step = int(stabilization_gate_step)
         self.stabilization_gate_threshold = float(
             stabilization_gate_threshold
@@ -2223,6 +2227,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                         group_index,
                         selected_groups,
                     )
+                    if self.gate_group_control_replica:
+                        grouped_selected &= (
+                            torch.arange(
+                                raw.shape[0],
+                                device=raw.device,
+                            )
+                            % self.gate_group_replicas
+                            != 0
+                        )
                     selected_indices = torch.nonzero(
                         grouped_selected
                         & (phase == 2)
