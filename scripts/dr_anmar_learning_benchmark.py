@@ -3535,10 +3535,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if not (
             args.receiver_recovery_random_corrections
             or args.receiver_recovery_local_sweep
+            or args.receiver_retry_candidate_sweep
         ):
             return _fail(
                 "grouped receiver recovery sweeps require randomized "
-                "or local corrections"
+                "corrections, local corrections, or a retry-only candidate "
+                "sweep"
             )
         if args.num_envs % args.receiver_recovery_sweep_replicas != 0:
             return _fail(
@@ -3563,6 +3565,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         env_cfg.events.reset_object_position.params["replicas"] = (
             args.receiver_recovery_sweep_replicas
         )
+    if args.receiver_retry_candidate_sweep and not (
+        args.receiver_candidate_value_checkpoint
+        and args.receiver_candidate_first_attempt
+        and not args.receiver_disable_retries
+        and args.receiver_recovery_sweep_replicas == 16
+    ):
+        return _fail(
+            "receiver retry candidate sweep requires the frozen promoted "
+            "common-16 scorer, unchanged first attempt, retries enabled, "
+            "and 16 grouped replicas"
+        )
+    if (
+        args.receiver_retry_candidate_sweep
+        and args.receiver_retry_portfolio_checkpoint
+    ):
+        return _fail(
+            "receiver retry candidate sweep and retry portfolio are exclusive"
+        )
     if (
         args.receiver_recovery
         or args.receiver_recovery_checkpoint
@@ -3571,6 +3591,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_candidate_value_checkpoint
         or args.receiver_context_selector_checkpoint
         or args.receiver_retry_portfolio_checkpoint
+        or args.receiver_retry_candidate_sweep
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
@@ -4277,6 +4298,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_candidate_value_checkpoint
         or args.receiver_context_selector_checkpoint
         or args.receiver_retry_portfolio_checkpoint
+        or args.receiver_retry_candidate_sweep
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
@@ -5015,6 +5037,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             retry_candidate_portfolios=receiver_retry_portfolios,
             retry_force_imbalance_threshold=(
                 receiver_retry_force_imbalance_threshold
+            ),
+            retry_candidate_sweep_replicas=(
+                args.receiver_recovery_sweep_replicas
+                if args.receiver_retry_candidate_sweep
+                else 1
             ),
             attempt_actor_critic=receiver_attempt_actor_critic,
             attempt_feature_mean=receiver_attempt_feature_mean,
@@ -8056,6 +8083,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         args.recovery_demo_rotation_deg
                     ),
                     "base_checkpoint_sha256": _sha256(checkpoint),
+                    "receiver_candidate_checkpoint_sha256": (
+                        _sha256(
+                            Path(
+                                args.receiver_candidate_value_checkpoint
+                            ).expanduser().resolve()
+                        )
+                        if args.receiver_candidate_value_checkpoint
+                        else None
+                    ),
                     "pickup_recovery_checkpoint_sha256": (
                         _sha256(
                             Path(
@@ -8080,7 +8116,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "sweep_id": args.receiver_recovery_sweep_id,
                     "search_mode": (
-                        "dagger_local"
+                        "retry_paired_common16"
+                        if args.receiver_retry_candidate_sweep
+                        else "dagger_local"
                         if (
                             args.receiver_recovery_local_sobol_candidate
                             is not None
@@ -9113,6 +9151,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                         or args.receiver_recovery_local_sweep
                     ),
+                    "retry_candidate_sweep": (
+                        args.receiver_retry_candidate_sweep
+                    ),
                     "sweep_replicas": (
                         args.receiver_recovery_sweep_replicas
                     ),
@@ -9525,6 +9566,14 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_recovery_sweep_replicas",
         type=int,
         default=1,
+    )
+    play.add_argument(
+        "--receiver_retry_candidate_sweep",
+        action="store_true",
+        help=(
+            "assign the frozen common-16 candidates by grouped environment "
+            "only on genuine post-reopen retries"
+        ),
     )
     play.add_argument(
         "--receiver_recovery_sobol_start",

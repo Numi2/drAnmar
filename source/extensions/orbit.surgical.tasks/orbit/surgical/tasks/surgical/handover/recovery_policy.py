@@ -1205,6 +1205,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         candidate_selector_feature_std: torch.Tensor | None = None,
         retry_candidate_portfolios: torch.Tensor | None = None,
         retry_force_imbalance_threshold: float = 0.005,
+        retry_candidate_sweep_replicas: int = 1,
         attempt_actor_critic: ReceiverAttemptActorCritic | None = None,
         attempt_feature_mean: torch.Tensor | None = None,
         attempt_feature_std: torch.Tensor | None = None,
@@ -1255,6 +1256,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             raise ValueError(
                 "receiver retry force-imbalance threshold must be "
                 "non-negative"
+            )
+        if retry_candidate_sweep_replicas <= 0:
+            raise ValueError(
+                "receiver retry candidate sweep replicas must be positive"
             )
         if giver_stabilization_start_step < 0:
             raise ValueError(
@@ -1435,6 +1440,21 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.register_buffer(
             "candidate_local_offsets",
             candidate_local_offsets.detach().clone(),
+        )
+        if (
+            retry_candidate_sweep_replicas > 1
+            and (
+                candidate_value is None
+                or retry_candidate_sweep_replicas
+                != candidate_corrections.shape[0]
+            )
+        ):
+            raise ValueError(
+                "receiver retry candidate sweep replicas must match the "
+                "frozen candidate count"
+            )
+        self.retry_candidate_sweep_replicas = int(
+            retry_candidate_sweep_replicas
         )
         self.candidate_selector = candidate_selector
         if candidate_selector is None:
@@ -2175,6 +2195,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     dtype=torch.bool,
                     device=raw.device,
                 )
+                retry_sweep_active = torch.zeros_like(portfolio_active)
                 if self.candidate_selector is not None:
                     normalized_context = (
                         active_context
@@ -2190,6 +2211,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                         normalized_context
                     )
                     best_index = selector_logits.argmax(dim=-1)
+                if self.retry_candidate_sweep_replicas > 1:
+                    retry_sweep_active = (
+                        self.retry_count[active_indices] > 0
+                    )
+                    if bool(retry_sweep_active.any()):
+                        best_index = best_index.clone()
+                        best_index[retry_sweep_active] = (
+                            active_indices[retry_sweep_active]
+                            % self.retry_candidate_sweep_replicas
+                        )
                 if self.retry_candidate_portfolios.numel() > 0:
                     portfolio_active = (
                         self.retry_count[active_indices] > 0
@@ -2280,6 +2311,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                         self.selected_retry_portfolio_rank[
                             portfolio_environment
                         ] = rank
+                forced_retry_candidate = (
+                    portfolio_active | retry_sweep_active
+                )
                 best_score = candidate_scores.gather(
                     1,
                     best_index.unsqueeze(-1),
@@ -2356,19 +2390,19 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     ]
                     selected_score = local_best_score
                     selected_correction = torch.where(
-                        portfolio_active.unsqueeze(-1),
+                        forced_retry_candidate.unsqueeze(-1),
                         candidates[best_index],
                         selected_correction,
                     )
                     selected_score = torch.where(
-                        portfolio_active,
+                        forced_retry_candidate,
                         best_score,
                         selected_score,
                     )
                 advantage = selected_score - zero_score
                 candidate_applied = (
                     advantage >= self.candidate_min_logit_advantage
-                ) | portfolio_active
+                ) | forced_retry_candidate
                 applied_index = torch.where(
                     candidate_applied,
                     best_index,
