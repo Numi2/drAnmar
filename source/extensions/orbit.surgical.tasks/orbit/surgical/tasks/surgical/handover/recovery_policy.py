@@ -3454,7 +3454,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             giver_hold
         )
         retry_giver_contact_centering_action[:, 2] = (
-            torch.sign(giver_contacts[:, 1] - giver_contacts[:, 0])
+            torch.sign(giver_contacts[:, 0] - giver_contacts[:, 1])
             * self.contact_centering_action_limit
         )
         retry_giver_contact_centering_action[:, 6] = -1.0
