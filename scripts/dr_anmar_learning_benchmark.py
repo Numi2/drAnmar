@@ -3622,6 +3622,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_secure_settle_steps > 0
         or args.receiver_retry_giver_contact_centering
         or args.receiver_retention_contact_centering
+        or args.receiver_retention_proportional_centering
         or args.receiver_retention_servo
     ) and not (
         1
@@ -3680,6 +3681,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
     if (
         args.receiver_retention_contact_centering
+        and args.receiver_retention_proportional_centering
+    ):
+        return _fail(
+            "fixed and proportional receiver contact centering are exclusive"
+        )
+    if (
+        (
+            args.receiver_retention_contact_centering
+            or args.receiver_retention_proportional_centering
+        )
         and args.receiver_retention_servo
     ):
         return _fail(
@@ -5130,6 +5141,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             receiver_retention_contact_centering=(
                 args.receiver_retention_contact_centering
+            ),
+            receiver_retention_proportional_centering=(
+                args.receiver_retention_proportional_centering
             ),
             receiver_retention_servo=(
                 args.receiver_retention_servo
@@ -9408,6 +9422,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .receiver_retention_contact_centering
                     ),
+                    "retention_proportional_centering": (
+                        receiver_recovery_policy
+                        .receiver_retention_proportional_centering
+                    ),
                     "retry_giver_contact_centering": (
                         receiver_recovery_policy
                         .retry_giver_contact_centering
@@ -9959,6 +9977,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--receiver_retention_contact_centering",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_retention_proportional_centering",
         action="store_true",
     )
     play.add_argument(
