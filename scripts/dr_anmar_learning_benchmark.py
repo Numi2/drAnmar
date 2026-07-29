@@ -6384,6 +6384,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 ]
                                 .cpu()
                             ),
+                            "giver_bilateral_at_activation": (
+                                receiver_recovery_policy
+                                .last_activation_giver_bilateral[
+                                    all_receiver_activations
+                                ]
+                                .cpu()
+                            ),
                         }
                         if (
                             receiver_recovery_policy.attempt_actor_critic
@@ -8027,6 +8034,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                     for event in receiver_activation_events
                                 ]
                             ).long(),
+                            "giver_bilateral_at_activation": torch.cat(
+                                [
+                                    event[
+                                        "giver_bilateral_at_activation"
+                                    ]
+                                    for event in receiver_activation_events
+                                ]
+                            ).bool(),
                         }
                     )
             torch.save(
@@ -8840,6 +8855,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                     ]
                                 ).tolist()
                             },
+                            "retry_activations": int(
+                                sum(
+                                    int(
+                                        (
+                                            event["retry_count"] > 0
+                                        ).sum()
+                                    )
+                                    for event in receiver_activation_events
+                                )
+                            ),
+                            "retry_activations_with_giver_bilateral": int(
+                                sum(
+                                    int(
+                                        (
+                                            (event["retry_count"] > 0)
+                                            & event[
+                                                "giver_bilateral_at_activation"
+                                            ]
+                                        ).sum()
+                                    )
+                                    for event in receiver_activation_events
+                                )
+                            ),
                         }
                         if args.receiver_retry_portfolio_checkpoint
                         else None
