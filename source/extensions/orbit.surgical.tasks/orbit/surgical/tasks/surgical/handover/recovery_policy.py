@@ -1662,7 +1662,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_verification = bool(
             active_custody_verification
         )
-        self.active_custody_verification_steps = 3
+        self.active_custody_verification_steps = 2
         self.receiver_retention_contact_centering = bool(
             receiver_retention_contact_centering
         )
@@ -1690,7 +1690,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
         self.normalized_active_custody_force_imbalance_limit = (
-            2.0 * self.normalized_contact_threshold
+            5.0 * self.normalized_contact_threshold
         )
         # A single qualified contact frame is not enough to restart motion.
         # Require three consecutive bilateral giver frames at the task's
@@ -3521,6 +3521,18 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             receiver_is_robot_1,
             receiver_secure_settling | pre_release_custody_hold,
         )
+        active_custody_load_probe = (
+            self.active_custody_verification
+            & pre_release_custody_hold
+            & confirming_receiver_custody
+            & (self.receiver_secure_live_dwell == 1)
+        )
+        result = self._replace_role_action(
+            result,
+            receiver_open,
+            giver_is_robot_1,
+            active_custody_load_probe,
+        )
         corrected_receiver_action = self._corrected_receiver_action(
             raw,
             giver_is_robot_1,
@@ -3564,22 +3576,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             retry_force_centering_action,
             receiver_is_robot_1,
             retry_force_centering_active,
-        )
-        active_custody_verification_active = (
-            self.active_custody_verification
-            & pre_release_custody_hold
-            & any_contact
-        )
-        active_custody_verification_action = receiver_hold_closed.clone()
-        active_custody_verification_action[:, 2] = (
-            torch.sign(receiver_force_imbalance)
-            * self.contact_centering_action_limit
-        )
-        result = self._replace_role_action(
-            result,
-            active_custody_verification_action,
-            receiver_is_robot_1,
-            active_custody_verification_active,
         )
         retention_servo_active = (
             self.receiver_retention_servo
