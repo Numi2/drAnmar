@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import math
 import random
 import sys
+import types
 from pathlib import Path
 
 import torch
@@ -29,21 +31,52 @@ def _sha256(path: Path) -> str:
 
 
 def _repo_models() -> tuple[type[torch.nn.Module], type[torch.nn.Module]]:
-    repo_root = Path(__file__).resolve().parents[1]
-    sys.path.insert(
-        0,
-        str(repo_root / "source/extensions/orbit.surgical.tasks"),
+    module_name = "_dranmar_receiver_attempt_recovery_policy"
+    recovery_policy = sys.modules.get(module_name)
+    if recovery_policy is None:
+        for package_name in (
+            "orbit",
+            "orbit.surgical",
+            "orbit.surgical.tasks",
+            "orbit.surgical.tasks.surgical",
+            "orbit.surgical.tasks.surgical.lift",
+            "orbit.surgical.tasks.surgical.handover",
+        ):
+            package = types.ModuleType(package_name)
+            package.__path__ = []
+            sys.modules.setdefault(package_name, package)
+        grasp_frames = types.ModuleType(
+            "orbit.surgical.tasks.surgical.lift.grasp_frames"
+        )
+        grasp_frames.NEEDLE_PROVISIONAL_GRASP_OFFSET_M = (
+            -0.0072,
+            0.0015,
+            0.0,
+        )
+        grasp_frames.needle_geometry_grasp_offset_m = lambda fraction: (
+            -0.004,
+            0.003,
+            0.0,
+        )
+        sys.modules[grasp_frames.__name__] = grasp_frames
+        module_path = (
+            Path(__file__).resolve().parents[1]
+            / "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks/"
+            "surgical/handover/recovery_policy.py"
+        )
+        spec = importlib.util.spec_from_file_location(
+            module_name,
+            module_path,
+        )
+        if spec is None or spec.loader is None:
+            raise ImportError(f"cannot load recovery policy: {module_path}")
+        recovery_policy = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = recovery_policy
+        spec.loader.exec_module(recovery_policy)
+    return (
+        recovery_policy.ReceiverAttemptActorCritic,
+        recovery_policy.ReceiverCandidateValue,
     )
-    sys.path.insert(
-        0,
-        str(repo_root / "source/extensions/orbit.surgical.assets"),
-    )
-    from orbit.surgical.tasks.surgical.handover.recovery_policy import (
-        ReceiverAttemptActorCritic,
-        ReceiverCandidateValue,
-    )
-
-    return ReceiverAttemptActorCritic, ReceiverCandidateValue
 
 
 def _project_vector(value: torch.Tensor, cap: float) -> torch.Tensor:
