@@ -3379,24 +3379,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         args.num_envs,
         runtime_seed,
     )
-    receiver_sweep_collision_stack_size = None
-    if (
-        args.receiver_recovery_sweep_replicas > 1
-        and args.num_envs > 2400
-    ):
-        physx_cfg = env_cfg.sim.physx
-        if not hasattr(physx_cfg, "gpu_collision_stack_size"):
-            return _fail(
-                "large grouped receiver sweeps require a configurable "
-                "PhysX GPU collision stack"
-            )
-        receiver_sweep_collision_stack_size = max(
-            int(physx_cfg.gpu_collision_stack_size),
-            2**28,
-        )
-        physx_cfg.gpu_collision_stack_size = (
-            receiver_sweep_collision_stack_size
-        )
     if args.recovery_demo_rotation_deg:
         if args.seed in RECOVERY_QUALIFICATION_SEEDS:
             return _fail(
@@ -7874,9 +7856,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "task": args.task,
                     "seed": args.seed,
                     "seed_stream_offset": args.seed_stream_offset,
-                    "gpu_collision_stack_size": (
-                        receiver_sweep_collision_stack_size
-                    ),
                     "reset_rotation_randomization_deg": (
                         args.recovery_demo_rotation_deg
                     ),
@@ -8171,9 +8150,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "seed": args.seed,
             "seed_stream_offset": args.seed_stream_offset,
             "runtime_seed": runtime_seed,
-            "gpu_collision_stack_size": (
-                receiver_sweep_collision_stack_size
-            ),
             "episode_length_s": float(env_cfg.episode_length_s),
             "receiver_acquisition_requires_live_contact": (
                 args.receiver_acquisition_requires_live_contact
