@@ -1220,6 +1220,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         receiver_secure_settle_steps: int = 0,
         receiver_custody_confirmation_steps: int = 0,
         retry_clearance_retreat: bool = False,
+        retry_force_centering: bool = False,
+        active_custody_verification: bool = False,
         receiver_retention_contact_centering: bool = False,
         receiver_retention_servo: bool = False,
         receiver_retention_servo_gain: float = 50.0,
@@ -1656,6 +1658,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.retry_clearance_retreat = bool(retry_clearance_retreat)
         self.retry_clearance_retreat_steps = 10
         self.retry_clearance_retreat_action_limit = 0.01
+        self.retry_force_centering = bool(retry_force_centering)
+        self.active_custody_verification = bool(
+            active_custody_verification
+        )
+        self.active_custody_verification_steps = 3
+        self.normalized_active_custody_force_imbalance_limit = (
+            2.0 * self.normalized_contact_threshold
+        )
         self.receiver_retention_contact_centering = bool(
             receiver_retention_contact_centering
         )
@@ -2907,21 +2917,42 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         # frames. Once the receiver closes, load transfer can legitimately
         # unload either giver jaw. Requiring giver bilateral contact throughout
         # receiver confirmation deadlocked every observed retry release.
-        confirming_receiver_custody = basic_receiver_custody
+        active_custody_force_balanced = (
+            (
+                receiver_contacts[:, 1]
+                - receiver_contacts[:, 0]
+            ).abs()
+            <= self.normalized_active_custody_force_imbalance_limit
+        )
+        confirming_receiver_custody = basic_receiver_custody & (
+            active_custody_force_balanced
+            if self.active_custody_verification
+            else torch.ones_like(active_custody_force_balanced)
+        )
         self.receiver_secure_live_dwell[:] = torch.where(
             confirming_receiver_custody,
             self.receiver_secure_live_dwell + 1,
             torch.zeros_like(self.receiver_secure_live_dwell),
         )
+        first_confirmation_steps = (
+            self.active_custody_verification_steps
+            if self.active_custody_verification
+            else self.receiver_custody_confirmation_steps
+        )
+        retry_confirmation_steps_value = (
+            self.active_custody_verification_steps
+            if self.active_custody_verification
+            else self.retry_custody_confirmation_steps
+        )
         retry_confirmation_steps = torch.where(
             self.retry_count > 0,
             torch.full_like(
                 self.retry_count,
-                self.retry_custody_confirmation_steps,
+                retry_confirmation_steps_value,
             ),
             torch.full_like(
                 self.retry_count,
-                self.receiver_custody_confirmation_steps,
+                first_confirmation_steps,
             ),
         )
         release_authorized_now = (
@@ -3510,6 +3541,45 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             corrected_receiver_action,
             receiver_is_robot_1,
             corrected_approach,
+        )
+        receiver_force_imbalance = (
+            receiver_contacts[:, 1] - receiver_contacts[:, 0]
+        )
+        retry_force_centering_active = (
+            self.retry_force_centering
+            & learned_retry
+            & any_contact
+            & ~bilateral_qualified
+        )
+        retry_force_centering_action = corrected_receiver_action.clone()
+        retry_force_centering_action[:, 2] = (
+            retry_force_centering_action[:, 2]
+            + (
+                torch.sign(receiver_force_imbalance)
+                * self.contact_centering_action_limit
+            )
+        ).clamp(-1.0, 1.0)
+        result = self._replace_role_action(
+            result,
+            retry_force_centering_action,
+            receiver_is_robot_1,
+            retry_force_centering_active,
+        )
+        active_custody_verification_active = (
+            self.active_custody_verification
+            & pre_release_custody_hold
+            & any_contact
+        )
+        active_custody_verification_action = receiver_hold_closed.clone()
+        active_custody_verification_action[:, 2] = (
+            torch.sign(receiver_force_imbalance)
+            * self.contact_centering_action_limit
+        )
+        result = self._replace_role_action(
+            result,
+            active_custody_verification_action,
+            receiver_is_robot_1,
+            active_custody_verification_active,
         )
         retention_servo_active = (
             self.receiver_retention_servo

@@ -3621,6 +3621,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
         or args.receiver_retry_clearance_retreat
+        or args.receiver_retry_force_centering
+        or args.receiver_active_custody_verification
         or args.receiver_retention_contact_centering
         or args.receiver_retention_servo
     ) and not (
@@ -5127,6 +5129,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             retry_clearance_retreat=(
                 args.receiver_retry_clearance_retreat
+            ),
+            retry_force_centering=(
+                args.receiver_retry_force_centering
+            ),
+            active_custody_verification=(
+                args.receiver_active_custody_verification
             ),
             receiver_retention_contact_centering=(
                 args.receiver_retention_contact_centering
@@ -9411,6 +9419,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .retry_clearance_retreat_action_limit
                     ),
+                    "retry_force_centering": (
+                        receiver_recovery_policy.retry_force_centering
+                    ),
+                    "active_custody_verification": (
+                        receiver_recovery_policy
+                        .active_custody_verification
+                    ),
+                    "active_custody_verification_steps": (
+                        receiver_recovery_policy
+                        .active_custody_verification_steps
+                    ),
+                    "active_custody_force_imbalance_limit_n": (
+                        receiver_recovery_policy
+                        .normalized_active_custody_force_imbalance_limit
+                        / 0.2
+                    ),
                     "retention_servo": (
                         receiver_recovery_policy
                         .receiver_retention_servo
@@ -9962,6 +9986,14 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--receiver_retry_clearance_retreat",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_retry_force_centering",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_active_custody_verification",
         action="store_true",
     )
     play.add_argument(
