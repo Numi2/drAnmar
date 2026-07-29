@@ -1052,6 +1052,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         candidate_value_feature_std: torch.Tensor | None = None,
         candidate_corrections: torch.Tensor | None = None,
         candidate_local_offsets: torch.Tensor | None = None,
+        candidate_first_attempt: bool = False,
         enable_retries: bool = True,
         stabilize_giver_during_acquisition: bool = False,
         giver_stabilization_start_step: int = 0,
@@ -1273,6 +1274,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             stabilization_gate_threshold
         )
         self.enable_retries = bool(enable_retries)
+        self.candidate_first_attempt = bool(candidate_first_attempt)
+        if self.candidate_first_attempt and (
+            self.retry_gate is None or self.candidate_value is None
+        ):
+            raise ValueError(
+                "first-attempt receiver candidates require a retry gate "
+                "and candidate-value model"
+            )
         self.stabilize_giver_during_acquisition = bool(
             stabilize_giver_during_acquisition
         )
@@ -1338,6 +1347,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.gate_evaluated = torch.empty(0, dtype=torch.bool)
         self.gate_triggered = torch.empty(0, dtype=torch.bool)
         self.gate_probability = torch.empty(0)
+        self.first_attempt_candidate_active = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
         self.receiver_secure_settle_dwell = torch.empty(
             0,
             dtype=torch.long,
@@ -1435,6 +1448,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             batch_size,
             dtype=dtype,
             device=device,
+        )
+        self.first_attempt_candidate_active = torch.zeros_like(
+            self.first_attempt_failed
         )
         self.receiver_secure_settle_dwell = torch.zeros_like(
             self.retry_count
@@ -2008,6 +2024,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         secure_now = (phase >= 3) | (
             (phase == 2) & bilateral_qualified
         )
+        self.first_attempt_candidate_active[secure_now] = False
         self.recovered_acquisition |= (
             secure_now & (self.retry_count > 0)
         )
@@ -2072,7 +2089,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             torch.zeros_like(self.acquisition_dwell),
         )
         gate_retry = torch.zeros_like(acquisition_active)
-        if self.enable_retries and self.retry_gate is not None:
+        if (
+            (self.enable_retries or self.candidate_first_attempt)
+            and self.retry_gate is not None
+        ):
             gate_now = (
                 acquisition_active
                 & (self.retry_state == self.state_canonical)
@@ -2135,8 +2155,30 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                         as_tuple=False,
                     ).squeeze(-1)
                     self.gate_evaluated[selected_indices] = True
-                gate_retry[selected_indices] = True
                 self.gate_triggered[selected_indices] = True
+                if self.candidate_first_attempt:
+                    candidate_activation = torch.zeros_like(gate_retry)
+                    candidate_activation[selected_indices] = True
+                    self.failure_forces[candidate_activation] = (
+                        receiver_contacts[candidate_activation].clamp(
+                            0.0,
+                            1.0,
+                        )
+                    )
+                    self.failure_loss_flags[candidate_activation] = (
+                        receiver_contacts[candidate_activation]
+                        <= self.normalized_contact_threshold
+                    ).to(raw.dtype)
+                    self._activate_recovery(
+                        raw,
+                        giver_is_robot_1,
+                        candidate_activation,
+                    )
+                    self.first_attempt_candidate_active[
+                        candidate_activation
+                    ] = True
+                else:
+                    gate_retry[selected_indices] = True
         if self.stabilization_gate is not None:
             stabilization_gate_now = (
                 acquisition_active
@@ -2240,6 +2282,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         else:
             failure = torch.zeros_like(failed_close)
         if bool(failure.any()):
+            self.first_attempt_candidate_active[failure] = False
             self.failure_forces[failure] = receiver_contacts[
                 failure
             ].clamp(0.0, 1.0)
@@ -2373,11 +2416,18 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         learned_retry = (
             (self.retry_state == self.state_learned_retry) & (phase == 2)
         )
+        corrected_approach = (
+            learned_retry
+            | (
+                self.first_attempt_candidate_active
+                & (phase == 2)
+            )
+        )
         result = self._replace_role_action(
             result,
             corrected_receiver_action,
             receiver_is_robot_1,
-            learned_retry,
+            corrected_approach,
         )
         retention_servo_active = (
             self.receiver_retention_servo
@@ -2425,6 +2475,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.gate_evaluated[mask] = False
         self.gate_triggered[mask] = False
         self.gate_probability[mask] = 0.0
+        self.first_attempt_candidate_active[mask] = False
         self.receiver_secure_settle_dwell[mask] = 0
         self.stabilization_gate_evaluated[mask] = False
         self.stabilization_gate_selected[mask] = False

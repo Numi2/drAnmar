@@ -3640,6 +3640,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "receiver local candidate refinement requires a "
             "candidate-value checkpoint"
         )
+    if args.receiver_candidate_first_attempt and not (
+        args.receiver_retry_gate_checkpoint
+        and args.receiver_candidate_value_checkpoint
+    ):
+        return _fail(
+            "first-attempt receiver candidates require retry-gate and "
+            "candidate-value checkpoints"
+        )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
@@ -4621,6 +4629,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             candidate_value_feature_std=receiver_candidate_value_std,
             candidate_corrections=receiver_candidate_corrections,
             candidate_local_offsets=receiver_candidate_local_offsets,
+            candidate_first_attempt=(
+                args.receiver_candidate_first_attempt
+            ),
             enable_retries=not args.receiver_disable_retries,
             stabilize_giver_during_acquisition=(
                 args.receiver_stabilize_giver_during_acquisition
@@ -7992,6 +8003,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "retries_enabled": (
                         receiver_recovery_policy.enable_retries
                     ),
+                    "candidate_first_attempt": (
+                        receiver_recovery_policy
+                        .candidate_first_attempt
+                    ),
                     "stabilize_giver_during_acquisition": (
                         receiver_recovery_policy
                         .stabilize_giver_during_acquisition
@@ -8435,6 +8450,10 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--receiver_candidate_value_checkpoint")
     play.add_argument(
         "--receiver_candidate_local_refinement",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_candidate_first_attempt",
         action="store_true",
     )
     play.add_argument(
