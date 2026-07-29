@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|attempt-handover|selector-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -28,8 +28,10 @@ usage() {
     echo "  receiver-selector-bootstrap BASE CANDIDATE OUTPUT DATASET..."
     echo "  receiver-selector-update CHECKPOINT OUTPUT DATASET..."
     echo "  receiver-selector-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
+    echo "  receiver-retry-portfolio BASE CANDIDATE OUTPUT DATASET..."
     echo "  attempt-handover ATTEMPT_CHECKPOINT [num_envs] [frames] [output] [task]"
     echo "  selector-handover SELECTOR_CHECKPOINT [num_envs] [frames] [output] [task]"
+    echo "  portfolio-handover PORTFOLIO_CHECKPOINT [num_envs] [frames] [output] [task] [dataset]"
     echo "  promoted-handover [num_envs] [frames] [output] [task]"
     echo "  play      CHECKPOINT [task] [num_envs] [frames] [output]"
     echo "  record    CHECKPOINT [task] [frames] [output] [chunk_frames]"
@@ -309,6 +311,27 @@ case "${command}" in
             --output "${output}" \
             "${dataset_args[@]}"
         ;;
+    receiver-retry-portfolio)
+        require_runtime
+        base_checkpoint="${2:-}"
+        candidate_checkpoint="${3:-}"
+        output="${4:-}"
+        if [[ -z "${base_checkpoint}" || -z "${candidate_checkpoint}" || -z "${output}" || "$#" -lt 5 ]]; then
+            usage
+            exit 2
+        fi
+        shift 4
+        dataset_args=()
+        for dataset in "$@"; do
+            dataset_args+=(--dataset "${dataset}")
+        done
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/build_dranmar_receiver_retry_portfolio.py" \
+            --base_checkpoint "${base_checkpoint}" \
+            --candidate_checkpoint "${candidate_checkpoint}" \
+            --output "${output}" \
+            "${dataset_args[@]}"
+        ;;
     receiver-selector-sweep)
         dataset="${2:-}"
         if [[ -z "${dataset}" ]]; then
@@ -355,6 +378,22 @@ case "${command}" in
             "${5:-${DR_ANMAR_LEARNING_OUTPUT}/selector-handover}" \
             "${6:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
         ;;
+    portfolio-handover)
+        portfolio_checkpoint="${2:-}"
+        if [[ -z "${portfolio_checkpoint}" ]]; then
+            usage
+            exit 2
+        fi
+        exec env \
+            DR_ANMAR_PROMOTED_ALLOW_PORTFOLIO=1 \
+            DR_ANMAR_RECEIVER_RETRY_PORTFOLIO_CHECKPOINT="${portfolio_checkpoint}" \
+            DR_ANMAR_RECEIVER_RECOVERY_DATASET="${7:-}" \
+            "${BASH_SOURCE[0]}" promoted-handover \
+            "${3:-256}" \
+            "${4:-2000}" \
+            "${5:-${DR_ANMAR_LEARNING_OUTPUT}/portfolio-handover}" \
+            "${6:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        ;;
     promoted-handover)
         require_runtime
         base_sha256="f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad"
@@ -385,6 +424,10 @@ case "${command}" in
         attempt_stochastic_env=0
         attempt_dataset_env=""
         selector_checkpoint_env=""
+        retry_portfolio_checkpoint_env=""
+        custody_confirmation_steps_env=0
+        receiver_disable_retries_env=1
+        receiver_recovery_dataset_env=""
         selector_sweep_random_env=0
         selector_sweep_replicas_env=""
         selector_sweep_sobol_seed_env=""
@@ -407,12 +450,23 @@ case "${command}" in
                 exit 2
             fi
         fi
+        if [[ "${DR_ANMAR_PROMOTED_ALLOW_PORTFOLIO:-0}" == "1" ]]; then
+            retry_portfolio_checkpoint_env="${DR_ANMAR_RECEIVER_RETRY_PORTFOLIO_CHECKPOINT:-}"
+            custody_confirmation_steps_env=3
+            receiver_disable_retries_env=0
+            receiver_recovery_dataset_env="${DR_ANMAR_RECEIVER_RECOVERY_DATASET:-}"
+            if [[ -z "${retry_portfolio_checkpoint_env}" ]]; then
+                echo "error: portfolio-handover requires a portfolio checkpoint" >&2
+                exit 2
+            fi
+        fi
         if [[ "${DR_ANMAR_PROMOTED_ALLOW_SELECTOR_SWEEP:-0}" == "1" ]]; then
             selector_sweep_random_env=1
             selector_sweep_replicas_env=16
             selector_sweep_sobol_seed_env=104730
             selector_sweep_id_env=attempt-selector-common16-new-v1
             selector_sweep_dataset_env="${DR_ANMAR_RECEIVER_RECOVERY_DATASET:-}"
+            receiver_recovery_dataset_env="${selector_sweep_dataset_env}"
             selector_seed_stream_offset_env="${DR_ANMAR_SEED_STREAM_OFFSET:-0}"
             if [[ -z "${selector_sweep_dataset_env}" ]]; then
                 echo "error: receiver-selector-sweep requires a dataset" >&2
@@ -440,7 +494,7 @@ case "${command}" in
             DR_ANMAR_PICKUP_RECOVERY_POSITION_CAP_M=0.001875 \
             DR_ANMAR_PICKUP_RECOVERY_ORIENTATION_CAP_DEG=1.5 \
             DR_ANMAR_RECEIVER_RECOVERY=1 \
-            DR_ANMAR_RECEIVER_DISABLE_RETRIES=1 \
+            DR_ANMAR_RECEIVER_DISABLE_RETRIES="${receiver_disable_retries_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT= \
             DR_ANMAR_RECEIVER_CANDIDATE_VALUE_CHECKPOINT="${receiver_checkpoint}" \
             DR_ANMAR_RECEIVER_CANDIDATE_LOCAL_REFINEMENT=1 \
@@ -451,12 +505,13 @@ case "${command}" in
             DR_ANMAR_RECEIVER_STABILIZATION_GATE_CHECKPOINT= \
             DR_ANMAR_RECEIVER_STABILIZE_GIVER_DURING_ACQUISITION=0 \
             DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS=0 \
+            DR_ANMAR_RECEIVER_CUSTODY_CONFIRMATION_STEPS="${custody_confirmation_steps_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION= \
             DR_ANMAR_RECEIVER_RECOVERY_RANDOM_CORRECTIONS="${selector_sweep_random_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_SWEEP_REPLICAS="${selector_sweep_replicas_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_SOBOL_SEED="${selector_sweep_sobol_seed_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_SWEEP_ID="${selector_sweep_id_env}" \
-            DR_ANMAR_RECEIVER_RECOVERY_DATASET="${selector_sweep_dataset_env}" \
+            DR_ANMAR_RECEIVER_RECOVERY_DATASET="${receiver_recovery_dataset_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M=0.0025 \
             DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG=2.0 \
             DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_SEED=104748 \
@@ -468,6 +523,7 @@ case "${command}" in
             DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M=0.001 \
             DR_ANMAR_RECEIVER_ATTEMPT_ORIENTATION_CAP_DEG=1.0 \
             DR_ANMAR_RECEIVER_CONTEXT_SELECTOR_CHECKPOINT="${selector_checkpoint_env}" \
+            DR_ANMAR_RECEIVER_RETRY_PORTFOLIO_CHECKPOINT="${retry_portfolio_checkpoint_env}" \
             DR_ANMAR_SEED_STREAM_OFFSET="${selector_seed_stream_offset_env}" \
             "${BASH_SOURCE[0]}" play \
             "${base_checkpoint}" \
@@ -693,6 +749,12 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS}"
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_CUSTODY_CONFIRMATION_STEPS:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_custody_confirmation_steps
+                "${DR_ANMAR_RECEIVER_CUSTODY_CONFIRMATION_STEPS}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
             pickup_recovery_args+=(
                 --receiver_recovery_checkpoint
@@ -709,6 +771,12 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_context_selector_checkpoint
                 "${DR_ANMAR_RECEIVER_CONTEXT_SELECTOR_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RETRY_PORTFOLIO_CHECKPOINT:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_retry_portfolio_checkpoint
+                "${DR_ANMAR_RECEIVER_RETRY_PORTFOLIO_CHECKPOINT}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT:-}" ]]; then

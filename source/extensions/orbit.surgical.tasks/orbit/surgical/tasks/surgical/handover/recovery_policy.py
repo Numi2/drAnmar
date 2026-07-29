@@ -1203,6 +1203,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         candidate_selector: ReceiverContextCandidateSelector | None = None,
         candidate_selector_feature_mean: torch.Tensor | None = None,
         candidate_selector_feature_std: torch.Tensor | None = None,
+        retry_candidate_portfolios: torch.Tensor | None = None,
+        retry_force_imbalance_threshold: float = 0.005,
         attempt_actor_critic: ReceiverAttemptActorCritic | None = None,
         attempt_feature_mean: torch.Tensor | None = None,
         attempt_feature_std: torch.Tensor | None = None,
@@ -1214,6 +1216,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         stabilize_giver_during_acquisition: bool = False,
         giver_stabilization_start_step: int = 0,
         receiver_secure_settle_steps: int = 0,
+        receiver_custody_confirmation_steps: int = 0,
         receiver_retention_servo: bool = False,
         receiver_retention_servo_gain: float = 50.0,
         receiver_retention_servo_action_limit: float = 0.02,
@@ -1243,6 +1246,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if receiver_secure_settle_steps < 0:
             raise ValueError(
                 "receiver secure settle steps must be non-negative"
+            )
+        if receiver_custody_confirmation_steps < 0:
+            raise ValueError(
+                "receiver custody confirmation steps must be non-negative"
+            )
+        if retry_force_imbalance_threshold < 0.0:
+            raise ValueError(
+                "receiver retry force-imbalance threshold must be "
+                "non-negative"
             )
         if giver_stabilization_start_step < 0:
             raise ValueError(
@@ -1472,6 +1484,43 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             "candidate_selector_feature_std",
             candidate_selector_feature_std.detach().clone(),
         )
+        if retry_candidate_portfolios is None:
+            retry_candidate_portfolios = torch.empty(
+                (0, 0),
+                dtype=torch.long,
+            )
+        else:
+            if (
+                candidate_value is None
+                or retry_candidate_portfolios.ndim != 2
+                or retry_candidate_portfolios.shape[0] != 3
+                or retry_candidate_portfolios.shape[1] < 1
+                or retry_candidate_portfolios.dtype != torch.long
+                or bool(torch.any(retry_candidate_portfolios < 0))
+                or bool(
+                    torch.any(
+                        retry_candidate_portfolios
+                        >= candidate_corrections.shape[0]
+                    )
+                )
+            ):
+                raise ValueError(
+                    "receiver retry portfolios must be a 3xN long tensor "
+                    "of frozen candidate indices"
+                )
+            for portfolio in retry_candidate_portfolios:
+                if torch.unique(portfolio).numel() != portfolio.numel():
+                    raise ValueError(
+                        "receiver retry portfolios cannot repeat a "
+                        "candidate"
+                    )
+        self.register_buffer(
+            "retry_candidate_portfolios",
+            retry_candidate_portfolios.detach().clone(),
+        )
+        self.retry_force_imbalance_threshold = float(
+            retry_force_imbalance_threshold
+        )
         self.attempt_actor_critic = attempt_actor_critic
         if attempt_actor_critic is None:
             if attempt_feature_mean is not None or attempt_feature_std is not None:
@@ -1558,6 +1607,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.receiver_secure_settle_steps = int(
             receiver_secure_settle_steps
         )
+        self.receiver_custody_confirmation_steps = int(
+            receiver_custody_confirmation_steps
+        )
         self.receiver_retention_servo = bool(receiver_retention_servo)
         self.receiver_retention_servo_gain = float(
             receiver_retention_servo_gain
@@ -1638,6 +1690,34 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.selected_candidate_score = torch.empty(0)
         self.selected_candidate_advantage = torch.empty(0)
         self.selected_candidate_applied = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.applied_candidate_index = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.used_candidate_mask = torch.empty(
+            (0, 0),
+            dtype=torch.bool,
+        )
+        self.selected_retry_portfolio = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.selected_retry_portfolio_rank = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.receiver_secure_live_dwell = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.receiver_release_authorized = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.giver_release_completed = torch.empty(
             0,
             dtype=torch.bool,
         )
@@ -1768,6 +1848,38 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             batch_size,
             dtype=torch.bool,
             device=device,
+        )
+        self.applied_candidate_index = torch.full(
+            (batch_size,),
+            -1,
+            dtype=torch.long,
+            device=device,
+        )
+        self.used_candidate_mask = torch.zeros(
+            (batch_size, self.candidate_corrections.shape[0]),
+            dtype=torch.bool,
+            device=device,
+        )
+        self.selected_retry_portfolio = torch.full(
+            (batch_size,),
+            -1,
+            dtype=torch.long,
+            device=device,
+        )
+        self.selected_retry_portfolio_rank = torch.full(
+            (batch_size,),
+            -1,
+            dtype=torch.long,
+            device=device,
+        )
+        self.receiver_secure_live_dwell = torch.zeros_like(
+            self.retry_count
+        )
+        self.receiver_release_authorized = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.giver_release_completed = torch.zeros_like(
+            self.first_attempt_failed
         )
         self.receiver_retention_offset = torch.zeros(
             (batch_size, 3),
@@ -2028,9 +2140,17 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 candidate_scores = self.candidate_value(
                     normalized_features.reshape(-1, 35)
                 ).reshape(active_context.shape[0], candidate_count)
-                if self.candidate_selector is None:
-                    best_score, best_index = candidate_scores.max(dim=-1)
-                else:
+                best_score, best_index = candidate_scores.max(dim=-1)
+                active_indices = torch.nonzero(
+                    activation,
+                    as_tuple=False,
+                ).squeeze(-1)
+                portfolio_active = torch.zeros(
+                    active_context.shape[0],
+                    dtype=torch.bool,
+                    device=raw.device,
+                )
+                if self.candidate_selector is not None:
                     normalized_context = (
                         active_context
                         - self.candidate_selector_feature_mean.to(
@@ -2045,16 +2165,98 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                         normalized_context
                     )
                     best_index = selector_logits.argmax(dim=-1)
-                    best_score = candidate_scores.gather(
-                        1,
-                        best_index.unsqueeze(-1),
-                    ).squeeze(-1)
+                if self.retry_candidate_portfolios.numel() > 0:
+                    portfolio_active = (
+                        self.retry_count[active_indices] > 0
+                    )
+                    if bool(portfolio_active.any()):
+                        portfolio_environment = active_indices[
+                            portfolio_active
+                        ]
+                        loss_flags = self.failure_loss_flags[
+                            portfolio_environment
+                        ] > 0.5
+                        force_imbalance = (
+                            self.failure_forces[
+                                portfolio_environment,
+                                1,
+                            ]
+                            - self.failure_forces[
+                                portfolio_environment,
+                                0,
+                            ]
+                        )
+                        portfolio_id = torch.zeros(
+                            portfolio_environment.shape[0],
+                            dtype=torch.long,
+                            device=raw.device,
+                        )
+                        jaw_1_missing = (
+                            loss_flags[:, 0] & ~loss_flags[:, 1]
+                        )
+                        jaw_2_missing = (
+                            loss_flags[:, 1] & ~loss_flags[:, 0]
+                        )
+                        portfolio_id[jaw_1_missing] = 1
+                        portfolio_id[jaw_2_missing] = 2
+                        unresolved = ~(jaw_1_missing | jaw_2_missing)
+                        portfolio_id[
+                            unresolved
+                            & (
+                                force_imbalance
+                                > self.retry_force_imbalance_threshold
+                            )
+                        ] = 1
+                        portfolio_id[
+                            unresolved
+                            & (
+                                force_imbalance
+                                < -self.retry_force_imbalance_threshold
+                            )
+                        ] = 2
+                        orders = self.retry_candidate_portfolios.to(
+                            device=raw.device
+                        )[portfolio_id]
+                        already_used = self.used_candidate_mask[
+                            portfolio_environment
+                        ].gather(1, orders)
+                        unused = ~already_used
+                        rank_axis = torch.arange(
+                            orders.shape[1],
+                            device=raw.device,
+                        ).unsqueeze(0).expand_as(orders)
+                        rank = torch.where(
+                            unused,
+                            rank_axis,
+                            torch.full_like(
+                                rank_axis,
+                                orders.shape[1],
+                            ),
+                        ).amin(dim=-1)
+                        has_candidate = rank < orders.shape[1]
+                        if not bool(has_candidate.all()):
+                            raise RuntimeError(
+                                "receiver retry portfolio exhausted before "
+                                "the episode timeout"
+                            )
+                        chosen = orders.gather(
+                            1,
+                            rank.unsqueeze(-1),
+                        ).squeeze(-1)
+                        best_index = best_index.clone()
+                        best_index[portfolio_active] = chosen
+                        self.selected_retry_portfolio[
+                            portfolio_environment
+                        ] = portfolio_id
+                        self.selected_retry_portfolio_rank[
+                            portfolio_environment
+                        ] = rank
+                best_score = candidate_scores.gather(
+                    1,
+                    best_index.unsqueeze(-1),
+                ).squeeze(-1)
                 zero_index = candidates.square().sum(dim=-1).argmin()
                 zero_score = candidate_scores[:, zero_index]
-                active_indices = torch.nonzero(
-                    activation,
-                    as_tuple=False,
-                ).squeeze(-1)
                 proposed = proposed.clone()
                 self.selected_candidate_index[active_indices] = best_index
                 selected_correction = candidates[best_index]
@@ -2127,12 +2329,24 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 advantage = selected_score - zero_score
                 candidate_applied = (
                     advantage >= self.candidate_min_logit_advantage
+                ) | portfolio_active
+                applied_index = torch.where(
+                    candidate_applied,
+                    best_index,
+                    zero_index.expand_as(best_index),
                 )
                 proposed[activation] = torch.where(
                     candidate_applied.unsqueeze(-1),
                     selected_correction,
                     candidates[zero_index].unsqueeze(0),
                 )
+                self.applied_candidate_index[active_indices] = (
+                    applied_index
+                )
+                self.used_candidate_mask[
+                    active_indices,
+                    applied_index,
+                ] = True
                 self.selected_candidate_score[active_indices] = (
                     selected_score
                 )
@@ -2455,13 +2669,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         bilateral_qualified = (
             self.bilateral_contact_history.sum(dim=-1) >= 3
         )
-        self.ever_bilateral |= bilateral_qualified | (phase >= 3)
+        self.ever_bilateral |= bilateral_qualified
         any_contact = torch.any(
             receiver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
-        secure_now = (phase >= 3) | (
-            (phase == 2) & bilateral_qualified
+        secure_now = (
+            ((phase == 2) | (phase == 3))
+            & bilateral_qualified
+            & bilateral_live
         )
         self.first_attempt_candidate_active[secure_now] = False
         self.recovered_acquisition |= (
@@ -2470,12 +2686,62 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.retry_state[secure_now] = self.state_secure
         self.close_dwell[secure_now] = 0
         self.acquisition_dwell[secure_now] = 0
+        custody_guard_active = (
+            (
+                (phase == 2)
+                & (self.retry_state == self.state_secure)
+            )
+            | (
+                (phase == 3)
+                & giver_any_contact
+                & ~self.giver_release_completed
+            )
+        )
         self.custody_loss_dwell[:] = torch.where(
-            (phase == 2)
-            & (self.retry_state == self.state_secure)
-            & ~bilateral_live,
+            custody_guard_active & ~bilateral_live,
             self.custody_loss_dwell + 1,
             torch.zeros_like(self.custody_loss_dwell),
+        )
+        confirming_receiver_custody = (
+            (phase == 3)
+            & (self.retry_state == self.state_secure)
+            & bilateral_live
+            & giver_any_contact
+            & ~self.giver_release_completed
+        )
+        self.receiver_secure_live_dwell[:] = torch.where(
+            confirming_receiver_custody,
+            self.receiver_secure_live_dwell + 1,
+            torch.zeros_like(self.receiver_secure_live_dwell),
+        )
+        self.receiver_release_authorized |= (
+            confirming_receiver_custody
+            & (
+                self.receiver_secure_live_dwell
+                >= self.receiver_custody_confirmation_steps
+            )
+        )
+        contact_lost_before_release = (
+            (phase == 3)
+            & giver_any_contact
+            & ~bilateral_live
+            & ~self.giver_release_completed
+        )
+        self.receiver_release_authorized[
+            contact_lost_before_release
+        ] = False
+        self.giver_release_completed |= (
+            (phase >= 3)
+            & self.receiver_release_authorized
+            & ~giver_any_contact
+        )
+        receiver_retry_phase = (
+            (phase == 2)
+            | (
+                (phase == 3)
+                & giver_any_contact
+                & ~self.giver_release_completed
+            )
         )
 
         receiver_joint_displacement = self._select_role(
@@ -2514,11 +2780,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.acquisition_started |= canonical_approach_commanded
         self.acquisition_started |= (
             (self.retry_state == self.state_learned_retry)
-            & (phase == 2)
+            & receiver_retry_phase
         )
-        self.acquisition_started &= (phase == 2) & first_or_retry
+        self.acquisition_started &= receiver_retry_phase & first_or_retry
         acquisition_active = (
-            (phase == 2)
+            receiver_retry_phase
             & first_or_retry
             & self.acquisition_started
         )
@@ -2719,7 +2985,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     selected_indices
                 ] = True
         closing = (
-            (phase == 2)
+            receiver_retry_phase
             & first_or_retry
             & (previous_receiver_gripper_action < 0.0)
         )
@@ -2729,7 +2995,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             torch.zeros_like(self.close_dwell),
         )
         failed_close = (
-            (phase == 2)
+            receiver_retry_phase
             & first_or_retry
             & ~bilateral_qualified
             & (self.close_dwell >= self.close_dwell_steps)
@@ -2748,10 +3014,17 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             )
         )
         lost_after_acquisition = (
-            (phase == 2)
+            ((phase == 2) | (phase == 3))
             & (self.retry_state == self.state_secure)
             & self.ever_bilateral
             & (self.custody_loss_dwell >= 3)
+            & (
+                (phase == 2)
+                | (
+                    giver_any_contact
+                    & ~self.giver_release_completed
+                )
+            )
         )
         if self.enable_retries:
             failure = (
@@ -2786,6 +3059,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.acquisition_dwell[failure] = 0
             self.acquisition_started[failure] = False
             self.custody_loss_dwell[failure] = 0
+            self.receiver_secure_live_dwell[failure] = 0
+            self.receiver_release_authorized[failure] = False
 
         failed_grasp = self.retry_state == self.state_failed
         # Receiver reopening is safe only while the giver has current
@@ -2865,8 +3140,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             | resetting
             | (
                 (self.retry_state == self.state_learned_retry)
-                & (phase == 2)
+                & receiver_retry_phase
             )
+        )
+        pre_release_custody_hold = (
+            (phase == 3)
+            & giver_any_contact
+            & ~self.receiver_release_authorized
+            & ~self.giver_release_completed
+            & ~failed_grasp
+            & ~resetting
         )
         result = self._replace_role_action(
             base_action,
@@ -2876,6 +3159,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 recovery_active
                 | stabilize_giver
                 | receiver_secure_settling
+                | pre_release_custody_hold
             ),
         )
         result = self._replace_role_action(
@@ -2894,14 +3178,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             result,
             receiver_hold_closed,
             receiver_is_robot_1,
-            receiver_secure_settling,
+            receiver_secure_settling | pre_release_custody_hold,
         )
         corrected_receiver_action = self._corrected_receiver_action(
             raw,
             giver_is_robot_1,
         )
         learned_retry = (
-            (self.retry_state == self.state_learned_retry) & (phase == 2)
+            (self.retry_state == self.state_learned_retry)
+            & receiver_retry_phase
         )
         corrected_approach = (
             learned_retry
@@ -2971,6 +3256,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.selected_candidate_score[mask] = 0.0
         self.selected_candidate_advantage[mask] = 0.0
         self.selected_candidate_applied[mask] = False
+        self.applied_candidate_index[mask] = -1
+        self.used_candidate_mask[mask] = False
+        self.selected_retry_portfolio[mask] = -1
+        self.selected_retry_portfolio_rank[mask] = -1
+        self.receiver_secure_live_dwell[mask] = 0
+        self.receiver_release_authorized[mask] = False
+        self.giver_release_completed[mask] = False
         self.receiver_retention_offset[mask] = 0.0
         self.receiver_retention_offset_latched[mask] = False
         self.last_attempt_features[mask] = 0.0

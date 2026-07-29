@@ -3570,6 +3570,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_stabilization_gate_checkpoint
         or args.receiver_candidate_value_checkpoint
         or args.receiver_context_selector_checkpoint
+        or args.receiver_retry_portfolio_checkpoint
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
@@ -3624,6 +3625,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if args.receiver_secure_settle_steps < 0:
         return _fail(
             "receiver secure settle steps must be non-negative"
+        )
+    if args.receiver_custody_confirmation_steps < 0:
+        return _fail(
+            "receiver custody confirmation steps must be non-negative"
         )
     if args.receiver_retention_servo_gain <= 0.0:
         return _fail(
@@ -3682,6 +3687,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "receiver context selector requires the promoted first-attempt "
             "candidate scorer"
+        )
+    if args.receiver_retry_portfolio_checkpoint and not (
+        args.receiver_candidate_value_checkpoint
+        and args.receiver_candidate_first_attempt
+        and not args.receiver_disable_retries
+    ):
+        return _fail(
+            "receiver retry portfolio requires the promoted first attempt "
+            "with retries enabled"
         )
     if args.receiver_candidate_min_logit_advantage < 0.0:
         return _fail(
@@ -4262,6 +4276,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_stabilization_gate_checkpoint
         or args.receiver_candidate_value_checkpoint
         or args.receiver_context_selector_checkpoint
+        or args.receiver_retry_portfolio_checkpoint
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
@@ -4299,6 +4314,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_context_selector_mean = None
         receiver_context_selector_std = None
         receiver_context_selector_source_revision = None
+        receiver_retry_portfolios = None
+        receiver_retry_force_imbalance_threshold = 0.005
+        receiver_retry_portfolio_source_revision = None
         receiver_attempt_actor_critic = None
         receiver_attempt_feature_mean = None
         receiver_attempt_feature_std = None
@@ -4776,6 +4794,71 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             receiver_context_selector_source_revision = selector_payload[
                 "source_revision"
             ]
+        if args.receiver_retry_portfolio_checkpoint:
+            portfolio_checkpoint = (
+                Path(args.receiver_retry_portfolio_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            if not portfolio_checkpoint.is_file():
+                env.close()
+                return _fail(
+                    "receiver retry portfolio checkpoint not found: "
+                    f"{portfolio_checkpoint}"
+                )
+            portfolio_payload = torch.load(
+                portfolio_checkpoint,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            if (
+                not isinstance(portfolio_payload, dict)
+                or portfolio_payload.get("schema_version")
+                != "dranmar-receiver-retry-portfolio-1.0"
+                or "candidate_corrections" not in portfolio_payload
+                or "portfolio_orders" not in portfolio_payload
+                or not isinstance(
+                    portfolio_payload.get("source_revision"),
+                    str,
+                )
+                or len(portfolio_payload["source_revision"]) != 40
+            ):
+                env.close()
+                return _fail(
+                    "unsupported receiver retry portfolio checkpoint"
+                )
+            if (
+                portfolio_payload.get("base_checkpoint_sha256")
+                != _sha256(checkpoint)
+                or portfolio_payload.get(
+                    "receiver_candidate_checkpoint_sha256"
+                )
+                != _sha256(candidate_checkpoint)
+                or not torch.equal(
+                    portfolio_payload["candidate_corrections"].to(
+                        device=env.unwrapped.device,
+                        dtype=torch.float32,
+                    ),
+                    receiver_candidate_corrections,
+                )
+            ):
+                env.close()
+                return _fail(
+                    "receiver retry portfolio does not match the frozen "
+                    "promoted composite"
+                )
+            receiver_retry_portfolios = portfolio_payload[
+                "portfolio_orders"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.long,
+            )
+            receiver_retry_force_imbalance_threshold = float(
+                portfolio_payload["force_imbalance_threshold"]
+            )
+            receiver_retry_portfolio_source_revision = portfolio_payload[
+                "source_revision"
+            ]
         if args.receiver_attempt_checkpoint:
             attempt_checkpoint = (
                 Path(args.receiver_attempt_checkpoint)
@@ -4929,6 +5012,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             candidate_selector_feature_std=(
                 receiver_context_selector_std
             ),
+            retry_candidate_portfolios=receiver_retry_portfolios,
+            retry_force_imbalance_threshold=(
+                receiver_retry_force_imbalance_threshold
+            ),
             attempt_actor_critic=receiver_attempt_actor_critic,
             attempt_feature_mean=receiver_attempt_feature_mean,
             attempt_feature_std=receiver_attempt_feature_std,
@@ -4949,6 +5036,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             receiver_secure_settle_steps=(
                 args.receiver_secure_settle_steps
+            ),
+            receiver_custody_confirmation_steps=(
+                args.receiver_custody_confirmation_steps
             ),
             receiver_retention_servo=(
                 args.receiver_retention_servo
@@ -6251,6 +6341,48 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 receiver_recovery_policy.correction[
                                     all_receiver_activations
                                 ].cpu()
+                            ),
+                            "candidate_index": (
+                                receiver_recovery_policy
+                                .applied_candidate_index[
+                                    all_receiver_activations
+                                ]
+                                .cpu()
+                            ),
+                            "candidate_score": (
+                                receiver_recovery_policy
+                                .selected_candidate_score[
+                                    all_receiver_activations
+                                ]
+                                .cpu()
+                            ),
+                            "candidate_advantage": (
+                                receiver_recovery_policy
+                                .selected_candidate_advantage[
+                                    all_receiver_activations
+                                ]
+                                .cpu()
+                            ),
+                            "candidate_applied": (
+                                receiver_recovery_policy
+                                .selected_candidate_applied[
+                                    all_receiver_activations
+                                ]
+                                .cpu()
+                            ),
+                            "retry_portfolio": (
+                                receiver_recovery_policy
+                                .selected_retry_portfolio[
+                                    all_receiver_activations
+                                ]
+                                .cpu()
+                            ),
+                            "retry_portfolio_rank": (
+                                receiver_recovery_policy
+                                .selected_retry_portfolio_rank[
+                                    all_receiver_activations
+                                ]
+                                .cpu()
                             ),
                         }
                         if (
@@ -7760,7 +7892,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     previous_attempt_by_environment[environment] = (
                         attempt_index
                     )
-                if args.receiver_recovery_local_sobol_candidate is not None:
+                if (
+                    "candidate_index" in receiver_activation_events[0]
+                    and not args.receiver_recovery_fixed_correction
+                    and not args.receiver_recovery_random_corrections
+                    and args.receiver_recovery_sobol_candidate is None
+                    and args.receiver_recovery_local_sobol_candidate is None
+                    and not args.receiver_recovery_local_sweep
+                ):
+                    attempt_candidate = torch.cat(
+                        [
+                            event["candidate_index"]
+                            for event in receiver_activation_events
+                        ]
+                    ).long()
+                elif args.receiver_recovery_local_sobol_candidate is not None:
                     attempt_candidate = torch.full_like(
                         attempt_environment,
                         args.receiver_recovery_local_sobol_candidate,
@@ -7848,6 +7994,41 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         attempt_acquired & ~attempt_safety_failure
                     ),
                 }
+                if "candidate_score" in receiver_activation_events[0]:
+                    receiver_attempts.update(
+                        {
+                            "candidate_score": torch.cat(
+                                [
+                                    event["candidate_score"]
+                                    for event in receiver_activation_events
+                                ]
+                            ).float(),
+                            "candidate_advantage": torch.cat(
+                                [
+                                    event["candidate_advantage"]
+                                    for event in receiver_activation_events
+                                ]
+                            ).float(),
+                            "candidate_applied": torch.cat(
+                                [
+                                    event["candidate_applied"]
+                                    for event in receiver_activation_events
+                                ]
+                            ).bool(),
+                            "retry_portfolio": torch.cat(
+                                [
+                                    event["retry_portfolio"]
+                                    for event in receiver_activation_events
+                                ]
+                            ).long(),
+                            "retry_portfolio_rank": torch.cat(
+                                [
+                                    event["retry_portfolio_rank"]
+                                    for event in receiver_activation_events
+                                ]
+                            ).long(),
+                        }
+                    )
             torch.save(
                 {
                     "schema_version": (
@@ -8617,6 +8798,52 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         if args.receiver_context_selector_checkpoint
                         else None
                     ),
+                    "retry_portfolio": (
+                        {
+                            "checkpoint": {
+                                "path": str(
+                                    Path(
+                                        args
+                                        .receiver_retry_portfolio_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                                "sha256": _sha256(
+                                    Path(
+                                        args
+                                        .receiver_retry_portfolio_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                            },
+                            "source_revision": (
+                                receiver_retry_portfolio_source_revision
+                            ),
+                            "portfolio_histogram": {
+                                str(portfolio): int(
+                                    (
+                                        receiver_recovery_policy
+                                        .selected_retry_portfolio
+                                        == portfolio
+                                    )
+                                    .sum()
+                                    .item()
+                                )
+                                for portfolio in torch.unique(
+                                    receiver_recovery_policy
+                                    .selected_retry_portfolio[
+                                        receiver_recovery_policy
+                                        .selected_retry_portfolio
+                                        >= 0
+                                    ]
+                                ).tolist()
+                            },
+                        }
+                        if args.receiver_retry_portfolio_checkpoint
+                        else None
+                    ),
                     "attempt_ppo": (
                         {
                             "checkpoint": {
@@ -8680,6 +8907,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "receiver_secure_settle_steps": (
                         receiver_recovery_policy
                         .receiver_secure_settle_steps
+                    ),
+                    "receiver_custody_confirmation_steps": (
+                        receiver_recovery_policy
+                        .receiver_custody_confirmation_steps
                     ),
                     "retention_servo": (
                         receiver_recovery_policy
@@ -9127,6 +9358,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--receiver_recovery_checkpoint")
     play.add_argument("--receiver_candidate_value_checkpoint")
     play.add_argument("--receiver_context_selector_checkpoint")
+    play.add_argument("--receiver_retry_portfolio_checkpoint")
     play.add_argument("--receiver_attempt_checkpoint")
     play.add_argument(
         "--receiver_attempt_stochastic",
@@ -9171,6 +9403,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--receiver_secure_settle_steps",
+        type=int,
+        default=0,
+    )
+    play.add_argument(
+        "--receiver_custody_confirmation_steps",
         type=int,
         default=0,
     )
