@@ -3603,10 +3603,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
     if (
         args.receiver_recovery_local_sweep
-        and args.receiver_recovery_sweep_replicas != 32
+        and args.receiver_recovery_sweep_replicas not in {8, 16, 32}
     ):
         return _fail(
-            "grouped local receiver DAgger requires exactly 32 replicas"
+            "grouped local receiver DAgger requires 8, 16, or 32 replicas"
         )
     if (
         args.receiver_candidate_local_refinement
@@ -4678,8 +4678,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dim=-1,
             )
             if args.receiver_recovery_local_sweep:
-                local_delta = local_corrections.repeat(
-                    env.unwrapped.num_envs // 32,
+                replicas = args.receiver_recovery_sweep_replicas
+                local_delta = local_corrections[:replicas].repeat(
+                    env.unwrapped.num_envs // replicas,
                     1,
                 )
             else:
