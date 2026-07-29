@@ -453,7 +453,7 @@ case "${command}" in
         fi
         if [[ "${DR_ANMAR_PROMOTED_ALLOW_PORTFOLIO:-0}" == "1" ]]; then
             retry_portfolio_checkpoint_env="${DR_ANMAR_RECEIVER_RETRY_PORTFOLIO_CHECKPOINT:-}"
-            receiver_acquisition_timeout_env=200
+            receiver_acquisition_timeout_env=130
             receiver_disable_retries_env=0
             receiver_recovery_dataset_env="${DR_ANMAR_RECEIVER_RECOVERY_DATASET:-}"
             if [[ -z "${retry_portfolio_checkpoint_env}" ]]; then
