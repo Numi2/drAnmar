@@ -9469,6 +9469,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .giver_degradation_min_close_dwell
                     ),
+                    "giver_degradation_early_requires_receiver_contact": (
+                        True
+                    ),
                     "retention_servo": (
                         receiver_recovery_policy
                         .receiver_retention_servo

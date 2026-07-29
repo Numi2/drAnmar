@@ -3321,12 +3321,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.giver_degradation_dwell + 1,
             torch.zeros_like(self.giver_degradation_dwell),
         )
-        # Preserve the robust three-frame latch unless receiver closing has
-        # already begun disturbing giver custody. In that narrow condition,
-        # the earlier two-frame signal starts reset while the giver can still
-        # recover instead of waiting for a third degraded frame.
+        # Preserve the robust three-frame latch unless receiver closing and
+        # actual receiver contact have begun disturbing giver custody. In that
+        # narrow condition, the earlier two-frame signal starts reset while
+        # the giver can still recover instead of waiting for a third degraded
+        # frame.
         selective_closing_degradation = (
             closing
+            & any_contact
             & (
                 self.close_dwell
                 >= self.giver_degradation_min_close_dwell
