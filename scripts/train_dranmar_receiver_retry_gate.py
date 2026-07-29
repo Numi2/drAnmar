@@ -32,6 +32,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--dataset", action="append", required=True)
     parser.add_argument("--baseline_evidence", action="append")
     parser.add_argument("--intervention_evidence", action="append")
+    parser.add_argument(
+        "--retry_intervention_target",
+        action="store_true",
+        help=(
+            "emit a retry-gate checkpoint from paired baseline versus "
+            "receiver-recovery evidence"
+        ),
+    )
     parser.add_argument("--output", required=True)
     parser.add_argument("--epochs", type=int, default=400)
     parser.add_argument("--batch_size", type=int, default=256)
@@ -166,6 +174,10 @@ def main(argv: list[str]) -> int:
         raise ValueError(
             "counterfactual training requires one baseline and one "
             "intervention evidence file per dataset"
+        )
+    if args.retry_intervention_target and not counterfactual_mode:
+        raise ValueError(
+            "retry intervention target requires counterfactual evidence"
         )
     baseline_evidence_paths = (
         [
@@ -368,16 +380,19 @@ def main(argv: list[str]) -> int:
 
     output = Path(args.output).expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
+    retry_gate_output = (
+        not counterfactual_mode or args.retry_intervention_target
+    )
     checkpoint = {
         "schema_version": (
-            "dranmar-receiver-intervention-gate-1.0"
-            if counterfactual_mode
-            else "dranmar-receiver-retry-gate-1.0"
+            "dranmar-receiver-retry-gate-1.0"
+            if retry_gate_output
+            else "dranmar-receiver-intervention-gate-1.0"
         ),
         (
-            "receiver_intervention_gate"
-            if counterfactual_mode
-            else "receiver_retry_gate"
+            "receiver_retry_gate"
+            if retry_gate_output
+            else "receiver_intervention_gate"
         ): gate.state_dict(),
         "feature_mean": feature_mean,
         "feature_std": feature_std,
@@ -385,7 +400,11 @@ def main(argv: list[str]) -> int:
         "pickup_recovery_checkpoint_sha256": next(iter(pickup_hashes)),
         "active_approach_step": 100,
         "intervention": (
-            "stabilize_giver_during_acquisition"
+            (
+                "receiver_recovery"
+                if args.retry_intervention_target
+                else "stabilize_giver_during_acquisition"
+            )
             if counterfactual_mode
             else None
         ),
