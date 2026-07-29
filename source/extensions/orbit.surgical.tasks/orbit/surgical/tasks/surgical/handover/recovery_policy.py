@@ -243,10 +243,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self.activation_count = torch.empty(0, dtype=torch.long)
         self.last_context = torch.empty((0, self.context_dim))
         self.last_activation_mask = torch.empty(0, dtype=torch.bool)
-        self.last_activation_giver_bilateral = torch.empty(
-            0,
-            dtype=torch.bool,
-        )
 
     def _initialize_state(
         self,
@@ -304,9 +300,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             device=device,
         )
         self.last_activation_mask = torch.zeros_like(
-            self.first_attempt_failed
-        )
-        self.last_activation_giver_bilateral = torch.zeros_like(
             self.first_attempt_failed
         )
 
@@ -514,15 +507,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
     ) -> None:
         if not bool(activation.any()):
             return
-        giver_contacts = self._select_role(
-            raw[:, 66:68],
-            raw[:, 68:70],
-            giver_is_robot_1,
-        )
-        self.last_activation_giver_bilateral[activation] = torch.all(
-            giver_contacts[activation] > self.normalized_contact_threshold,
-            dim=-1,
-        )
         context = self._recovery_context(raw, giver_is_robot_1)
         proposed_normalized = self.recovery_head(context)
         proposed_delta = torch.cat(
@@ -962,7 +946,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self.first_attempt_failed[mask] = False
         self.recovered_custody[mask] = False
         self.activation_count[mask] = 0
-        self.last_activation_giver_bilateral[mask] = False
 
     def reset(
         self,
@@ -1680,6 +1663,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.activation_count = torch.empty(0, dtype=torch.long)
         self.last_context = torch.empty((0, self.context_dim))
         self.last_activation_mask = torch.empty(0, dtype=torch.bool)
+        self.last_activation_giver_bilateral = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
         self.gate_evaluated = torch.empty(0, dtype=torch.bool)
         self.gate_triggered = torch.empty(0, dtype=torch.bool)
         self.gate_probability = torch.empty(0)
@@ -1815,6 +1802,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             device=device,
         )
         self.last_activation_mask = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.last_activation_giver_bilateral = torch.zeros_like(
             self.first_attempt_failed
         )
         self.gate_evaluated = torch.zeros_like(
@@ -2095,6 +2085,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             return
         context = self._recovery_context(raw, giver_is_robot_1)
         normalized_delta = self.recovery_head(context)
+        giver_contacts = self._select_role(
+            raw[:, 66:68],
+            raw[:, 68:70],
+            giver_is_robot_1,
+        )
+        self.last_activation_giver_bilateral[activation] = torch.all(
+            giver_contacts[activation] > self.normalized_contact_threshold,
+            dim=-1,
+        )
         proposed = self.correction + torch.cat(
             (
                 normalized_delta[:, :3] * self.position_cap_m,
@@ -3275,6 +3274,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.first_attempt_failed[mask] = False
         self.recovered_acquisition[mask] = False
         self.activation_count[mask] = 0
+        self.last_activation_giver_bilateral[mask] = False
         self.gate_evaluated[mask] = False
         self.gate_triggered[mask] = False
         self.gate_probability[mask] = 0.0
