@@ -2139,7 +2139,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             )
             if bool(candidate_activation.any()):
                 self.gate_evaluated[candidate_activation] = True
-                self.gate_triggered[candidate_activation] = True
                 self.gate_probability[candidate_activation] = 1.0
                 self.failure_forces[candidate_activation] = (
                     receiver_contacts[candidate_activation].clamp(
@@ -2156,9 +2155,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     giver_is_robot_1,
                     candidate_activation,
                 )
-                self.first_attempt_candidate_active[
-                    candidate_activation
-                ] = True
+                applied = candidate_activation & (
+                    self.selected_candidate_applied
+                    if self.candidate_value is not None
+                    else torch.ones_like(candidate_activation)
+                )
+                self.gate_triggered[applied] = True
+                self.first_attempt_candidate_active[applied] = True
         if (
             (self.enable_retries or self.candidate_first_attempt)
             and self.retry_gate is not None
@@ -2246,6 +2249,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     )
                     self.first_attempt_candidate_active[
                         candidate_activation
+                        & (
+                            self.selected_candidate_applied
+                            if self.candidate_value is not None
+                            else torch.ones_like(candidate_activation)
+                        )
                     ] = True
                 else:
                     gate_retry[selected_indices] = True
