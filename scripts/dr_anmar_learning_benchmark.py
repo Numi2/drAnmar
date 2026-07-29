@@ -6996,6 +6996,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "orientation_cap_deg": (
                         args.receiver_recovery_orientation_cap_deg
                     ),
+                    "acquisition_timeout_steps": (
+                        receiver_recovery_policy.acquisition_timeout_steps
+                    ),
                     "fixed_correction": (
                         args.receiver_recovery_fixed_correction
                     ),

@@ -971,6 +971,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
         self.close_dwell_steps = 15
+        self.acquisition_timeout_steps = 500
         self.open_settle_steps = 3
         self.open_joint_displacement_tolerance_rad = 0.0215
         self.closed_joint_displacement_rad = 0.4085
@@ -982,6 +983,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.retry_count = torch.empty(0, dtype=torch.long)
         self.episode_step = torch.empty(0, dtype=torch.long)
         self.close_dwell = torch.empty(0, dtype=torch.long)
+        self.acquisition_dwell = torch.empty(0, dtype=torch.long)
         self.custody_loss_dwell = torch.empty(0, dtype=torch.long)
         self.open_settle_dwell = torch.empty(0, dtype=torch.long)
         self.ever_bilateral = torch.empty(0, dtype=torch.bool)
@@ -1020,6 +1022,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.episode_step = torch.zeros_like(self.retry_count)
         self.close_dwell = torch.zeros_like(self.retry_count)
+        self.acquisition_dwell = torch.zeros_like(self.retry_count)
         self.custody_loss_dwell = torch.zeros_like(self.retry_count)
         self.open_settle_dwell = torch.zeros_like(self.retry_count)
         self.ever_bilateral = torch.zeros(
@@ -1470,6 +1473,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.retry_state[secure_now] = self.state_secure
         self.close_dwell[secure_now] = 0
+        self.acquisition_dwell[secure_now] = 0
         self.custody_loss_dwell[:] = torch.where(
             (phase == 2)
             & (self.retry_state == self.state_secure)
@@ -1492,6 +1496,12 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             (self.retry_state == self.state_canonical)
             | (self.retry_state == self.state_learned_retry)
         )
+        acquisition_active = (phase == 2) & first_or_retry
+        self.acquisition_dwell[:] = torch.where(
+            acquisition_active,
+            self.acquisition_dwell + 1,
+            torch.zeros_like(self.acquisition_dwell),
+        )
         closing = (
             (phase == 2)
             & first_or_retry
@@ -1513,13 +1523,25 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 dim=-1,
             )
         )
+        stalled_acquisition = (
+            acquisition_active
+            & ~bilateral_qualified
+            & (
+                self.acquisition_dwell
+                >= self.acquisition_timeout_steps
+            )
+        )
         lost_after_acquisition = (
             (phase == 2)
             & (self.retry_state == self.state_secure)
             & self.ever_bilateral
             & (self.custody_loss_dwell >= 3)
         )
-        failure = (failed_close | lost_after_acquisition) & (
+        failure = (
+            failed_close
+            | stalled_acquisition
+            | lost_after_acquisition
+        ) & (
             self.retry_state != self.state_failed
         ) & (
             self.retry_state != self.state_reopening
@@ -1540,6 +1562,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.retry_state[failure] = self.state_failed
             self.open_settle_dwell[failure] = 0
             self.close_dwell[failure] = 0
+            self.acquisition_dwell[failure] = 0
             self.custody_loss_dwell[failure] = 0
 
         failed_grasp = self.retry_state == self.state_failed
@@ -1576,6 +1599,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.retry_count[activation] += 1
             self.retry_state[activation] = self.state_learned_retry
             self.open_settle_dwell[activation] = 0
+            self.acquisition_dwell[activation] = 0
             self._activate_recovery(raw, giver_is_robot_1, activation)
 
         receiver_hold_closed = torch.zeros(
@@ -1649,6 +1673,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.retry_count[mask] = 0
         self.episode_step[mask] = 0
         self.close_dwell[mask] = 0
+        self.acquisition_dwell[mask] = 0
         self.custody_loss_dwell[mask] = 0
         self.open_settle_dwell[mask] = 0
         self.ever_bilateral[mask] = False
