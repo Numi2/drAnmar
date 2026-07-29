@@ -1,0 +1,125 @@
+{
+  "schema_version": "dranmar-handover-recovery-promotion-lock-1.0",
+  "status": "promoted",
+  "promoted_at": "2026-07-29",
+  "decision": {
+    "authority": "repository_owner",
+    "accepted_development_success_rate": 0.7177777777777777,
+    "original_target_success_rate": 0.8,
+    "original_gate_disposition": "explicitly_overridden",
+    "qualification_claimed": false,
+    "reason": "Owner accepted the measured 71.78 percent composite for promotion."
+  },
+  "controller": {
+    "minimum_commit": "b2f605043fd8e40e9ef8543a99e8d72e13de44d9",
+    "episode_length_s": 40.0,
+    "launcher": "./dr_anmar_learning.sh promoted-handover",
+    "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
+    "control_frames_per_environment": 2000
+  },
+  "base_policy": {
+    "sha256": "f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad",
+    "size_bytes": 1632580,
+    "immutable_path": "/home/numi/dr_anmar/repro/recovery80/immutable/f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad/model.pt",
+    "immutable_mode": "0444"
+  },
+  "pickup_recovery": {
+    "kind": "fixed_post_reset_correction",
+    "correction": [
+      -0.0009646536,
+      0.00043738965,
+      -0.000506129775,
+      0.458332861313,
+      1.03786434447,
+      0.981207699374
+    ],
+    "translation_units": "m",
+    "orientation_units": "deg",
+    "position_cap_m": 0.001875,
+    "orientation_cap_deg": 1.5
+  },
+  "receiver_policy": {
+    "kind": "dagger_1_candidate_value_head",
+    "sha256": "582669a8a1c71bace2bdd3cb8e3fcdf12a64bb077e82f87a1a5ce7cc0ad64b79",
+    "size_bytes": 129660,
+    "immutable_path": "/home/numi/dr_anmar/repro/recovery80/immutable/582669a8a1c71bace2bdd3cb8e3fcdf12a64bb077e82f87a1a5ce7cc0ad64b79/model.pt",
+    "immutable_mode": "0444",
+    "candidate_first_attempt": true,
+    "gate_step": 50,
+    "candidate_min_logit_advantage": 0.0,
+    "local_refinement": true,
+    "local_sobol_seed": 104748,
+    "local_position_radius_m": 0.001,
+    "local_orientation_radius_deg": 1.0,
+    "position_cap_m": 0.0025,
+    "orientation_cap_deg": 2.0,
+    "retries_enabled": false,
+    "retention_servo": false,
+    "giver_stabilization": false,
+    "secure_settle_steps": 0
+  },
+  "development_evidence": {
+    "environments_per_seed": 600,
+    "seeds": {
+      "104729": {
+        "successful": 437,
+        "lifted_10mm": 594,
+        "receiver_acquired": 479,
+        "needle_dropped_after_pickup": 83,
+        "receiver_retention_lost": 42,
+        "time_out": 38,
+        "protected_surface_force": 0,
+        "excessive_object_force": 0,
+        "object_dropping": 0,
+        "premature_giver_release": 0,
+        "evidence_path": "/home/numi/dr_anmar/repro/recovery80/receiver-retention-dagger3-onpolicy-600-seed104729-b2f6050/dranmar_play_20260729T075405Z.json",
+        "evidence_sha256": "03e7cf7ee45b97c9fcc2c77be416eba5a4a2c59ee69189355d768378e79644cf"
+      },
+      "130363": {
+        "successful": 426,
+        "lifted_10mm": 595,
+        "receiver_acquired": 479,
+        "needle_dropped_after_pickup": 96,
+        "receiver_retention_lost": 52,
+        "time_out": 25,
+        "protected_surface_force": 1,
+        "excessive_object_force": 0,
+        "object_dropping": 0,
+        "premature_giver_release": 0,
+        "evidence_path": "/home/numi/dr_anmar/repro/recovery80/receiver-retention-dagger3-onpolicy-600-seed130363-b2f6050/dranmar_play_20260729T075628Z.json",
+        "evidence_sha256": "cd2d6e1ad40c41e53f5e20edf5575ad1df3caca9efde71da3d7e810ba3007a23"
+      },
+      "196613": {
+        "successful": 429,
+        "lifted_10mm": 592,
+        "receiver_acquired": 474,
+        "needle_dropped_after_pickup": 87,
+        "receiver_retention_lost": 45,
+        "time_out": 39,
+        "protected_surface_force": 0,
+        "excessive_object_force": 0,
+        "object_dropping": 0,
+        "premature_giver_release": 0,
+        "evidence_path": "/home/numi/dr_anmar/repro/recovery80/receiver-retention-dagger3-onpolicy-600-seed196613-b2f6050/dranmar_play_20260729T075818Z.json",
+        "evidence_sha256": "6dea44761e9a46886ca3b2fc1e729b6abf7a455d5febd9128e7c407f38256448"
+      }
+    },
+    "aggregate": {
+      "episodes": 1800,
+      "successful": 1292,
+      "success_rate": 0.7177777777777777,
+      "lifted_10mm": 1781,
+      "lift_rate": 0.9894444444444445,
+      "receiver_acquired": 1432,
+      "receiver_acquisition_given_lift": 0.8040426726558113,
+      "retention_given_acquisition": 0.9022346368715084,
+      "needle_dropped_after_pickup": 266,
+      "receiver_retention_lost": 139,
+      "time_out": 102,
+      "protected_surface_force": 1,
+      "excessive_object_force": 0,
+      "object_dropping": 0,
+      "premature_giver_release": 0
+    }
+  }
+}

@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -23,6 +23,7 @@ usage() {
     echo "  sweep     [task] [iterations] [comma-separated env counts] [output]"
     echo "  pretrain  [task] [num_envs] [updates] [validation_frames] [output]"
     echo "  train     [task] [num_envs] [iterations] [output]"
+    echo "  promoted-handover [num_envs] [frames] [output] [task]"
     echo "  play      CHECKPOINT [task] [num_envs] [frames] [output]"
     echo "  record    CHECKPOINT [task] [frames] [output] [chunk_frames]"
     echo "  tqta-start  [task] [tracker]"
@@ -38,6 +39,15 @@ require_runtime() {
     if [[ ! -d "${DR_ANMAR_ISAACLAB_ROOT}/scripts/benchmarks" ]]; then
         echo "error: Isaac Lab checkout not found: ${DR_ANMAR_ISAACLAB_ROOT}" >&2
         exit 2
+    fi
+}
+
+sha256_file() {
+    local path="$1"
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "${path}" | awk '{print $1}'
+    else
+        shasum -a 256 "${path}" | awk '{print $1}'
     fi
 }
 
@@ -207,6 +217,78 @@ case "${command}" in
             "${checkpoint_args[@]}" \
             "${learning_rate_args[@]}" \
             "${giver_adaptation_args[@]}"
+        ;;
+    promoted-handover)
+        require_runtime
+        base_sha256="f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad"
+        receiver_sha256="582669a8a1c71bace2bdd3cb8e3fcdf12a64bb077e82f87a1a5ce7cc0ad64b79"
+        base_checkpoint="${DR_ANMAR_RUNTIME_ROOT}/repro/recovery80/immutable/${base_sha256}/model.pt"
+        receiver_checkpoint="${DR_ANMAR_RUNTIME_ROOT}/repro/recovery80/immutable/${receiver_sha256}/model.pt"
+        num_envs="${2:-1200}"
+        frames="${3:-2000}"
+        output="${4:-${DR_ANMAR_LEARNING_OUTPUT}/promoted-handover}"
+        task="${5:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        if [[ ! -f "${base_checkpoint}" ]]; then
+            echo "error: promoted base checkpoint not found: ${base_checkpoint}" >&2
+            exit 2
+        fi
+        if [[ ! -f "${receiver_checkpoint}" ]]; then
+            echo "error: promoted receiver checkpoint not found: ${receiver_checkpoint}" >&2
+            exit 2
+        fi
+        if [[ "$(sha256_file "${base_checkpoint}")" != "${base_sha256}" ]]; then
+            echo "error: promoted base checkpoint hash mismatch: ${base_checkpoint}" >&2
+            exit 2
+        fi
+        if [[ "$(sha256_file "${receiver_checkpoint}")" != "${receiver_sha256}" ]]; then
+            echo "error: promoted receiver checkpoint hash mismatch: ${receiver_checkpoint}" >&2
+            exit 2
+        fi
+        exec env \
+            DR_ANMAR_POLICY_RESIDUAL_SCALE=0.03 \
+            DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT=0.01 \
+            DR_ANMAR_POLICY_PICKUP_INITIAL_VERTICAL_ACTION_LIMIT=0.01 \
+            DR_ANMAR_POLICY_CARRY_LATERAL_ACTION_LIMIT=0.06 \
+            DR_ANMAR_POLICY_CARRY_LATERAL_RAMP_HEIGHT=0.01 \
+            DR_ANMAR_POLICY_PRESENTATION_FRACTION_FROM_GIVER=0.35 \
+            DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME=-0.13 \
+            DR_ANMAR_POLICY_GIVER_CLOSE_DISTANCE=0.005 \
+            DR_ANMAR_POLICY_GIVER_LIFT_CONTACT_FORCE_THRESHOLD_N=0.01 \
+            DR_ANMAR_POLICY_GIVER_PRE_LIFT_MIN_CONTACT_JAWS=2 \
+            DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT=1 \
+            DR_ANMAR_PICKUP_RECOVERY=1 \
+            DR_ANMAR_PICKUP_RECOVERY_CHECKPOINT= \
+            DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION="-0.000964653600000,0.000437389650000,-0.000506129775000,0.458332861313,1.03786434447,0.981207699374" \
+            DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION_AFTER_FIRST_RETRY= \
+            DR_ANMAR_PICKUP_RECOVERY_CORRECTION_CANDIDATES= \
+            DR_ANMAR_PICKUP_RECOVERY_RANDOM_CORRECTIONS=0 \
+            DR_ANMAR_PICKUP_RECOVERY_POSITION_CAP_M=0.001875 \
+            DR_ANMAR_PICKUP_RECOVERY_ORIENTATION_CAP_DEG=1.5 \
+            DR_ANMAR_RECEIVER_RECOVERY=1 \
+            DR_ANMAR_RECEIVER_DISABLE_RETRIES=1 \
+            DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT= \
+            DR_ANMAR_RECEIVER_CANDIDATE_VALUE_CHECKPOINT="${receiver_checkpoint}" \
+            DR_ANMAR_RECEIVER_CANDIDATE_LOCAL_REFINEMENT=1 \
+            DR_ANMAR_RECEIVER_CANDIDATE_MIN_LOGIT_ADVANTAGE=0.0 \
+            DR_ANMAR_RECEIVER_CANDIDATE_FIRST_ATTEMPT=1 \
+            DR_ANMAR_RECEIVER_GATE_STEP=50 \
+            DR_ANMAR_RECEIVER_RETRY_GATE_CHECKPOINT= \
+            DR_ANMAR_RECEIVER_STABILIZATION_GATE_CHECKPOINT= \
+            DR_ANMAR_RECEIVER_STABILIZE_GIVER_DURING_ACQUISITION=0 \
+            DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS=0 \
+            DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION= \
+            DR_ANMAR_RECEIVER_RECOVERY_RANDOM_CORRECTIONS=0 \
+            DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M=0.0025 \
+            DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG=2.0 \
+            DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_SEED=104748 \
+            DR_ANMAR_RECEIVER_RECOVERY_LOCAL_POSITION_RADIUS_M=0.001 \
+            DR_ANMAR_RECEIVER_RECOVERY_LOCAL_ORIENTATION_RADIUS_DEG=1.0 \
+            "${BASH_SOURCE[0]}" play \
+            "${base_checkpoint}" \
+            "${task}" \
+            "${num_envs}" \
+            "${frames}" \
+            "${output}"
         ;;
     play)
         require_runtime
@@ -430,6 +512,28 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_CANDIDATE_VALUE_CHECKPOINT}"
             )
         fi
+        if [[ "${DR_ANMAR_RECEIVER_CANDIDATE_LOCAL_REFINEMENT:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_candidate_local_refinement
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_CANDIDATE_MIN_LOGIT_ADVANTAGE:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_candidate_min_logit_advantage
+                "${DR_ANMAR_RECEIVER_CANDIDATE_MIN_LOGIT_ADVANTAGE}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_CANDIDATE_FIRST_ATTEMPT:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_candidate_first_attempt
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_GATE_STEP:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_gate_step
+                "${DR_ANMAR_RECEIVER_GATE_STEP}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RETRY_GATE_CHECKPOINT:-}" ]]; then
             pickup_recovery_args+=(
                 --receiver_retry_gate_checkpoint
@@ -504,6 +608,12 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_recovery_local_sobol_candidate
                 "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_CANDIDATE}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_SEED:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_local_sobol_seed
+                "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_SEED}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_POSITION_RADIUS_M:-}" ]]; then
@@ -715,6 +825,28 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_CANDIDATE_VALUE_CHECKPOINT}"
             )
         fi
+        if [[ "${DR_ANMAR_RECEIVER_CANDIDATE_LOCAL_REFINEMENT:-0}" == "1" ]]; then
+            recovery_record_args+=(
+                --receiver_candidate_local_refinement
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_CANDIDATE_MIN_LOGIT_ADVANTAGE:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_candidate_min_logit_advantage
+                "${DR_ANMAR_RECEIVER_CANDIDATE_MIN_LOGIT_ADVANTAGE}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_CANDIDATE_FIRST_ATTEMPT:-0}" == "1" ]]; then
+            recovery_record_args+=(
+                --receiver_candidate_first_attempt
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_GATE_STEP:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_gate_step
+                "${DR_ANMAR_RECEIVER_GATE_STEP}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RETRY_GATE_CHECKPOINT:-}" ]]; then
             recovery_record_args+=(
                 --receiver_retry_gate_checkpoint
@@ -749,6 +881,24 @@ case "${command}" in
             recovery_record_args+=(
                 --receiver_recovery_orientation_cap_deg
                 "${DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_SEED:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_recovery_local_sobol_seed
+                "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_SEED}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_POSITION_RADIUS_M:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_recovery_local_position_radius
+                "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_POSITION_RADIUS_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_ORIENTATION_RADIUS_DEG:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_recovery_local_orientation_radius_deg
+                "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_ORIENTATION_RADIUS_DEG}"
             )
         fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
