@@ -3543,13 +3543,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         env_cfg.events.reset_object_position.params["replicas"] = (
             args.receiver_recovery_sweep_replicas
         )
-    if args.receiver_recovery and not (
+    if (
+        args.receiver_recovery
+        or args.receiver_recovery_checkpoint
+        or args.receiver_retry_gate_checkpoint
+    ) and not (
         1
         <= args.receiver_recovery_acquisition_timeout_steps
         < args.num_frames
     ):
         return _fail(
             "receiver acquisition timeout must be inside the episode"
+        )
+    if not 0.0 < args.receiver_retry_gate_threshold < 1.0:
+        return _fail(
+            "receiver retry gate threshold must be inside (0, 1)"
         )
     if args.receiver_recovery_local_sobol_candidate is not None:
         if not 0 <= args.receiver_recovery_local_sobol_candidate < 32:
@@ -4090,6 +4098,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if (
         args.receiver_recovery
         or args.receiver_recovery_checkpoint
+        or args.receiver_retry_gate_checkpoint
         or args.receiver_recovery_fixed_correction
         or args.receiver_recovery_random_corrections
         or args.receiver_recovery_sobol_candidate is not None
@@ -4098,9 +4107,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverReceiverRecoveryPolicy,
             ReceiverRecoveryHead,
+            ReceiverRetryGate,
         )
 
         receiver_head = ReceiverRecoveryHead().to(env.unwrapped.device)
+        receiver_gate = None
+        receiver_gate_mean = None
+        receiver_gate_std = None
+        receiver_gate_step = 100
         if args.receiver_recovery_checkpoint:
             receiver_checkpoint = (
                 Path(args.receiver_recovery_checkpoint)
@@ -4187,6 +4201,95 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 receiver_payload["receiver_recovery_head"],
                 strict=True,
             )
+        if args.receiver_retry_gate_checkpoint:
+            receiver_gate_checkpoint = (
+                Path(args.receiver_retry_gate_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            if not receiver_gate_checkpoint.is_file():
+                env.close()
+                return _fail(
+                    "receiver retry gate checkpoint not found: "
+                    f"{receiver_gate_checkpoint}"
+                )
+            receiver_gate_payload = torch.load(
+                receiver_gate_checkpoint,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            if (
+                not isinstance(receiver_gate_payload, dict)
+                or receiver_gate_payload.get("schema_version")
+                != "dranmar-receiver-retry-gate-1.0"
+                or "receiver_retry_gate" not in receiver_gate_payload
+                or "feature_mean" not in receiver_gate_payload
+                or "feature_std" not in receiver_gate_payload
+            ):
+                env.close()
+                return _fail(
+                    "unsupported receiver retry gate checkpoint"
+                )
+            if (
+                receiver_gate_payload.get("base_checkpoint_sha256")
+                != _sha256(checkpoint)
+            ):
+                env.close()
+                return _fail(
+                    "receiver retry gate was trained against another "
+                    "base policy"
+                )
+            expected_pickup_hash = (
+                _sha256(
+                    Path(args.pickup_recovery_checkpoint)
+                    .expanduser()
+                    .resolve()
+                )
+                if args.pickup_recovery_checkpoint
+                else None
+            )
+            if (
+                receiver_gate_payload.get(
+                    "pickup_recovery_checkpoint_sha256"
+                )
+                != expected_pickup_hash
+            ):
+                env.close()
+                return _fail(
+                    "receiver retry gate was trained against another "
+                    "pickup-recovery policy"
+                )
+            receiver_gate_step = int(
+                receiver_gate_payload["active_approach_step"]
+            )
+            if not (
+                0
+                < receiver_gate_step
+                < args.receiver_recovery_acquisition_timeout_steps
+            ):
+                env.close()
+                return _fail(
+                    "receiver retry gate step must precede the fallback "
+                    "acquisition timeout"
+                )
+            receiver_gate = ReceiverRetryGate().to(
+                env.unwrapped.device
+            )
+            receiver_gate.load_state_dict(
+                receiver_gate_payload["receiver_retry_gate"],
+                strict=True,
+            )
+            receiver_gate.eval()
+            receiver_gate_mean = receiver_gate_payload[
+                "feature_mean"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_gate_std = receiver_gate_payload["feature_std"].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
         receiver_base_policy = (
             pickup_recovery_policy
             if pickup_recovery_policy is not None
@@ -4195,6 +4298,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_recovery_policy = HandoverReceiverRecoveryPolicy(
             receiver_base_policy,
             receiver_head,
+            retry_gate=receiver_gate,
+            gate_feature_mean=receiver_gate_mean,
+            gate_feature_std=receiver_gate_std,
+            gate_step=receiver_gate_step,
+            gate_threshold=args.receiver_retry_gate_threshold,
             position_cap_m=args.receiver_recovery_position_cap,
             orientation_cap_rad=math.radians(
                 args.receiver_recovery_orientation_cap_deg
@@ -4495,6 +4603,25 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     first_receiver_peak_jaw_force_n = (
         torch.zeros(
             (env.unwrapped.num_envs, 2),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_gate_evaluated = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_gate_triggered = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_gate_probability = (
+        torch.zeros(
+            env.unwrapped.num_envs,
             dtype=torch.float32,
             device=env.unwrapped.device,
         )
@@ -5226,7 +5353,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert first_receiver_activation_seen is not None
                     assert first_receiver_activation_frame is not None
                     assert first_receiver_peak_jaw_force_n is not None
+                    assert first_receiver_gate_evaluated is not None
+                    assert first_receiver_gate_triggered is not None
+                    assert first_receiver_gate_probability is not None
                     assert first_handover_history is not None
+                    receiver_gate_observed = (
+                        receiver_recovery_policy.gate_evaluated
+                        & was_first_unresolved
+                    )
+                    first_receiver_gate_probability[:] = torch.where(
+                        receiver_gate_observed,
+                        receiver_recovery_policy.gate_probability,
+                        first_receiver_gate_probability,
+                    )
+                    first_receiver_gate_evaluated |= receiver_gate_observed
+                    first_receiver_gate_triggered |= (
+                        receiver_recovery_policy.gate_triggered
+                        & was_first_unresolved
+                    )
                     first_receiver_approach = (
                         receiver_recovery_policy.acquisition_started
                         & (receiver_recovery_policy.retry_count == 0)
@@ -7370,6 +7514,69 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "acquisition_timeout_steps": (
                         receiver_recovery_policy.acquisition_timeout_steps
                     ),
+                    "retry_gate": (
+                        {
+                            "checkpoint": {
+                                "path": str(
+                                    Path(
+                                        args.receiver_retry_gate_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                                "sha256": _sha256(
+                                    Path(
+                                        args.receiver_retry_gate_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                            },
+                            "active_approach_step": (
+                                receiver_recovery_policy.gate_step
+                            ),
+                            "threshold": (
+                                receiver_recovery_policy.gate_threshold
+                            ),
+                            "evaluated_episodes": int(
+                                first_receiver_gate_evaluated.sum().item()
+                            ),
+                            "triggered_episodes": int(
+                                first_receiver_gate_triggered.sum().item()
+                            ),
+                            "successful_triggered_episodes": int(
+                                (
+                                    first_receiver_gate_triggered
+                                    & first_outcome_success
+                                )
+                                .sum()
+                                .item()
+                            ),
+                            "acquired_triggered_episodes": int(
+                                (
+                                    first_receiver_gate_triggered
+                                    & (first_handover_max_phase >= 3)
+                                )
+                                .sum()
+                                .item()
+                            ),
+                            "mean_evaluated_probability": (
+                                float(
+                                    first_receiver_gate_probability[
+                                        first_receiver_gate_evaluated
+                                    ]
+                                    .mean()
+                                    .item()
+                                )
+                                if bool(
+                                    first_receiver_gate_evaluated.any()
+                                )
+                                else None
+                            ),
+                        }
+                        if args.receiver_retry_gate_checkpoint
+                        else None
+                    ),
                     "fixed_correction": (
                         args.receiver_recovery_fixed_correction
                     ),
@@ -7653,6 +7860,12 @@ def _parser() -> argparse.ArgumentParser:
         help="enable the isolated post-reset receiver recovery head",
     )
     play.add_argument("--receiver_recovery_checkpoint")
+    play.add_argument("--receiver_retry_gate_checkpoint")
+    play.add_argument(
+        "--receiver_retry_gate_threshold",
+        type=float,
+        default=0.8,
+    )
     play.add_argument(
         "--receiver_recovery_position_cap",
         type=float,

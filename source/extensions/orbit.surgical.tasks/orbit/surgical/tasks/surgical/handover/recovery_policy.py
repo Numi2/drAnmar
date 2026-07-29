@@ -1013,6 +1013,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         base_policy: nn.Module,
         recovery_head: ReceiverRecoveryHead | None = None,
         *,
+        retry_gate: ReceiverRetryGate | None = None,
+        gate_feature_mean: torch.Tensor | None = None,
+        gate_feature_std: torch.Tensor | None = None,
+        gate_step: int = 100,
+        gate_threshold: float = 0.8,
         position_cap_m: float = 0.005,
         orientation_cap_rad: float = math.radians(5.0),
         episode_frames: int = 2000,
@@ -1026,8 +1031,49 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             raise ValueError(
                 "receiver recovery orientation cap must be in (0, 5 degrees]"
             )
+        if gate_step <= 0:
+            raise ValueError("receiver retry gate step must be positive")
+        if not 0.0 < gate_threshold < 1.0:
+            raise ValueError(
+                "receiver retry gate threshold must be inside (0, 1)"
+            )
         self.base_policy = base_policy
         self.recovery_head = recovery_head or ReceiverRecoveryHead()
+        self.retry_gate = retry_gate
+        if retry_gate is None:
+            if gate_feature_mean is not None or gate_feature_std is not None:
+                raise ValueError(
+                    "receiver retry gate normalization requires a gate"
+                )
+            gate_feature_mean = torch.empty(0)
+            gate_feature_std = torch.empty(0)
+        else:
+            if gate_feature_mean is None or gate_feature_std is None:
+                raise ValueError(
+                    "receiver retry gate requires feature normalization"
+                )
+            if (
+                gate_feature_mean.shape != (ReceiverRetryGate.input_dim,)
+                or gate_feature_std.shape != (ReceiverRetryGate.input_dim,)
+            ):
+                raise ValueError(
+                    "receiver retry gate normalization must have 105 values"
+                )
+            if bool(torch.any(gate_feature_std <= 0.0)):
+                raise ValueError(
+                    "receiver retry gate feature standard deviations "
+                    "must be positive"
+                )
+            for parameter in retry_gate.parameters():
+                parameter.requires_grad_(False)
+        self.register_buffer(
+            "gate_feature_mean",
+            gate_feature_mean.detach().clone(),
+        )
+        self.register_buffer(
+            "gate_feature_std",
+            gate_feature_std.detach().clone(),
+        )
         self.register_buffer(
             "canonical_grasp_offset",
             torch.tensor(
@@ -1045,6 +1091,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.state_learned_retry = 4
         self.state_secure = 5
         self.context_dim = 29
+        self.gate_step = int(gate_step)
+        self.gate_threshold = float(gate_threshold)
         self.position_cap_m = float(position_cap_m)
         self.orientation_cap_rad = float(orientation_cap_rad)
         self.episode_frames = int(episode_frames)
@@ -1091,6 +1139,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.activation_count = torch.empty(0, dtype=torch.long)
         self.last_context = torch.empty((0, self.context_dim))
         self.last_activation_mask = torch.empty(0, dtype=torch.bool)
+        self.gate_evaluated = torch.empty(0, dtype=torch.bool)
+        self.gate_triggered = torch.empty(0, dtype=torch.bool)
+        self.gate_probability = torch.empty(0)
 
     def _initialize_state(self, raw: torch.Tensor) -> None:
         batch_size = raw.shape[0]
@@ -1154,6 +1205,17 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.last_activation_mask = torch.zeros_like(
             self.first_attempt_failed
+        )
+        self.gate_evaluated = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.gate_triggered = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.gate_probability = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
         )
 
     def set_fixed_correction(
@@ -1611,6 +1673,43 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.acquisition_dwell + 1,
             torch.zeros_like(self.acquisition_dwell),
         )
+        gate_retry = torch.zeros_like(acquisition_active)
+        if self.retry_gate is not None:
+            gate_now = (
+                acquisition_active
+                & (self.retry_state == self.state_canonical)
+                & (self.retry_count == 0)
+                & ~bilateral_qualified
+                & ~self.gate_evaluated
+                & (self.acquisition_dwell >= self.gate_step)
+            )
+            if bool(gate_now.any()):
+                gate_features = torch.cat(
+                    (raw[gate_now], receiver_base_action[gate_now]),
+                    dim=-1,
+                )
+                normalized_gate_features = (
+                    gate_features
+                    - self.gate_feature_mean.to(
+                        dtype=raw.dtype,
+                        device=raw.device,
+                    )
+                ) / self.gate_feature_std.to(
+                    dtype=raw.dtype,
+                    device=raw.device,
+                )
+                gate_probability = torch.sigmoid(
+                    self.retry_gate(normalized_gate_features)
+                )
+                self.gate_evaluated[gate_now] = True
+                self.gate_probability[gate_now] = gate_probability
+                selected = gate_probability >= self.gate_threshold
+                selected_indices = torch.nonzero(
+                    gate_now,
+                    as_tuple=False,
+                ).squeeze(-1)[selected]
+                gate_retry[selected_indices] = True
+                self.gate_triggered[selected_indices] = True
         closing = (
             (phase == 2)
             & first_or_retry
@@ -1650,6 +1749,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             failed_close
             | stalled_acquisition
             | lost_after_acquisition
+            | gate_retry
         ) & (
             self.retry_state != self.state_failed
         ) & (
@@ -1781,6 +1881,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.first_attempt_failed[mask] = False
         self.recovered_acquisition[mask] = False
         self.activation_count[mask] = 0
+        self.gate_evaluated[mask] = False
+        self.gate_triggered[mask] = False
+        self.gate_probability[mask] = 0.0
 
     def reset(
         self,
