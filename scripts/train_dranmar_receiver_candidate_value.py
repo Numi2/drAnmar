@@ -38,6 +38,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--validation_fraction", type=float, default=0.2)
     parser.add_argument("--validation_seed", type=int)
     parser.add_argument("--candidate_seed", type=int, default=130363)
+    parser.add_argument(
+        "--candidate_checkpoint",
+        help=(
+            "reuse the deployment candidate set from an existing value "
+            "checkpoint while learning from state-dependent local sweeps"
+        ),
+    )
     parser.add_argument("--first_attempt_only", action="store_true")
     parser.add_argument("--seed", type=int, default=104729)
     return parser
@@ -205,24 +212,68 @@ def main(argv: list[str]) -> int:
     if features.shape[-1] != ReceiverCandidateValue.input_dim:
         raise ValueError("receiver candidate value feature shape drifted")
 
-    candidate_count = int(candidate_index.max().item()) + 1
-    candidates = torch.empty(
-        (candidate_count, 6),
-        dtype=torch.float32,
-    )
-    for candidate in range(candidate_count):
-        values = correction[
-            (candidate_index == candidate)
-            & (sample_seed == args.candidate_seed)
-        ]
-        if values.shape[0] == 0:
-            raise ValueError(f"candidate {candidate} has no samples")
-        mean = values.mean(dim=0)
-        if float((values - mean).abs().max().item()) > 1.0e-6:
-            raise ValueError(
-                f"candidate {candidate} correction is not deterministic"
+    candidate_source = None
+    if args.candidate_checkpoint:
+        candidate_path = Path(args.candidate_checkpoint).expanduser().resolve()
+        candidate_payload = torch.load(
+            candidate_path,
+            map_location="cpu",
+            weights_only=False,
+        )
+        if (
+            not isinstance(candidate_payload, dict)
+            or candidate_payload.get("schema_version")
+            != "dranmar-receiver-candidate-value-1.0"
+            or "candidate_corrections" not in candidate_payload
+        ):
+            raise ValueError("unsupported candidate checkpoint")
+        if (
+            candidate_payload.get("base_checkpoint_sha256")
+            != next(iter(base_hashes))
+            or candidate_payload.get(
+                "pickup_recovery_checkpoint_sha256"
             )
-        candidates[candidate] = mean
+            != next(iter(pickup_hashes))
+            or not torch.isclose(
+                torch.tensor(float(candidate_payload["position_cap_m"])),
+                torch.tensor(position_cap),
+                rtol=0.0,
+                atol=1.0e-9,
+            )
+            or not torch.isclose(
+                torch.tensor(float(candidate_payload["orientation_cap_rad"])),
+                torch.tensor(orientation_cap),
+                rtol=0.0,
+                atol=1.0e-9,
+            )
+        ):
+            raise ValueError("candidate checkpoint is incompatible")
+        candidates = candidate_payload["candidate_corrections"].float()
+        if candidates.ndim != 2 or candidates.shape[1] != 6:
+            raise ValueError("candidate checkpoint correction shape drifted")
+        candidate_source = {
+            "path": str(candidate_path),
+            "sha256": _sha256(candidate_path),
+        }
+    else:
+        candidate_count = int(candidate_index.max().item()) + 1
+        candidates = torch.empty(
+            (candidate_count, 6),
+            dtype=torch.float32,
+        )
+        for candidate in range(candidate_count):
+            values = correction[
+                (candidate_index == candidate)
+                & (sample_seed == args.candidate_seed)
+            ]
+            if values.shape[0] == 0:
+                raise ValueError(f"candidate {candidate} has no samples")
+            mean = values.mean(dim=0)
+            if float((values - mean).abs().max().item()) > 1.0e-6:
+                raise ValueError(
+                    f"candidate {candidate} correction is not deterministic"
+                )
+            candidates[candidate] = mean
 
     if args.validation_seed is not None:
         validation_mask = sample_seed == args.validation_seed
@@ -326,6 +377,7 @@ def main(argv: list[str]) -> int:
         "feature_std": feature_std,
         "candidate_corrections": candidates,
         "candidate_seed": args.candidate_seed,
+        "candidate_source": candidate_source,
         "base_checkpoint_sha256": next(iter(base_hashes)),
         "pickup_recovery_checkpoint_sha256": next(iter(pickup_hashes)),
         "position_cap_m": position_cap,
