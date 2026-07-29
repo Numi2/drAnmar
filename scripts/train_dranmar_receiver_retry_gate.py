@@ -33,6 +33,21 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--baseline_evidence", action="append")
     parser.add_argument("--intervention_evidence", action="append")
     parser.add_argument(
+        "--outcome_evidence",
+        action="append",
+        help=(
+            "canonical evidence used to label a termination-specific gate; "
+            "provide one file per dataset"
+        ),
+    )
+    parser.add_argument(
+        "--target_term",
+        help=(
+            "termination term to predict from --outcome_evidence, for "
+            "example receiver_retention_lost"
+        ),
+    )
+    parser.add_argument(
         "--retry_intervention_target",
         action="store_true",
         help=(
@@ -184,6 +199,20 @@ def main(argv: list[str]) -> int:
         raise ValueError(
             "retry intervention target requires counterfactual evidence"
         )
+    outcome_mode = bool(args.outcome_evidence or args.target_term)
+    if outcome_mode and (
+        not args.outcome_evidence
+        or not args.target_term
+        or len(args.outcome_evidence) != len(payloads)
+    ):
+        raise ValueError(
+            "termination-target training requires one outcome evidence "
+            "file per dataset and --target_term"
+        )
+    if counterfactual_mode and outcome_mode:
+        raise ValueError(
+            "counterfactual and termination-target training are exclusive"
+        )
     baseline_evidence_paths = (
         [
             Path(value).expanduser().resolve()
@@ -214,6 +243,22 @@ def main(argv: list[str]) -> int:
             for path in intervention_evidence_paths
         ]
         if counterfactual_mode
+        else []
+    )
+    outcome_evidence_paths = (
+        [
+            Path(value).expanduser().resolve()
+            for value in args.outcome_evidence
+        ]
+        if outcome_mode
+        else []
+    )
+    outcome_evidence = (
+        [
+            json.loads(path.read_text())
+            for path in outcome_evidence_paths
+        ]
+        if outcome_mode
         else []
     )
 
@@ -284,6 +329,29 @@ def main(argv: list[str]) -> int:
             intervention_delta_parts.append(
                 intervention_success.to(torch.int8)
                 - baseline_success.to(torch.int8)
+            )
+        elif outcome_mode:
+            evidence = outcome_evidence[payload_index]
+            seed = int(payload["seed"])
+            if int(evidence["seed"]) != seed:
+                raise ValueError(
+                    "outcome evidence seed does not match dataset"
+                )
+            termination_indices = evidence["environment_outcomes"][
+                "termination_indices"
+            ]
+            if args.target_term not in termination_indices:
+                raise ValueError(
+                    f"termination term {args.target_term!r} is absent "
+                    f"from outcome evidence"
+                )
+            target_indices = set(termination_indices[args.target_term])
+            target = torch.tensor(
+                [
+                    int(index) in target_indices
+                    for index in payload["environment_index"].long()
+                ],
+                dtype=torch.bool,
             )
         else:
             target = ~payload["eventual_acquisition"].bool()
@@ -432,12 +500,17 @@ def main(argv: list[str]) -> int:
             if counterfactual_mode
             else None
         ),
+        "target_term": args.target_term,
         "counterfactual_counts": counterfactual_counts,
         "training": {
             "algorithm": (
                 "class_balanced_intervention_benefit_classification"
                 if counterfactual_mode
-                else "class_balanced_failure_classification"
+                else (
+                    "class_balanced_termination_classification"
+                    if outcome_mode
+                    else "class_balanced_failure_classification"
+                )
             ),
             "seed": args.seed,
             "validation_seed": args.validation_seed,
@@ -496,6 +569,17 @@ def main(argv: list[str]) -> int:
                 )
             ]
             if counterfactual_mode
+            else []
+        ),
+        "outcome_evidence": (
+            [
+                {
+                    "path": str(path),
+                    "sha256": _sha256(path),
+                }
+                for path in outcome_evidence_paths
+            ]
+            if outcome_mode
             else []
         ),
     }
