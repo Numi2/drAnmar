@@ -818,6 +818,12 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_RECOVERY_SWEEP_REPLICAS}"
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_SEED:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_sobol_seed
+                "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_SEED}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_START:-}" ]]; then
             pickup_recovery_args+=(
                 --receiver_recovery_sobol_start
