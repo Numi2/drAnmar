@@ -3621,6 +3621,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
         or args.receiver_retry_clearance_retreat
+        or args.receiver_selective_early_retry_latch
         or args.receiver_retry_force_centering
         or args.receiver_active_custody_verification
         or args.receiver_retention_contact_centering
@@ -3679,6 +3680,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if args.receiver_custody_confirmation_steps < 0:
         return _fail(
             "receiver custody confirmation steps must be non-negative"
+        )
+    if (
+        args.receiver_selective_early_retry_latch
+        and args.receiver_disable_retries
+    ):
+        return _fail(
+            "selective early receiver retry latch requires retries"
         )
     if (
         args.receiver_retention_contact_centering
@@ -5130,6 +5138,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             retry_clearance_retreat=(
                 args.receiver_retry_clearance_retreat
             ),
+            selective_early_retry_latch=(
+                args.receiver_selective_early_retry_latch
+            ),
             retry_force_centering=(
                 args.receiver_retry_force_centering
             ),
@@ -5469,6 +5480,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     )
     first_receiver_active_custody_probe_survived = (
         torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_probe_evaluated = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_probe_pre_forces = (
+        torch.zeros(
+            (*first_unresolved.shape, 2),
+            dtype=torch.float32,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_probe_post_forces = (
+        torch.zeros(
+            (*first_unresolved.shape, 2),
+            dtype=torch.float32,
+            device=first_unresolved.device,
+        )
         if receiver_recovery_policy is not None
         else None
     )
@@ -6892,6 +6926,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         is not None
                     )
                     assert (
+                        first_receiver_active_custody_probe_evaluated
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_probe_pre_forces
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_probe_post_forces
+                        is not None
+                    )
+                    assert (
                         first_receiver_retry_release_aborted is not None
                     )
                     assert (
@@ -6953,6 +6999,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ] = (
                         receiver_recovery_policy
                         .active_custody_probe_survived[first_dones]
+                    )
+                    first_receiver_active_custody_probe_evaluated[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_probe_evaluated[first_dones]
+                    )
+                    first_receiver_active_custody_probe_pre_forces[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_probe_pre_forces[first_dones]
+                    )
+                    first_receiver_active_custody_probe_post_forces[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_probe_post_forces[first_dones]
                     )
                     first_receiver_retry_release_aborted[first_dones] = (
                         receiver_recovery_policy
@@ -8815,6 +8879,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ].sum().item()
                 ),
             }
+        receiver_probe_force_response = None
+        if (
+            first_receiver_active_custody_probe_evaluated is not None
+            and first_receiver_active_custody_probe_pre_forces is not None
+            and first_receiver_active_custody_probe_post_forces is not None
+            and bool(
+                first_receiver_active_custody_probe_evaluated.any()
+            )
+        ):
+            probe_mask = first_receiver_active_custody_probe_evaluated
+            probe_pre_force_n = (
+                first_receiver_active_custody_probe_pre_forces[
+                    probe_mask
+                ]
+                / 0.2
+            )
+            probe_post_force_n = (
+                first_receiver_active_custody_probe_post_forces[
+                    probe_mask
+                ]
+                / 0.2
+            )
+            receiver_probe_force_response = {
+                "episodes": int(probe_mask.sum().item()),
+                "pre_mean_n": probe_pre_force_n.mean(dim=0).tolist(),
+                "post_mean_n": probe_post_force_n.mean(dim=0).tolist(),
+                "delta_mean_n": (
+                    probe_post_force_n - probe_pre_force_n
+                ).mean(dim=0).tolist(),
+            }
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -9449,6 +9543,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .retry_clearance_retreat_action_limit
                     ),
+                    "selective_early_retry_latch": (
+                        receiver_recovery_policy
+                        .selective_early_retry_latch
+                    ),
                     "retry_force_centering": (
                         receiver_recovery_policy.retry_force_centering
                     ),
@@ -9470,7 +9568,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .giver_degradation_min_close_dwell
                     ),
                     "giver_degradation_early_requires_receiver_contact": (
-                        True
+                        receiver_recovery_policy
+                        .selective_early_retry_latch
                     ),
                     "retention_servo": (
                         receiver_recovery_policy
@@ -9717,6 +9816,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_receiver_active_custody_probe_survived
                         .sum()
                         .item()
+                    ),
+                    "active_custody_probe_evaluated_episodes": int(
+                        first_receiver_active_custody_probe_evaluated
+                        .sum()
+                        .item()
+                    ),
+                    "active_custody_probe_force_response": (
+                        receiver_probe_force_response
                     ),
                     "retry_release_aborted_episodes": int(
                         first_receiver_retry_release_aborted.sum().item()
@@ -10034,6 +10141,14 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--receiver_retry_clearance_retreat",
         action="store_true",
+    )
+    play.add_argument(
+        "--receiver_selective_early_retry_latch",
+        action="store_true",
+        help=(
+            "use the contact-gated two-frame giver degradation latch "
+            "during receiver closing; otherwise preserve three frames"
+        ),
     )
     play.add_argument(
         "--receiver_retry_force_centering",

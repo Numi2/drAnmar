@@ -827,6 +827,11 @@ case "${command}" in
                 --receiver_retry_clearance_retreat
             )
         fi
+        if [[ "${DR_ANMAR_RECEIVER_SELECTIVE_EARLY_RETRY_LATCH:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_selective_early_retry_latch
+            )
+        fi
         if [[ "${DR_ANMAR_RECEIVER_RETRY_FORCE_CENTERING:-0}" == "1" ]]; then
             pickup_recovery_args+=(
                 --receiver_retry_force_centering
@@ -1207,6 +1212,12 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS}"
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_CUSTODY_CONFIRMATION_STEPS:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_custody_confirmation_steps
+                "${DR_ANMAR_RECEIVER_CUSTODY_CONFIRMATION_STEPS}"
+            )
+        fi
         if [[ "${DR_ANMAR_RECEIVER_RETENTION_CONTACT_CENTERING:-0}" == "1" ]]; then
             recovery_record_args+=(
                 --receiver_retention_contact_centering
@@ -1215,6 +1226,11 @@ case "${command}" in
         if [[ "${DR_ANMAR_RECEIVER_RETRY_CLEARANCE_RETREAT:-0}" == "1" ]]; then
             recovery_record_args+=(
                 --receiver_retry_clearance_retreat
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_SELECTIVE_EARLY_RETRY_LATCH:-0}" == "1" ]]; then
+            recovery_record_args+=(
+                --receiver_selective_early_retry_latch
             )
         fi
         if [[ "${DR_ANMAR_RECEIVER_RETRY_FORCE_CENTERING:-0}" == "1" ]]; then

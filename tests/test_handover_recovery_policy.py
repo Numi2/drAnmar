@@ -230,6 +230,7 @@ def test_receiver_reopens_before_retry() -> None:
     raw[:, 79] = 1.0
     raw[:, 97] = -1.0
     raw[:, 22:24] = 0.30
+    raw[:, 66:68] = 0.01
 
     for _ in range(policy.close_dwell_steps):
         policy(observation)
@@ -251,7 +252,9 @@ def test_receiver_reopens_before_retry() -> None:
 
     raw[:, 79] = 0.0
     raw[:, 80] = 1.0
-    policy(observation)
+    raw[:, 68:70] = 0.01
+    for _ in range(3):
+        policy(observation)
     assert policy.recovered_acquisition.item()
 
 
@@ -311,8 +314,140 @@ def test_receiver_contact_loss_before_transfer_forces_full_reset() -> None:
         action = policy(observation)
 
     assert policy.first_attempt_failed.item()
-    assert action[0, 13].item() == -1.0
+    assert action[0, 13].item() == 1.0
 
     for _ in range(2):
         action = policy(observation)
     assert action[0, 13].item() == 1.0
+
+
+def test_active_custody_probe_pulses_once_per_acquisition_attempt() -> None:
+    policy = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        active_custody_verification=True,
+    )
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 80] = 1.0
+    raw[:, 66:68] = 0.01
+    raw[:, 68:70] = 0.01
+
+    for _ in range(3):
+        pulse_action = policy(observation)
+
+    assert pulse_action[0, 6].item() == 1.0
+    assert policy.active_custody_probe_pending.item()
+    assert policy.active_custody_probe_attempted.item()
+
+    policy(observation)
+    assert not policy.active_custody_probe_pending.item()
+    assert policy.active_custody_probe_evaluated.item()
+    assert policy.active_custody_probe_survived.item()
+    assert policy.receiver_release_authorized.item()
+
+    post_probe_action = policy(observation)
+    assert post_probe_action[0, 6].item() == -1.0
+
+
+def test_retry_retreat_budget_is_cumulative_across_contact_flicker() -> None:
+    policy = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        retry_clearance_retreat=True,
+    )
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 79] = 1.0
+    raw[:, 22:24] = 0.30
+    policy(observation)
+    policy.retry_state[:] = policy.state_reopening
+
+    raw[:, 66:68] = torch.tensor([[0.01, 0.0]])
+    for _ in range(5):
+        policy(observation)
+    raw[:, 66:68] = 0.01
+    policy(observation)
+    raw[:, 66:68] = torch.tensor([[0.01, 0.0]])
+    for _ in range(5):
+        tenth_retreat_action = policy(observation)
+
+    assert policy.clearance_retreat_dwell.item() == 10
+    assert not torch.equal(
+        tenth_retreat_action[:, 7:10],
+        torch.zeros(1, 3),
+    )
+
+    exhausted_action = policy(observation)
+    assert policy.clearance_retreat_dwell.item() == 11
+    assert torch.equal(exhausted_action[:, 7:10], torch.zeros(1, 3))
+
+
+def test_retry_force_centering_sets_the_requested_direction() -> None:
+    policy = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        retry_force_centering=True,
+    )
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 79] = 1.0
+    raw[:, 66:68] = 0.01
+    raw[:, 68:70] = torch.tensor([[0.0, 0.01]])
+    policy(observation)
+    policy.retry_state[:] = policy.state_learned_retry
+    policy.retry_count[:] = 1
+    policy.acquisition_started[:] = True
+
+    action = policy(observation)
+
+    assert math.isclose(
+        action[0, 9].item(),
+        -policy.contact_centering_action_limit,
+        abs_tol=1.0e-7,
+    )
+    assert (
+        policy.last_receiver_action_owner.item()
+        == policy._RECEIVER_OWNER_FORCE_CENTERING
+    )
+
+
+def test_phase_three_retry_approach_is_not_blocked_by_custody_hold() -> None:
+    policy = HandoverReceiverRecoveryPolicy(_FixedBasePolicy())
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 80] = 1.0
+    raw[:, 66:68] = 0.01
+    policy(observation)
+    policy.retry_state[:] = policy.state_learned_retry
+    policy.retry_count[:] = 1
+    policy.acquisition_started[:] = True
+
+    policy(observation)
+
+    assert (
+        policy.last_receiver_action_owner.item()
+        == policy._RECEIVER_OWNER_CORRECTED_APPROACH
+    )
+
+
+def test_canonical_retention_centering_does_not_touch_recovered_retry() -> None:
+    policy = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        receiver_retention_contact_centering=True,
+    )
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 80] = 1.0
+    raw[:, 66:68] = 0.0
+    raw[:, 68:70] = torch.tensor([[0.0, 0.01]])
+    policy(observation)
+    policy.retry_count[:] = 1
+    expected = policy.base_policy(observation)
+
+    action = policy(observation)
+
+    assert torch.equal(action, expected)
+    assert policy.last_receiver_action_owner.item() == 0

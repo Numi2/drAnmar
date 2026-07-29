@@ -1177,6 +1177,28 @@ class ReceiverAttemptActorCritic(nn.Module):
 class HandoverReceiverRecoveryPolicy(nn.Module):
     """Frozen pickup composite plus isolated receiver-acquisition retries."""
 
+    _PRIORITY_RETENTION_SERVO = 30
+    _PRIORITY_RETENTION_CENTERING = 40
+    _PRIORITY_GIVER_HOLD = 50
+    _PRIORITY_CORRECTED_APPROACH = 50
+    _PRIORITY_RETRY_FORCE_CENTERING = 55
+    _PRIORITY_CUSTODY_HOLD = 60
+    _PRIORITY_FAILED_OPEN = 70
+    _PRIORITY_RESET_OPEN = 80
+    _PRIORITY_RESET_RETREAT = 90
+    _PRIORITY_ACTIVE_LOAD_PROBE = 100
+
+    _GIVER_OWNER_HOLD = 1
+    _GIVER_OWNER_LOAD_PROBE = 2
+    _RECEIVER_OWNER_FAILED_OPEN = 1
+    _RECEIVER_OWNER_RESET_OPEN = 2
+    _RECEIVER_OWNER_RESET_RETREAT = 3
+    _RECEIVER_OWNER_CUSTODY_HOLD = 4
+    _RECEIVER_OWNER_CORRECTED_APPROACH = 5
+    _RECEIVER_OWNER_FORCE_CENTERING = 6
+    _RECEIVER_OWNER_RETENTION_SERVO = 7
+    _RECEIVER_OWNER_RETENTION_CENTERING = 8
+
     def __init__(
         self,
         base_policy: nn.Module,
@@ -1220,6 +1242,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         receiver_secure_settle_steps: int = 0,
         receiver_custody_confirmation_steps: int = 0,
         retry_clearance_retreat: bool = False,
+        selective_early_retry_latch: bool = False,
         retry_force_centering: bool = False,
         active_custody_verification: bool = False,
         receiver_retention_contact_centering: bool = False,
@@ -1658,6 +1681,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.retry_clearance_retreat = bool(retry_clearance_retreat)
         self.retry_clearance_retreat_steps = 10
         self.retry_clearance_retreat_action_limit = 0.01
+        self.selective_early_retry_latch = bool(
+            selective_early_retry_latch
+        )
         self.retry_force_centering = bool(retry_force_centering)
         self.active_custody_verification = bool(
             active_custody_verification
@@ -1802,9 +1828,27 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             0,
             dtype=torch.bool,
         )
+        self.active_custody_probe_attempted_this_attempt = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.active_custody_probe_evaluated = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
         self.active_custody_probe_survived = torch.empty(
             0,
             dtype=torch.bool,
+        )
+        self.active_custody_probe_pre_forces = torch.empty((0, 2))
+        self.active_custody_probe_post_forces = torch.empty((0, 2))
+        self.last_giver_action_owner = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.last_receiver_action_owner = torch.empty(
+            0,
+            dtype=torch.long,
         )
         self.giver_release_completed = torch.empty(
             0,
@@ -2018,8 +2062,28 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_probe_attempted = torch.zeros_like(
             self.first_attempt_failed
         )
+        self.active_custody_probe_attempted_this_attempt = (
+            torch.zeros_like(self.first_attempt_failed)
+        )
+        self.active_custody_probe_evaluated = torch.zeros_like(
+            self.first_attempt_failed
+        )
         self.active_custody_probe_survived = torch.zeros_like(
             self.first_attempt_failed
+        )
+        self.active_custody_probe_pre_forces = torch.zeros(
+            (batch_size, 2),
+            dtype=raw.dtype,
+            device=device,
+        )
+        self.active_custody_probe_post_forces = torch.zeros(
+            (batch_size, 2),
+            dtype=raw.dtype,
+            device=device,
+        )
+        self.last_giver_action_owner = torch.zeros_like(self.retry_count)
+        self.last_receiver_action_owner = torch.zeros_like(
+            self.retry_count
         )
         self.giver_release_completed = torch.zeros_like(
             self.first_attempt_failed
@@ -2819,6 +2883,32 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         return torch.cat((robot_1, robot_2), dim=-1)
 
+    @staticmethod
+    def _claim_action(
+        action: torch.Tensor,
+        priority: torch.Tensor,
+        owner: torch.Tensor,
+        candidate: torch.Tensor,
+        active: torch.Tensor,
+        *,
+        claim_priority: int,
+        claim_owner: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Apply one deterministic action claim using explicit priority."""
+        wins = active & (priority < claim_priority)
+        action = torch.where(wins.unsqueeze(-1), candidate, action)
+        priority = torch.where(
+            wins,
+            torch.full_like(priority, claim_priority),
+            priority,
+        )
+        owner = torch.where(
+            wins,
+            torch.full_like(owner, claim_owner),
+            owner,
+        )
+        return action, priority, owner
+
     def forward(
         self,
         obs: dict[str, torch.Tensor],
@@ -2981,7 +3071,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.active_custody_verification
             & basic_receiver_custody
             & ~probe_pending
+            & ~self.active_custody_probe_attempted_this_attempt
+            & ~self.receiver_release_authorized
         )
+        self.active_custody_probe_pre_forces[
+            active_custody_load_probe
+        ] = receiver_contacts[active_custody_load_probe]
+        self.active_custody_probe_post_forces[
+            probe_survived | probe_failed
+        ] = receiver_contacts[probe_survived | probe_failed]
         self.active_custody_probe_pending |= (
             active_custody_load_probe
         )
@@ -2990,6 +3088,12 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         ] = False
         self.active_custody_probe_attempted |= (
             active_custody_load_probe
+        )
+        self.active_custody_probe_attempted_this_attempt |= (
+            active_custody_load_probe
+        )
+        self.active_custody_probe_evaluated |= (
+            probe_survived | probe_failed
         )
         self.active_custody_probe_survived |= probe_survived
         release_authorized_now = (
@@ -3327,7 +3431,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         # the giver can still recover instead of waiting for a third degraded
         # frame.
         selective_closing_degradation = (
-            closing
+            self.selective_early_retry_latch
+            & closing
             & any_contact
             & (
                 self.close_dwell
@@ -3351,6 +3456,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 | stalled_acquisition
                 | lost_after_acquisition
                 | giver_custody_degrading
+                | probe_failed
                 | gate_retry
             ) & (
                 self.retry_state != self.state_failed
@@ -3408,6 +3514,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.receiver_secure_live_dwell[failure] = 0
             self.receiver_release_authorized[failure] = False
             self.active_custody_probe_pending[failure] = False
+            self.active_custody_probe_attempted_this_attempt[
+                failure
+            ] = False
 
         failed_grasp = self.retry_state == self.state_failed
         # A missed receiver grasp can unload one giver jaw before the needle
@@ -3457,8 +3566,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.retry_state[activation] = self.state_learned_retry
             self.open_settle_dwell[activation] = 0
             self.giver_restore_dwell[activation] = 0
+            self.clearance_retreat_dwell[activation] = 0
             self.acquisition_dwell[activation] = 0
             self.acquisition_started[activation] = True
+            self.active_custody_probe_pending[activation] = False
+            self.active_custody_probe_attempted_this_attempt[
+                activation
+            ] = False
             self._activate_recovery(raw, giver_is_robot_1, activation)
 
         receiver_hold_closed = torch.zeros(
@@ -3482,14 +3596,17 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & (phase == 2)
             & self.acquisition_started
         )
-        receiver_settle_phase = phase == 3
+        receiver_settle_phase = (
+            (phase == 3)
+            & (self.retry_state == self.state_secure)
+        )
         self.receiver_secure_settle_dwell[:] = torch.where(
             receiver_settle_phase,
             self.receiver_secure_settle_dwell + 1,
             torch.zeros_like(self.receiver_secure_settle_dwell),
         )
         receiver_secure_settling = (
-            (phase == 3)
+            receiver_settle_phase
             & (
                 self.receiver_secure_settle_dwell
                 <= self.receiver_secure_settle_steps
@@ -3506,34 +3623,62 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         pre_release_custody_hold = (
             (phase == 3)
+            & (self.retry_state == self.state_secure)
             & giver_any_contact
             & ~self.receiver_release_authorized
             & ~self.giver_release_completed
             & ~failed_grasp
             & ~resetting
         )
-        result = self._replace_role_action(
-            base_action,
-            giver_hold,
+        giver_base_action = self._select_role(
+            base_action[:, :7],
+            base_action[:, 7:14],
             giver_is_robot_1,
-            (
-                recovery_active
-                | stabilize_giver
-                | receiver_secure_settling
-                | pre_release_custody_hold
-            ),
         )
-        result = self._replace_role_action(
-            result,
-            receiver_hold_closed,
-            receiver_is_robot_1,
-            failed_grasp,
+        giver_action = giver_base_action
+        receiver_action = receiver_base_action
+        giver_action_priority = torch.zeros_like(self.retry_count)
+        receiver_action_priority = torch.zeros_like(self.retry_count)
+        giver_action_owner = torch.zeros_like(self.retry_count)
+        receiver_action_owner = torch.zeros_like(self.retry_count)
+
+        giver_action, giver_action_priority, giver_action_owner = (
+            self._claim_action(
+                giver_action,
+                giver_action_priority,
+                giver_action_owner,
+                giver_hold,
+                (
+                    recovery_active
+                    | stabilize_giver
+                    | receiver_secure_settling
+                    | pre_release_custody_hold
+                ),
+                claim_priority=self._PRIORITY_GIVER_HOLD,
+                claim_owner=self._GIVER_OWNER_HOLD,
+            )
         )
-        result = self._replace_role_action(
-            result,
-            receiver_open,
-            receiver_is_robot_1,
-            resetting,
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                receiver_open,
+                failed_grasp,
+                claim_priority=self._PRIORITY_FAILED_OPEN,
+                claim_owner=self._RECEIVER_OWNER_FAILED_OPEN,
+            )
+        )
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                receiver_open,
+                resetting,
+                claim_priority=self._PRIORITY_RESET_OPEN,
+                claim_owner=self._RECEIVER_OWNER_RESET_OPEN,
+            )
         )
         retry_clearance_retreat_requested = (
             self.retry_clearance_retreat
@@ -3541,10 +3686,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & giver_any_contact
             & ~giver_bilateral_live
         )
-        self.clearance_retreat_dwell[:] = torch.where(
-            retry_clearance_retreat_requested,
-            self.clearance_retreat_dwell + 1,
-            torch.zeros_like(self.clearance_retreat_dwell),
+        self.clearance_retreat_dwell[:] = (
+            self.clearance_retreat_dwell
+            + retry_clearance_retreat_requested.to(
+                self.clearance_retreat_dwell.dtype
+            )
         )
         retry_clearance_retreat_active = (
             retry_clearance_retreat_requested
@@ -3564,23 +3710,40 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             retreat_direction
             * self.retry_clearance_retreat_action_limit
         )
-        result = self._replace_role_action(
-            result,
-            retry_clearance_retreat_action,
-            receiver_is_robot_1,
-            retry_clearance_retreat_active,
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                retry_clearance_retreat_action,
+                retry_clearance_retreat_active,
+                claim_priority=self._PRIORITY_RESET_RETREAT,
+                claim_owner=self._RECEIVER_OWNER_RESET_RETREAT,
+            )
         )
-        result = self._replace_role_action(
-            result,
-            receiver_hold_closed,
-            receiver_is_robot_1,
-            receiver_secure_settling | pre_release_custody_hold,
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                receiver_hold_closed,
+                receiver_secure_settling | pre_release_custody_hold,
+                claim_priority=self._PRIORITY_CUSTODY_HOLD,
+                claim_owner=self._RECEIVER_OWNER_CUSTODY_HOLD,
+            )
         )
-        result = self._replace_role_action(
-            result,
-            receiver_open,
-            giver_is_robot_1,
-            active_custody_load_probe,
+        giver_load_probe = torch.zeros_like(giver_hold)
+        giver_load_probe[:, 6] = 1.0
+        giver_action, giver_action_priority, giver_action_owner = (
+            self._claim_action(
+                giver_action,
+                giver_action_priority,
+                giver_action_owner,
+                giver_load_probe,
+                active_custody_load_probe,
+                claim_priority=self._PRIORITY_ACTIVE_LOAD_PROBE,
+                claim_owner=self._GIVER_OWNER_LOAD_PROBE,
+            )
         )
         corrected_receiver_action = self._corrected_receiver_action(
             raw,
@@ -3597,11 +3760,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 & (phase == 2)
             )
         )
-        result = self._replace_role_action(
-            result,
-            corrected_receiver_action,
-            receiver_is_robot_1,
-            corrected_approach,
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                corrected_receiver_action,
+                corrected_approach,
+                claim_priority=self._PRIORITY_CORRECTED_APPROACH,
+                claim_owner=self._RECEIVER_OWNER_CORRECTED_APPROACH,
+            )
         )
         receiver_force_imbalance = (
             receiver_contacts[:, 1] - receiver_contacts[:, 0]
@@ -3614,17 +3782,19 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         retry_force_centering_action = corrected_receiver_action.clone()
         retry_force_centering_action[:, 2] = (
-            retry_force_centering_action[:, 2]
-            + (
-                -torch.sign(receiver_force_imbalance)
-                * self.contact_centering_action_limit
+            -torch.sign(receiver_force_imbalance)
+            * self.contact_centering_action_limit
+        )
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                retry_force_centering_action,
+                retry_force_centering_active,
+                claim_priority=self._PRIORITY_RETRY_FORCE_CENTERING,
+                claim_owner=self._RECEIVER_OWNER_FORCE_CENTERING,
             )
-        ).clamp(-1.0, 1.0)
-        result = self._replace_role_action(
-            result,
-            retry_force_centering_action,
-            receiver_is_robot_1,
-            retry_force_centering_active,
         )
         retention_servo_active = (
             self.receiver_retention_servo
@@ -3644,15 +3814,21 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.receiver_retention_servo_action_limit,
         )
         retention_servo_action[:, 6] = -1.0
-        result = self._replace_role_action(
-            result,
-            retention_servo_action,
-            receiver_is_robot_1,
-            retention_servo_active,
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                retention_servo_action,
+                retention_servo_active,
+                claim_priority=self._PRIORITY_RETENTION_SERVO,
+                claim_owner=self._RECEIVER_OWNER_RETENTION_SERVO,
+            )
         )
         retention_contact_centering_active = (
             self.receiver_retention_contact_centering
             & (phase == 3)
+            & (self.retry_count == 0)
             & ~giver_any_contact
             & any_contact
         )
@@ -3664,11 +3840,31 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             * self.contact_centering_action_limit
         )
         retention_contact_centering_action[:, 6] = -1.0
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                retention_contact_centering_action,
+                retention_contact_centering_active,
+                claim_priority=self._PRIORITY_RETENTION_CENTERING,
+                claim_owner=self._RECEIVER_OWNER_RETENTION_CENTERING,
+            )
+        )
+        self.last_giver_action_owner = giver_action_owner.detach()
+        self.last_receiver_action_owner = receiver_action_owner.detach()
+        all_environments = torch.ones_like(giver_is_robot_1)
+        result = self._replace_role_action(
+            base_action,
+            giver_action,
+            giver_is_robot_1,
+            all_environments,
+        )
         result = self._replace_role_action(
             result,
-            retention_contact_centering_action,
+            receiver_action,
             receiver_is_robot_1,
-            retention_contact_centering_active,
+            all_environments,
         )
         return result.clamp(-1.0, 1.0)
 
@@ -3713,7 +3909,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.receiver_release_authorized[mask] = False
         self.active_custody_probe_pending[mask] = False
         self.active_custody_probe_attempted[mask] = False
+        self.active_custody_probe_attempted_this_attempt[mask] = False
+        self.active_custody_probe_evaluated[mask] = False
         self.active_custody_probe_survived[mask] = False
+        self.active_custody_probe_pre_forces[mask] = 0.0
+        self.active_custody_probe_post_forces[mask] = 0.0
+        self.last_giver_action_owner[mask] = 0
+        self.last_receiver_action_owner[mask] = 0
         self.giver_release_completed[mask] = False
         self.first_failure_giver_any[mask] = False
         self.first_failure_giver_bilateral[mask] = False
