@@ -1018,6 +1018,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         gate_feature_std: torch.Tensor | None = None,
         gate_step: int = 100,
         gate_threshold: float = 0.8,
+        enable_retries: bool = True,
+        stabilize_giver_during_acquisition: bool = False,
+        receiver_secure_settle_steps: int = 0,
         position_cap_m: float = 0.005,
         orientation_cap_rad: float = math.radians(5.0),
         episode_frames: int = 2000,
@@ -1036,6 +1039,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if not 0.0 < gate_threshold < 1.0:
             raise ValueError(
                 "receiver retry gate threshold must be inside (0, 1)"
+            )
+        if receiver_secure_settle_steps < 0:
+            raise ValueError(
+                "receiver secure settle steps must be non-negative"
             )
         self.base_policy = base_policy
         self.recovery_head = recovery_head or ReceiverRecoveryHead()
@@ -1093,6 +1100,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.context_dim = 29
         self.gate_step = int(gate_step)
         self.gate_threshold = float(gate_threshold)
+        self.enable_retries = bool(enable_retries)
+        self.stabilize_giver_during_acquisition = bool(
+            stabilize_giver_during_acquisition
+        )
+        self.receiver_secure_settle_steps = int(
+            receiver_secure_settle_steps
+        )
         self.position_cap_m = float(position_cap_m)
         self.orientation_cap_rad = float(orientation_cap_rad)
         self.episode_frames = int(episode_frames)
@@ -1142,6 +1156,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.gate_evaluated = torch.empty(0, dtype=torch.bool)
         self.gate_triggered = torch.empty(0, dtype=torch.bool)
         self.gate_probability = torch.empty(0)
+        self.receiver_secure_settle_dwell = torch.empty(
+            0,
+            dtype=torch.long,
+        )
 
     def _initialize_state(self, raw: torch.Tensor) -> None:
         batch_size = raw.shape[0]
@@ -1216,6 +1234,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             batch_size,
             dtype=dtype,
             device=device,
+        )
+        self.receiver_secure_settle_dwell = torch.zeros_like(
+            self.retry_count
         )
 
     def set_fixed_correction(
@@ -1674,7 +1695,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             torch.zeros_like(self.acquisition_dwell),
         )
         gate_retry = torch.zeros_like(acquisition_active)
-        if self.retry_gate is not None:
+        if self.enable_retries and self.retry_gate is not None:
             gate_now = (
                 acquisition_active
                 & (self.retry_state == self.state_canonical)
@@ -1745,18 +1766,21 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & self.ever_bilateral
             & (self.custody_loss_dwell >= 3)
         )
-        failure = (
-            failed_close
-            | stalled_acquisition
-            | lost_after_acquisition
-            | gate_retry
-        ) & (
-            self.retry_state != self.state_failed
-        ) & (
-            self.retry_state != self.state_reopening
-        ) & (
-            self.retry_state != self.state_open_settle
-        )
+        if self.enable_retries:
+            failure = (
+                failed_close
+                | stalled_acquisition
+                | lost_after_acquisition
+                | gate_retry
+            ) & (
+                self.retry_state != self.state_failed
+            ) & (
+                self.retry_state != self.state_reopening
+            ) & (
+                self.retry_state != self.state_open_settle
+            )
+        else:
+            failure = torch.zeros_like(failed_close)
         if bool(failure.any()):
             self.failure_forces[failure] = receiver_contacts[
                 failure
@@ -1823,6 +1847,28 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         receiver_open[:, 6] = 1.0
         giver_hold = torch.zeros_like(receiver_hold_closed)
         giver_hold[:, 6] = -1.0
+        stabilize_giver = (
+            self.stabilize_giver_during_acquisition
+            & (phase == 2)
+            & self.acquisition_started
+        )
+        receiver_settle_contact = (
+            (phase == 3)
+            & bilateral_live
+        )
+        self.receiver_secure_settle_dwell[:] = torch.where(
+            receiver_settle_contact,
+            self.receiver_secure_settle_dwell + 1,
+            torch.zeros_like(self.receiver_secure_settle_dwell),
+        )
+        receiver_secure_settling = (
+            (phase == 3)
+            & (
+                self.receiver_secure_settle_dwell
+                <= self.receiver_secure_settle_steps
+            )
+            & (self.receiver_secure_settle_steps > 0)
+        )
         recovery_active = (
             failed_grasp
             | resetting
@@ -1835,7 +1881,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             base_action,
             giver_hold,
             giver_is_robot_1,
-            recovery_active,
+            (
+                recovery_active
+                | stabilize_giver
+                | receiver_secure_settling
+            ),
         )
         result = self._replace_role_action(
             result,
@@ -1848,6 +1898,12 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             receiver_open,
             receiver_is_robot_1,
             resetting,
+        )
+        result = self._replace_role_action(
+            result,
+            receiver_hold_closed,
+            receiver_is_robot_1,
+            receiver_secure_settling,
         )
         corrected_receiver_action = self._corrected_receiver_action(
             raw,
@@ -1884,6 +1940,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.gate_evaluated[mask] = False
         self.gate_triggered[mask] = False
         self.gate_probability[mask] = 0.0
+        self.receiver_secure_settle_dwell[mask] = 0
 
     def reset(
         self,

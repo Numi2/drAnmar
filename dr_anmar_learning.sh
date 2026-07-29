@@ -398,6 +398,20 @@ case "${command}" in
         if [[ "${DR_ANMAR_RECEIVER_RECOVERY:-0}" == "1" ]]; then
             pickup_recovery_args+=(--receiver_recovery)
         fi
+        if [[ "${DR_ANMAR_RECEIVER_DISABLE_RETRIES:-0}" == "1" ]]; then
+            pickup_recovery_args+=(--receiver_disable_retries)
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_STABILIZE_GIVER_DURING_ACQUISITION:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_stabilize_giver_during_acquisition
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_secure_settle_steps
+                "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
             pickup_recovery_args+=(
                 --receiver_recovery_checkpoint
@@ -644,6 +658,20 @@ case "${command}" in
         fi
         if [[ "${DR_ANMAR_RECEIVER_RECOVERY:-0}" == "1" ]]; then
             recovery_record_args+=(--receiver_recovery)
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_DISABLE_RETRIES:-0}" == "1" ]]; then
+            recovery_record_args+=(--receiver_disable_retries)
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_STABILIZE_GIVER_DURING_ACQUISITION:-0}" == "1" ]]; then
+            recovery_record_args+=(
+                --receiver_stabilize_giver_during_acquisition
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_secure_settle_steps
+                "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS}"
+            )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
             recovery_record_args+=(

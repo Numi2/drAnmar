@@ -3547,6 +3547,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         args.receiver_recovery
         or args.receiver_recovery_checkpoint
         or args.receiver_retry_gate_checkpoint
+        or args.receiver_stabilize_giver_during_acquisition
+        or args.receiver_secure_settle_steps > 0
     ) and not (
         1
         <= args.receiver_recovery_acquisition_timeout_steps
@@ -3558,6 +3560,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if not 0.0 < args.receiver_retry_gate_threshold < 1.0:
         return _fail(
             "receiver retry gate threshold must be inside (0, 1)"
+        )
+    if args.receiver_secure_settle_steps < 0:
+        return _fail(
+            "receiver secure settle steps must be non-negative"
         )
     if args.receiver_recovery_local_sobol_candidate is not None:
         if not 0 <= args.receiver_recovery_local_sobol_candidate < 32:
@@ -4099,6 +4105,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         args.receiver_recovery
         or args.receiver_recovery_checkpoint
         or args.receiver_retry_gate_checkpoint
+        or args.receiver_stabilize_giver_during_acquisition
+        or args.receiver_secure_settle_steps > 0
         or args.receiver_recovery_fixed_correction
         or args.receiver_recovery_random_corrections
         or args.receiver_recovery_sobol_candidate is not None
@@ -4303,6 +4311,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             gate_feature_std=receiver_gate_std,
             gate_step=receiver_gate_step,
             gate_threshold=args.receiver_retry_gate_threshold,
+            enable_retries=not args.receiver_disable_retries,
+            stabilize_giver_during_acquisition=(
+                args.receiver_stabilize_giver_during_acquisition
+            ),
+            receiver_secure_settle_steps=(
+                args.receiver_secure_settle_steps
+            ),
             position_cap_m=args.receiver_recovery_position_cap,
             orientation_cap_rad=math.radians(
                 args.receiver_recovery_orientation_cap_deg
@@ -7514,6 +7529,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "acquisition_timeout_steps": (
                         receiver_recovery_policy.acquisition_timeout_steps
                     ),
+                    "retries_enabled": (
+                        receiver_recovery_policy.enable_retries
+                    ),
+                    "stabilize_giver_during_acquisition": (
+                        receiver_recovery_policy
+                        .stabilize_giver_during_acquisition
+                    ),
+                    "receiver_secure_settle_steps": (
+                        receiver_recovery_policy
+                        .receiver_secure_settle_steps
+                    ),
                     "retry_gate": (
                         {
                             "checkpoint": {
@@ -7860,6 +7886,19 @@ def _parser() -> argparse.ArgumentParser:
         help="enable the isolated post-reset receiver recovery head",
     )
     play.add_argument("--receiver_recovery_checkpoint")
+    play.add_argument(
+        "--receiver_disable_retries",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_stabilize_giver_during_acquisition",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_secure_settle_steps",
+        type=int,
+        default=0,
+    )
     play.add_argument("--receiver_retry_gate_checkpoint")
     play.add_argument(
         "--receiver_retry_gate_threshold",
