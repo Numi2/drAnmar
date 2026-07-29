@@ -3567,6 +3567,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "receiver retry gate threshold must be inside (0, 1)"
         )
+    if not (
+        0
+        < args.receiver_gate_step
+        < args.receiver_recovery_acquisition_timeout_steps
+    ):
+        return _fail(
+            "receiver gate step must precede the fallback acquisition "
+            "timeout"
+        )
     if args.receiver_retry_gate_group_replicas <= 0:
         return _fail(
             "receiver retry gate group replicas must be positive"
@@ -4217,7 +4226,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_gate = None
         receiver_gate_mean = None
         receiver_gate_std = None
-        receiver_gate_step = 100
+        receiver_gate_step = args.receiver_gate_step
         receiver_stabilization_gate = None
         receiver_stabilization_gate_mean = None
         receiver_stabilization_gate_std = None
@@ -5858,7 +5867,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "first_receiver_approach_frame"
                     ][first_receiver_approach] = frame_index
                     receiver_probe = (
-                        (receiver_recovery_policy.acquisition_dwell == 100)
+                        (
+                            receiver_recovery_policy.acquisition_dwell
+                            == receiver_recovery_policy.gate_step
+                        )
                         & (receiver_recovery_policy.retry_count == 0)
                         & (
                             first_handover_history[
@@ -6872,7 +6884,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 },
                 "receiver_approach_probe": (
                     {
-                        "active_approach_step": 100,
+                        "active_approach_step": (
+                            receiver_recovery_policy.gate_step
+                        ),
                         "environment_indices": torch.nonzero(
                             first_handover_history[
                                 "receiver_approach_probe_frame"
@@ -6964,7 +6978,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         if args.pickup_recovery_checkpoint
                         else None
                     ),
-                    "active_approach_step": 100,
+                    "active_approach_step": (
+                        receiver_recovery_policy.gate_step
+                    ),
                     "environment_index": torch.arange(
                         env.unwrapped.num_envs,
                         dtype=torch.long,
@@ -8603,6 +8619,15 @@ def _parser() -> argparse.ArgumentParser:
         default=0.02,
     )
     play.add_argument("--receiver_retry_gate_checkpoint")
+    play.add_argument(
+        "--receiver_gate_step",
+        type=int,
+        default=100,
+        help=(
+            "canonical receiver-approach step used for gate evaluation "
+            "and gate-dataset collection"
+        ),
+    )
     play.add_argument(
         "--receiver_retry_gate_threshold",
         type=float,

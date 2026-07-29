@@ -27,7 +27,7 @@ def _sha256(path: Path) -> str:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Train the receiver failure gate at active approach step 100"
+        description="Train a receiver gate at its recorded approach step"
     )
     parser.add_argument("--dataset", action="append", required=True)
     parser.add_argument("--baseline_evidence", action="append")
@@ -171,8 +171,8 @@ def main(argv: list[str]) -> int:
         seed = int(payload["seed"])
         if seed not in DEVELOPMENT_SEEDS:
             raise ValueError(f"dataset seed is not development-only: {path}")
-        if int(payload["active_approach_step"]) != 100:
-            raise ValueError(f"receiver gate probe step drifted in {path}")
+        if int(payload["active_approach_step"]) <= 0:
+            raise ValueError(f"receiver gate probe step is invalid in {path}")
 
     base_hashes = {payload["base_checkpoint_sha256"] for payload in payloads}
     pickup_hashes = {
@@ -181,6 +181,11 @@ def main(argv: list[str]) -> int:
     }
     if len(base_hashes) != 1 or len(pickup_hashes) != 1:
         raise ValueError("receiver gate datasets do not share frozen policies")
+    gate_steps = {
+        int(payload["active_approach_step"]) for payload in payloads
+    }
+    if len(gate_steps) != 1:
+        raise ValueError("receiver gate datasets do not share a probe step")
 
     counterfactual_mode = bool(
         args.baseline_evidence or args.intervention_evidence
@@ -490,7 +495,7 @@ def main(argv: list[str]) -> int:
         "feature_std": feature_std,
         "base_checkpoint_sha256": next(iter(base_hashes)),
         "pickup_recovery_checkpoint_sha256": next(iter(pickup_hashes)),
-        "active_approach_step": 100,
+        "active_approach_step": next(iter(gate_steps)),
         "intervention": (
             (
                 "receiver_recovery"
