@@ -1056,6 +1056,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         stabilize_giver_during_acquisition: bool = False,
         giver_stabilization_start_step: int = 0,
         receiver_secure_settle_steps: int = 0,
+        receiver_retention_servo: bool = False,
+        receiver_retention_servo_gain: float = 50.0,
+        receiver_retention_servo_action_limit: float = 0.02,
         position_cap_m: float = 0.005,
         orientation_cap_rad: float = math.radians(5.0),
         episode_frames: int = 2000,
@@ -1086,6 +1089,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if giver_stabilization_start_step < 0:
             raise ValueError(
                 "giver stabilization start step must be non-negative"
+            )
+        if receiver_retention_servo_gain <= 0.0:
+            raise ValueError(
+                "receiver retention servo gain must be positive"
+            )
+        if not 0.0 < receiver_retention_servo_action_limit <= 0.1:
+            raise ValueError(
+                "receiver retention servo action limit must be in (0, 0.1]"
             )
         if stabilization_gate_step <= 0:
             raise ValueError(
@@ -1271,6 +1282,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.receiver_secure_settle_steps = int(
             receiver_secure_settle_steps
         )
+        self.receiver_retention_servo = bool(receiver_retention_servo)
+        self.receiver_retention_servo_gain = float(
+            receiver_retention_servo_gain
+        )
+        self.receiver_retention_servo_action_limit = float(
+            receiver_retention_servo_action_limit
+        )
         self.position_cap_m = float(position_cap_m)
         self.orientation_cap_rad = float(orientation_cap_rad)
         self.episode_frames = int(episode_frames)
@@ -1338,6 +1356,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dtype=torch.long,
         )
         self.selected_candidate_score = torch.empty(0)
+        self.receiver_retention_offset = torch.empty((0, 3))
+        self.receiver_retention_offset_latched = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
 
     def _initialize_state(self, raw: torch.Tensor) -> None:
         batch_size = raw.shape[0]
@@ -1436,6 +1459,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.selected_candidate_score = torch.zeros(
             batch_size,
             dtype=dtype,
+            device=device,
+        )
+        self.receiver_retention_offset = torch.zeros(
+            (batch_size, 3),
+            dtype=dtype,
+            device=device,
+        )
+        self.receiver_retention_offset_latched = torch.zeros(
+            batch_size,
+            dtype=torch.bool,
             device=device,
         )
 
@@ -1925,6 +1958,35 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             raw[:, 68:70],
             receiver_is_robot_1,
         )
+        giver_contacts = self._select_role(
+            raw[:, 66:68],
+            raw[:, 68:70],
+            giver_is_robot_1,
+        )
+        giver_any_contact = torch.any(
+            giver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        receiver_ee_position = self._select_role(
+            raw[:, 32:35],
+            raw[:, 39:42],
+            receiver_is_robot_1,
+        )
+        object_position_receiver = self._select_role(
+            raw[:, 46:49],
+            raw[:, 53:56],
+            receiver_is_robot_1,
+        )
+        receiver_relative_offset = (
+            object_position_receiver - receiver_ee_position
+        )
+        retention_entry = (
+            (phase == 3) & ~self.receiver_retention_offset_latched
+        )
+        self.receiver_retention_offset[retention_entry] = (
+            receiver_relative_offset[retention_entry]
+        )
+        self.receiver_retention_offset_latched |= phase >= 3
         bilateral_live = torch.all(
             receiver_contacts > self.normalized_contact_threshold,
             dim=-1,
@@ -2317,6 +2379,30 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             receiver_is_robot_1,
             learned_retry,
         )
+        retention_servo_active = (
+            self.receiver_retention_servo
+            & (phase == 3)
+            & self.receiver_retention_offset_latched
+            & ~giver_any_contact
+        )
+        retention_servo_action = torch.zeros_like(receiver_hold_closed)
+        retention_servo_action[:, :3] = (
+            (
+                receiver_relative_offset
+                - self.receiver_retention_offset
+            )
+            * self.receiver_retention_servo_gain
+        ).clamp(
+            -self.receiver_retention_servo_action_limit,
+            self.receiver_retention_servo_action_limit,
+        )
+        retention_servo_action[:, 6] = -1.0
+        result = self._replace_role_action(
+            result,
+            retention_servo_action,
+            receiver_is_robot_1,
+            retention_servo_active,
+        )
         return result.clamp(-1.0, 1.0)
 
     def _clear_state(self, mask: torch.Tensor) -> None:
@@ -2345,6 +2431,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.stabilization_gate_probability[mask] = 0.0
         self.selected_candidate_index[mask] = -1
         self.selected_candidate_score[mask] = 0.0
+        self.receiver_retention_offset[mask] = 0.0
+        self.receiver_retention_offset_latched[mask] = False
 
     def reset(
         self,

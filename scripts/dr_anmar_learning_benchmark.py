@@ -3554,6 +3554,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_candidate_value_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
+        or args.receiver_retention_servo
     ) and not (
         1
         <= args.receiver_recovery_acquisition_timeout_steps
@@ -3588,6 +3589,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if args.receiver_secure_settle_steps < 0:
         return _fail(
             "receiver secure settle steps must be non-negative"
+        )
+    if args.receiver_retention_servo_gain <= 0.0:
+        return _fail(
+            "receiver retention servo gain must be positive"
+        )
+    if not 0.0 < args.receiver_retention_servo_action_limit <= 0.1:
+        return _fail(
+            "receiver retention servo action limit must be in (0, 0.1]"
         )
     if args.receiver_giver_stabilization_start_step < 0:
         return _fail(
@@ -4163,6 +4172,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_candidate_value_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
+        or args.receiver_retention_servo
         or args.receiver_recovery_fixed_correction
         or args.receiver_recovery_random_corrections
         or args.receiver_recovery_sobol_candidate is not None
@@ -4620,6 +4630,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             receiver_secure_settle_steps=(
                 args.receiver_secure_settle_steps
+            ),
+            receiver_retention_servo=(
+                args.receiver_retention_servo
+            ),
+            receiver_retention_servo_gain=(
+                args.receiver_retention_servo_gain
+            ),
+            receiver_retention_servo_action_limit=(
+                args.receiver_retention_servo_action_limit
             ),
             position_cap_m=args.receiver_recovery_position_cap,
             orientation_cap_rad=math.radians(
@@ -7985,6 +8004,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .receiver_secure_settle_steps
                     ),
+                    "retention_servo": (
+                        receiver_recovery_policy
+                        .receiver_retention_servo
+                    ),
+                    "retention_servo_gain": (
+                        receiver_recovery_policy
+                        .receiver_retention_servo_gain
+                    ),
+                    "retention_servo_action_limit": (
+                        receiver_recovery_policy
+                        .receiver_retention_servo_action_limit
+                    ),
                     "retry_gate": (
                         {
                             "checkpoint": {
@@ -8423,6 +8454,20 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_secure_settle_steps",
         type=int,
         default=0,
+    )
+    play.add_argument(
+        "--receiver_retention_servo",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_retention_servo_gain",
+        type=float,
+        default=50.0,
+    )
+    play.add_argument(
+        "--receiver_retention_servo_action_limit",
+        type=float,
+        default=0.02,
     )
     play.add_argument("--receiver_retry_gate_checkpoint")
     play.add_argument(
