@@ -326,6 +326,8 @@ def _paired_states(
         correction = attempts["correction"].float()[first]
         success = attempts["full_success"].bool()[first]
         dataset_states = 0
+        dataset_context_max_abs_drift = 0.0
+        dataset_context_mean_abs_drift = 0.0
         for state in torch.unique(state_index).tolist():
             mask = state_index == state
             order = candidate_index[mask].argsort()
@@ -337,11 +339,6 @@ def _paired_states(
                 continue
             state_context = context[indices]
             if not torch.allclose(
-                state_context,
-                state_context[:1].expand_as(state_context),
-                atol=1.0e-6,
-                rtol=0.0,
-            ) or not torch.allclose(
                 correction[indices],
                 candidates,
                 atol=1.0e-7,
@@ -353,6 +350,20 @@ def _paired_states(
             state_success = success[indices]
             if bool(state_success.all()):
                 continue
+            context_drift = (
+                state_context - state_context[:1]
+            ).abs()
+            dataset_context_max_abs_drift = max(
+                dataset_context_max_abs_drift,
+                float(context_drift.max()),
+            )
+            dataset_context_mean_abs_drift += float(
+                context_drift.mean()
+            )
+            # Grouped PhysX replicas share the reset stream but can diverge
+            # before the receiver gate. Candidate zero is the canonical,
+            # correction-free context available at deployment; the remaining
+            # replicas contribute only their paired retained outcomes.
             contexts.append(state_context[0])
             outcomes.append(state_success)
             seeds.append(seed)
@@ -364,6 +375,16 @@ def _paired_states(
                 "seed": seed,
                 "failure_heavy_states": dataset_states,
                 "dataset_id": dataset_id,
+                "context_representation": (
+                    "candidate_0_gate_context"
+                ),
+                "context_max_abs_drift": (
+                    dataset_context_max_abs_drift
+                ),
+                "context_mean_abs_drift": (
+                    dataset_context_mean_abs_drift
+                    / max(dataset_states, 1)
+                ),
                 "seed_stream_offset": int(
                     payload.get("seed_stream_offset", 0)
                 ),
