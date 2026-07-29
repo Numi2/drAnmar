@@ -406,6 +406,12 @@ case "${command}" in
                 --receiver_stabilize_giver_during_acquisition
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_GIVER_STABILIZATION_START_STEP:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_giver_stabilization_start_step
+                "${DR_ANMAR_RECEIVER_GIVER_STABILIZATION_START_STEP}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS:-}" ]]; then
             pickup_recovery_args+=(
                 --receiver_secure_settle_steps
@@ -428,6 +434,18 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_retry_gate_threshold
                 "${DR_ANMAR_RECEIVER_RETRY_GATE_THRESHOLD}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_STABILIZATION_GATE_CHECKPOINT:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_stabilization_gate_checkpoint
+                "${DR_ANMAR_RECEIVER_STABILIZATION_GATE_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_STABILIZATION_GATE_THRESHOLD:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_stabilization_gate_threshold
+                "${DR_ANMAR_RECEIVER_STABILIZATION_GATE_THRESHOLD}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M:-}" ]]; then
@@ -667,6 +685,12 @@ case "${command}" in
                 --receiver_stabilize_giver_during_acquisition
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_GIVER_STABILIZATION_START_STEP:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_giver_stabilization_start_step
+                "${DR_ANMAR_RECEIVER_GIVER_STABILIZATION_START_STEP}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS:-}" ]]; then
             recovery_record_args+=(
                 --receiver_secure_settle_steps
@@ -689,6 +713,18 @@ case "${command}" in
             recovery_record_args+=(
                 --receiver_retry_gate_threshold
                 "${DR_ANMAR_RECEIVER_RETRY_GATE_THRESHOLD}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_STABILIZATION_GATE_CHECKPOINT:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_stabilization_gate_checkpoint
+                "${DR_ANMAR_RECEIVER_STABILIZATION_GATE_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_STABILIZATION_GATE_THRESHOLD:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_stabilization_gate_threshold
+                "${DR_ANMAR_RECEIVER_STABILIZATION_GATE_THRESHOLD}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M:-}" ]]; then

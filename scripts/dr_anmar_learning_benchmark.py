@@ -3547,6 +3547,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         args.receiver_recovery
         or args.receiver_recovery_checkpoint
         or args.receiver_retry_gate_checkpoint
+        or args.receiver_stabilization_gate_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
     ) and not (
@@ -3561,9 +3562,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "receiver retry gate threshold must be inside (0, 1)"
         )
+    if not 0.0 < args.receiver_stabilization_gate_threshold < 1.0:
+        return _fail(
+            "receiver stabilization gate threshold must be inside (0, 1)"
+        )
     if args.receiver_secure_settle_steps < 0:
         return _fail(
             "receiver secure settle steps must be non-negative"
+        )
+    if args.receiver_giver_stabilization_start_step < 0:
+        return _fail(
+            "giver stabilization start step must be non-negative"
         )
     if args.receiver_recovery_local_sobol_candidate is not None:
         if not 0 <= args.receiver_recovery_local_sobol_candidate < 32:
@@ -4105,6 +4114,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         args.receiver_recovery
         or args.receiver_recovery_checkpoint
         or args.receiver_retry_gate_checkpoint
+        or args.receiver_stabilization_gate_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
         or args.receiver_recovery_fixed_correction
@@ -4123,6 +4133,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_gate_mean = None
         receiver_gate_std = None
         receiver_gate_step = 100
+        receiver_stabilization_gate = None
+        receiver_stabilization_gate_mean = None
+        receiver_stabilization_gate_std = None
+        receiver_stabilization_gate_step = 100
         if args.receiver_recovery_checkpoint:
             receiver_checkpoint = (
                 Path(args.receiver_recovery_checkpoint)
@@ -4298,6 +4312,90 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 device=env.unwrapped.device,
                 dtype=torch.float32,
             )
+        if args.receiver_stabilization_gate_checkpoint:
+            stabilization_checkpoint = (
+                Path(args.receiver_stabilization_gate_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            if not stabilization_checkpoint.is_file():
+                env.close()
+                return _fail(
+                    "receiver stabilization gate checkpoint not found: "
+                    f"{stabilization_checkpoint}"
+                )
+            stabilization_payload = torch.load(
+                stabilization_checkpoint,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            if (
+                not isinstance(stabilization_payload, dict)
+                or stabilization_payload.get("schema_version")
+                != "dranmar-receiver-intervention-gate-1.0"
+                or stabilization_payload.get("intervention")
+                != "stabilize_giver_during_acquisition"
+                or "receiver_intervention_gate"
+                not in stabilization_payload
+                or "feature_mean" not in stabilization_payload
+                or "feature_std" not in stabilization_payload
+            ):
+                env.close()
+                return _fail(
+                    "unsupported receiver stabilization gate checkpoint"
+                )
+            if (
+                stabilization_payload.get("base_checkpoint_sha256")
+                != _sha256(checkpoint)
+            ):
+                env.close()
+                return _fail(
+                    "receiver stabilization gate was trained against "
+                    "another base policy"
+                )
+            expected_pickup_hash = (
+                _sha256(
+                    Path(args.pickup_recovery_checkpoint)
+                    .expanduser()
+                    .resolve()
+                )
+                if args.pickup_recovery_checkpoint
+                else None
+            )
+            if (
+                stabilization_payload.get(
+                    "pickup_recovery_checkpoint_sha256"
+                )
+                != expected_pickup_hash
+            ):
+                env.close()
+                return _fail(
+                    "receiver stabilization gate was trained against "
+                    "another pickup-recovery policy"
+                )
+            receiver_stabilization_gate_step = int(
+                stabilization_payload["active_approach_step"]
+            )
+            receiver_stabilization_gate = ReceiverRetryGate().to(
+                env.unwrapped.device
+            )
+            receiver_stabilization_gate.load_state_dict(
+                stabilization_payload["receiver_intervention_gate"],
+                strict=True,
+            )
+            receiver_stabilization_gate.eval()
+            receiver_stabilization_gate_mean = stabilization_payload[
+                "feature_mean"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_stabilization_gate_std = stabilization_payload[
+                "feature_std"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
         receiver_base_policy = (
             pickup_recovery_policy
             if pickup_recovery_policy is not None
@@ -4311,9 +4409,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             gate_feature_std=receiver_gate_std,
             gate_step=receiver_gate_step,
             gate_threshold=args.receiver_retry_gate_threshold,
+            stabilization_gate=receiver_stabilization_gate,
+            stabilization_gate_feature_mean=(
+                receiver_stabilization_gate_mean
+            ),
+            stabilization_gate_feature_std=(
+                receiver_stabilization_gate_std
+            ),
+            stabilization_gate_step=receiver_stabilization_gate_step,
+            stabilization_gate_threshold=(
+                args.receiver_stabilization_gate_threshold
+            ),
             enable_retries=not args.receiver_disable_retries,
             stabilize_giver_during_acquisition=(
                 args.receiver_stabilize_giver_during_acquisition
+            ),
+            giver_stabilization_start_step=(
+                args.receiver_giver_stabilization_start_step
             ),
             receiver_secure_settle_steps=(
                 args.receiver_secure_settle_steps
@@ -4635,6 +4747,25 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         else None
     )
     first_receiver_gate_probability = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_stabilization_gate_evaluated = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_stabilization_gate_selected = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_stabilization_gate_probability = (
         torch.zeros(
             env.unwrapped.num_envs,
             dtype=torch.float32,
@@ -5371,6 +5502,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert first_receiver_gate_evaluated is not None
                     assert first_receiver_gate_triggered is not None
                     assert first_receiver_gate_probability is not None
+                    assert (
+                        first_receiver_stabilization_gate_evaluated
+                        is not None
+                    )
+                    assert (
+                        first_receiver_stabilization_gate_selected
+                        is not None
+                    )
+                    assert (
+                        first_receiver_stabilization_gate_probability
+                        is not None
+                    )
                     assert first_handover_history is not None
                     receiver_gate_observed = (
                         receiver_recovery_policy.gate_evaluated
@@ -5384,6 +5527,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_receiver_gate_evaluated |= receiver_gate_observed
                     first_receiver_gate_triggered |= (
                         receiver_recovery_policy.gate_triggered
+                        & was_first_unresolved
+                    )
+                    stabilization_gate_observed = (
+                        receiver_recovery_policy
+                        .stabilization_gate_evaluated
+                        & was_first_unresolved
+                    )
+                    first_receiver_stabilization_gate_probability[
+                        :
+                    ] = torch.where(
+                        stabilization_gate_observed,
+                        receiver_recovery_policy
+                        .stabilization_gate_probability,
+                        first_receiver_stabilization_gate_probability,
+                    )
+                    first_receiver_stabilization_gate_evaluated |= (
+                        stabilization_gate_observed
+                    )
+                    first_receiver_stabilization_gate_selected |= (
+                        receiver_recovery_policy
+                        .stabilization_gate_selected
                         & was_first_unresolved
                     )
                     first_receiver_approach = (
@@ -7536,6 +7700,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .stabilize_giver_during_acquisition
                     ),
+                    "giver_stabilization_start_step": (
+                        receiver_recovery_policy
+                        .giver_stabilization_start_step
+                    ),
                     "receiver_secure_settle_steps": (
                         receiver_recovery_policy
                         .receiver_secure_settle_steps
@@ -7601,6 +7769,70 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             ),
                         }
                         if args.receiver_retry_gate_checkpoint
+                        else None
+                    ),
+                    "stabilization_gate": (
+                        {
+                            "checkpoint": {
+                                "path": str(
+                                    Path(
+                                        args
+                                        .receiver_stabilization_gate_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                                "sha256": _sha256(
+                                    Path(
+                                        args
+                                        .receiver_stabilization_gate_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                            },
+                            "active_approach_step": (
+                                receiver_recovery_policy
+                                .stabilization_gate_step
+                            ),
+                            "threshold": (
+                                receiver_recovery_policy
+                                .stabilization_gate_threshold
+                            ),
+                            "evaluated_episodes": int(
+                                first_receiver_stabilization_gate_evaluated
+                                .sum()
+                                .item()
+                            ),
+                            "selected_episodes": int(
+                                first_receiver_stabilization_gate_selected
+                                .sum()
+                                .item()
+                            ),
+                            "successful_selected_episodes": int(
+                                (
+                                    first_receiver_stabilization_gate_selected
+                                    & first_outcome_success
+                                )
+                                .sum()
+                                .item()
+                            ),
+                            "mean_evaluated_probability": (
+                                float(
+                                    first_receiver_stabilization_gate_probability[
+                                        first_receiver_stabilization_gate_evaluated
+                                    ]
+                                    .mean()
+                                    .item()
+                                )
+                                if bool(
+                                    first_receiver_stabilization_gate_evaluated
+                                    .any()
+                                )
+                                else None
+                            ),
+                        }
+                        if args.receiver_stabilization_gate_checkpoint
                         else None
                     ),
                     "fixed_correction": (
@@ -7895,6 +8127,11 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
     )
     play.add_argument(
+        "--receiver_giver_stabilization_start_step",
+        type=int,
+        default=0,
+    )
+    play.add_argument(
         "--receiver_secure_settle_steps",
         type=int,
         default=0,
@@ -7902,6 +8139,12 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--receiver_retry_gate_checkpoint")
     play.add_argument(
         "--receiver_retry_gate_threshold",
+        type=float,
+        default=0.8,
+    )
+    play.add_argument("--receiver_stabilization_gate_checkpoint")
+    play.add_argument(
+        "--receiver_stabilization_gate_threshold",
         type=float,
         default=0.8,
     )

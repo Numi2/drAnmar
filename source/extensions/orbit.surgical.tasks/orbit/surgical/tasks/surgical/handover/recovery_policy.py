@@ -1018,8 +1018,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         gate_feature_std: torch.Tensor | None = None,
         gate_step: int = 100,
         gate_threshold: float = 0.8,
+        stabilization_gate: ReceiverRetryGate | None = None,
+        stabilization_gate_feature_mean: torch.Tensor | None = None,
+        stabilization_gate_feature_std: torch.Tensor | None = None,
+        stabilization_gate_step: int = 100,
+        stabilization_gate_threshold: float = 0.8,
         enable_retries: bool = True,
         stabilize_giver_during_acquisition: bool = False,
+        giver_stabilization_start_step: int = 0,
         receiver_secure_settle_steps: int = 0,
         position_cap_m: float = 0.005,
         orientation_cap_rad: float = math.radians(5.0),
@@ -1043,6 +1049,19 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if receiver_secure_settle_steps < 0:
             raise ValueError(
                 "receiver secure settle steps must be non-negative"
+            )
+        if giver_stabilization_start_step < 0:
+            raise ValueError(
+                "giver stabilization start step must be non-negative"
+            )
+        if stabilization_gate_step <= 0:
+            raise ValueError(
+                "receiver stabilization gate step must be positive"
+            )
+        if not 0.0 < stabilization_gate_threshold < 1.0:
+            raise ValueError(
+                "receiver stabilization gate threshold must be "
+                "inside (0, 1)"
             )
         self.base_policy = base_policy
         self.recovery_head = recovery_head or ReceiverRecoveryHead()
@@ -1081,6 +1100,47 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             "gate_feature_std",
             gate_feature_std.detach().clone(),
         )
+        self.stabilization_gate = stabilization_gate
+        if stabilization_gate is None:
+            if (
+                stabilization_gate_feature_mean is not None
+                or stabilization_gate_feature_std is not None
+            ):
+                raise ValueError(
+                    "receiver stabilization normalization requires a gate"
+                )
+            stabilization_gate_feature_mean = torch.empty(0)
+            stabilization_gate_feature_std = torch.empty(0)
+        else:
+            if (
+                stabilization_gate_feature_mean is None
+                or stabilization_gate_feature_std is None
+                or stabilization_gate_feature_mean.shape
+                != (ReceiverRetryGate.input_dim,)
+                or stabilization_gate_feature_std.shape
+                != (ReceiverRetryGate.input_dim,)
+            ):
+                raise ValueError(
+                    "receiver stabilization gate normalization must "
+                    "have 105 values"
+                )
+            if bool(
+                torch.any(stabilization_gate_feature_std <= 0.0)
+            ):
+                raise ValueError(
+                    "receiver stabilization feature standard deviations "
+                    "must be positive"
+                )
+            for parameter in stabilization_gate.parameters():
+                parameter.requires_grad_(False)
+        self.register_buffer(
+            "stabilization_gate_feature_mean",
+            stabilization_gate_feature_mean.detach().clone(),
+        )
+        self.register_buffer(
+            "stabilization_gate_feature_std",
+            stabilization_gate_feature_std.detach().clone(),
+        )
         self.register_buffer(
             "canonical_grasp_offset",
             torch.tensor(
@@ -1100,9 +1160,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.context_dim = 29
         self.gate_step = int(gate_step)
         self.gate_threshold = float(gate_threshold)
+        self.stabilization_gate_step = int(stabilization_gate_step)
+        self.stabilization_gate_threshold = float(
+            stabilization_gate_threshold
+        )
         self.enable_retries = bool(enable_retries)
         self.stabilize_giver_during_acquisition = bool(
             stabilize_giver_during_acquisition
+        )
+        self.giver_stabilization_start_step = int(
+            giver_stabilization_start_step
         )
         self.receiver_secure_settle_steps = int(
             receiver_secure_settle_steps
@@ -1160,6 +1227,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             0,
             dtype=torch.long,
         )
+        self.stabilization_gate_evaluated = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.stabilization_gate_selected = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.stabilization_gate_probability = torch.empty(0)
 
     def _initialize_state(self, raw: torch.Tensor) -> None:
         batch_size = raw.shape[0]
@@ -1237,6 +1313,17 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.receiver_secure_settle_dwell = torch.zeros_like(
             self.retry_count
+        )
+        self.stabilization_gate_evaluated = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.stabilization_gate_selected = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.stabilization_gate_probability = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
         )
 
     def set_fixed_correction(
@@ -1731,6 +1818,58 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 ).squeeze(-1)[selected]
                 gate_retry[selected_indices] = True
                 self.gate_triggered[selected_indices] = True
+        if self.stabilization_gate is not None:
+            stabilization_gate_now = (
+                acquisition_active
+                & (self.retry_state == self.state_canonical)
+                & (self.retry_count == 0)
+                & ~bilateral_qualified
+                & ~self.stabilization_gate_evaluated
+                & (
+                    self.acquisition_dwell
+                    >= self.stabilization_gate_step
+                )
+            )
+            if bool(stabilization_gate_now.any()):
+                stabilization_features = torch.cat(
+                    (
+                        raw[stabilization_gate_now],
+                        receiver_base_action[stabilization_gate_now],
+                    ),
+                    dim=-1,
+                )
+                normalized_stabilization_features = (
+                    stabilization_features
+                    - self.stabilization_gate_feature_mean.to(
+                        dtype=raw.dtype,
+                        device=raw.device,
+                    )
+                ) / self.stabilization_gate_feature_std.to(
+                    dtype=raw.dtype,
+                    device=raw.device,
+                )
+                stabilization_probability = torch.sigmoid(
+                    self.stabilization_gate(
+                        normalized_stabilization_features
+                    )
+                )
+                self.stabilization_gate_evaluated[
+                    stabilization_gate_now
+                ] = True
+                self.stabilization_gate_probability[
+                    stabilization_gate_now
+                ] = stabilization_probability
+                selected = (
+                    stabilization_probability
+                    >= self.stabilization_gate_threshold
+                )
+                selected_indices = torch.nonzero(
+                    stabilization_gate_now,
+                    as_tuple=False,
+                ).squeeze(-1)[selected]
+                self.stabilization_gate_selected[
+                    selected_indices
+                ] = True
         closing = (
             (phase == 2)
             & first_or_retry
@@ -1847,8 +1986,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         receiver_open[:, 6] = 1.0
         giver_hold = torch.zeros_like(receiver_hold_closed)
         giver_hold[:, 6] = -1.0
+        stabilize_selected = self.stabilization_gate_selected
+        if self.stabilize_giver_during_acquisition:
+            stabilize_selected = stabilize_selected | (
+                self.acquisition_dwell
+                >= self.giver_stabilization_start_step
+            )
         stabilize_giver = (
-            self.stabilize_giver_during_acquisition
+            stabilize_selected
             & (phase == 2)
             & self.acquisition_started
         )
@@ -1941,6 +2086,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.gate_triggered[mask] = False
         self.gate_probability[mask] = 0.0
         self.receiver_secure_settle_dwell[mask] = 0
+        self.stabilization_gate_evaluated[mask] = False
+        self.stabilization_gate_selected[mask] = False
+        self.stabilization_gate_probability[mask] = 0.0
 
     def reset(
         self,
