@@ -5032,6 +5032,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         dtype=torch.bool,
         device=env.unwrapped.device,
     )
+    first_retention_failure_causes = {
+        cause: torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.bool,
+            device=env.unwrapped.device,
+        )
+        for cause in (
+            "low_clearance",
+            "receiver_follow_error",
+            "receiver_contact_loss",
+        )
+    }
     first_termination_counts = {name: 0 for name in termination_names}
     first_failure_distribution = {name: 0 for name in failure_names}
     lift_diagnostics = None
@@ -6035,6 +6047,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 for term_index, name in enumerate(termination_names):
                     first_terminal_flags[first_dones, term_index] = (
                         term_values[name][first_dones].bool()
+                    )
+                handover_state_data = getattr(
+                    env.unwrapped,
+                    "_dr_anmar_handover_state",
+                )
+                for cause, state_name in (
+                    (
+                        "low_clearance",
+                        "last_retention_failure_low_clearance",
+                    ),
+                    (
+                        "receiver_follow_error",
+                        "last_retention_failure_follow_error",
+                    ),
+                    (
+                        "receiver_contact_loss",
+                        "last_retention_failure_contact_loss",
+                    ),
+                ):
+                    first_retention_failure_causes[cause][first_dones] = (
+                        handover_state_data[state_name][first_dones]
                     )
                 if pickup_recovery_policy is not None:
                     assert first_pickup_retry_count is not None
@@ -7663,6 +7696,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     .tolist()
                     for index, name in enumerate(termination_names)
                 },
+                "receiver_retention_failure_cause_indices": {
+                    cause: torch.nonzero(
+                        affected,
+                        as_tuple=False,
+                    )
+                    .squeeze(-1)
+                    .tolist()
+                    for cause, affected in (
+                        first_retention_failure_causes.items()
+                    )
+                },
             },
             "completed_episodes": first_completed_count,
             "successful_episodes": first_success_count,
@@ -7670,6 +7714,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "unresolved_episodes": int(first_unresolved.sum().item()),
             "failure_distribution": first_failure_distribution,
             "termination_term_counts": first_termination_counts,
+            "receiver_retention_failure_causes": {
+                cause: int(affected.sum().item())
+                for cause, affected in (
+                    first_retention_failure_causes.items()
+                )
+            },
             "all_episode_totals": {
                 "completed_episodes": done_count,
                 "successful_episodes": success_count,
