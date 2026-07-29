@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import random
+import re
 import sys
 from pathlib import Path
 
@@ -38,6 +39,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--learning_rate", type=float, default=3.0e-4)
     parser.add_argument("--weight_decay", type=float, default=1.0e-6)
     parser.add_argument("--validation_fraction", type=float, default=0.2)
+    parser.add_argument("--first_retry_only", action="store_true")
     parser.add_argument("--seed", type=int, default=104729)
     return parser
 
@@ -159,13 +161,23 @@ def main(argv: list[str]) -> int:
         )
         sweep_id = payload.get("sweep_id")
         if sweep_id:
+            sweep_family_id = re.sub(
+                r"-block\d+-seed(\d+)$",
+                r"-seed\1",
+                sweep_id,
+            )
             group_prefix = (
-                f"{sweep_id}|seed={int(payload['seed'])}|"
+                f"{sweep_family_id}|seed={int(payload['seed'])}|"
                 f"num_envs={int(payload['num_envs'])}"
             )
         else:
             group_prefix = f"dataset={payload_index}"
         for sample_index in range(context.shape[0]):
+            if (
+                args.first_retry_only
+                and int(retry_count[sample_index].item()) != 1
+            ):
+                continue
             key = (group_prefix, int(state_index[sample_index].item()))
             candidate_groups.setdefault(key, []).append(
                 {
@@ -332,6 +344,7 @@ def main(argv: list[str]) -> int:
             "successful_demonstrations": int(context.shape[0]),
             "retained_demonstrations": retained_demonstrations,
             "paired_failed_states": len(candidate_groups),
+            "first_retry_only": args.first_retry_only,
             "training_demonstrations": int(training_context.shape[0]),
             "validation_demonstrations": int(validation_context.shape[0]),
             "final_training_loss": final_training_loss,
