@@ -865,10 +865,11 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         # until the five-step bilateral filter is empty, so a late contact
         # sample cannot turn the required reopening into a premature release.
         failed_grasp = self.retry_state == self.state_failed
-        ready_to_reopen = failed_grasp & ~torch.any(
-            self.bilateral_contact_history,
-            dim=-1,
-        )
+        # The giver still owns the needle after a failed receiver grasp, so
+        # holding the receiver closed until contact history clears can
+        # deadlock the reset. Enter reopening immediately; the force-free,
+        # fully-open settle gate below still prevents an early retry.
+        ready_to_reopen = failed_grasp
         self.retry_state[ready_to_reopen] = self.state_reopening
         failed_grasp = self.retry_state == self.state_failed
         resetting = (
