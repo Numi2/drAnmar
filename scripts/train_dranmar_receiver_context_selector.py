@@ -316,7 +316,7 @@ def _paired_states(
             or payload.get("base_checkpoint_sha256")
             != checkpoint["base_checkpoint_sha256"]
             or int(payload["sweep_replicas"]) != 16
-            or int(payload["sobol_seed"]) != 130363
+            or int(payload["sobol_seed"]) != 104730
         ):
             raise ValueError(f"incompatible common-16 dataset: {path}")
         first = attempts["retry_count"].long() == 0

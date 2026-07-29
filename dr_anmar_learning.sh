@@ -410,7 +410,7 @@ case "${command}" in
         if [[ "${DR_ANMAR_PROMOTED_ALLOW_SELECTOR_SWEEP:-0}" == "1" ]]; then
             selector_sweep_random_env=1
             selector_sweep_replicas_env=16
-            selector_sweep_sobol_seed_env=130363
+            selector_sweep_sobol_seed_env=104730
             selector_sweep_id_env=attempt-selector-common16-new-v1
             selector_sweep_dataset_env="${DR_ANMAR_RECEIVER_RECOVERY_DATASET:-}"
             selector_seed_stream_offset_env="${DR_ANMAR_SEED_STREAM_OFFSET:-0}"
