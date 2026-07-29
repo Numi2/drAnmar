@@ -1041,6 +1041,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         gate_feature_std: torch.Tensor | None = None,
         gate_step: int = 100,
         gate_threshold: float = 0.8,
+        gate_group_replicas: int = 1,
         stabilization_gate: ReceiverRetryGate | None = None,
         stabilization_gate_feature_mean: torch.Tensor | None = None,
         stabilization_gate_feature_std: torch.Tensor | None = None,
@@ -1073,6 +1074,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if not 0.0 < gate_threshold < 1.0:
             raise ValueError(
                 "receiver retry gate threshold must be inside (0, 1)"
+            )
+        if gate_group_replicas <= 0:
+            raise ValueError(
+                "receiver retry gate group replicas must be positive"
             )
         if receiver_secure_settle_steps < 0:
             raise ValueError(
@@ -1251,6 +1256,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.context_dim = 29
         self.gate_step = int(gate_step)
         self.gate_threshold = float(gate_threshold)
+        self.gate_group_replicas = int(gate_group_replicas)
         self.stabilization_gate_step = int(stabilization_gate_step)
         self.stabilization_gate_threshold = float(
             stabilization_gate_threshold
@@ -2038,6 +2044,35 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     gate_now,
                     as_tuple=False,
                 ).squeeze(-1)[selected]
+                if (
+                    self.gate_group_replicas > 1
+                    and selected_indices.numel() > 0
+                ):
+                    if raw.shape[0] % self.gate_group_replicas:
+                        raise RuntimeError(
+                            "receiver gate group replicas must divide "
+                            "the policy batch"
+                        )
+                    group_index = (
+                        torch.arange(raw.shape[0], device=raw.device)
+                        // self.gate_group_replicas
+                    )
+                    selected_groups = torch.unique(
+                        selected_indices // self.gate_group_replicas
+                    )
+                    grouped_selected = torch.isin(
+                        group_index,
+                        selected_groups,
+                    )
+                    selected_indices = torch.nonzero(
+                        grouped_selected
+                        & (phase == 2)
+                        & (self.retry_state == self.state_canonical)
+                        & (self.retry_count == 0)
+                        & ~bilateral_qualified,
+                        as_tuple=False,
+                    ).squeeze(-1)
+                    self.gate_evaluated[selected_indices] = True
                 gate_retry[selected_indices] = True
                 self.gate_triggered[selected_indices] = True
         if self.stabilization_gate is not None:

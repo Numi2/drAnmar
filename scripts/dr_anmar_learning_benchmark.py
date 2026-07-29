@@ -3566,6 +3566,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "receiver retry gate threshold must be inside (0, 1)"
         )
+    if args.receiver_retry_gate_group_replicas <= 0:
+        return _fail(
+            "receiver retry gate group replicas must be positive"
+        )
+    if (
+        args.receiver_retry_gate_group_replicas > 1
+        and (
+            not args.receiver_retry_gate_checkpoint
+            or args.num_envs % args.receiver_retry_gate_group_replicas
+        )
+    ):
+        return _fail(
+            "grouped receiver retry gating requires a gate checkpoint "
+            "and must divide num_envs"
+        )
     if not 0.0 < args.receiver_stabilization_gate_threshold < 1.0:
         return _fail(
             "receiver stabilization gate threshold must be inside (0, 1)"
@@ -4577,6 +4592,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             gate_feature_std=receiver_gate_std,
             gate_step=receiver_gate_step,
             gate_threshold=args.receiver_retry_gate_threshold,
+            gate_group_replicas=(
+                args.receiver_retry_gate_group_replicas
+            ),
             stabilization_gate=receiver_stabilization_gate,
             stabilization_gate_feature_mean=(
                 receiver_stabilization_gate_mean
@@ -7991,6 +8009,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             "threshold": (
                                 receiver_recovery_policy.gate_threshold
                             ),
+                            "group_replicas": (
+                                receiver_recovery_policy
+                                .gate_group_replicas
+                            ),
                             "evaluated_episodes": int(
                                 first_receiver_gate_evaluated.sum().item()
                             ),
@@ -8407,6 +8429,11 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_retry_gate_threshold",
         type=float,
         default=0.8,
+    )
+    play.add_argument(
+        "--receiver_retry_gate_group_replicas",
+        type=int,
+        default=1,
     )
     play.add_argument("--receiver_stabilization_gate_checkpoint")
     play.add_argument(
