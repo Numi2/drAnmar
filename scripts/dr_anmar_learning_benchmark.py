@@ -4613,6 +4613,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "receiver_approach_probe_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "receiver_approach_probe_position_error_m": torch.full(
+                (env.unwrapped.num_envs, 3),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "receiver_approach_probe_action": torch.full(
+                (env.unwrapped.num_envs, 7),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "receiver_approach_probe_contacts": torch.full(
+                (env.unwrapped.num_envs, 2),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
             "minimum_giver_contact_force_at_first_lift_n": torch.full(
                 (env.unwrapped.num_envs,),
                 torch.nan,
@@ -5174,6 +5195,66 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_handover_history[
                         "first_receiver_approach_frame"
                     ][first_receiver_approach] = frame_index
+                    receiver_probe = (
+                        (receiver_recovery_policy.acquisition_dwell == 100)
+                        & (receiver_recovery_policy.retry_count == 0)
+                        & (
+                            first_handover_history[
+                                "receiver_approach_probe_frame"
+                            ]
+                            < 0
+                        )
+                        & was_first_unresolved
+                    )
+                    if bool(receiver_probe.any()):
+                        handover_observation = obs["policy"]
+                        giver_is_robot_1 = (
+                            handover_observation[:, 82] > 0.5
+                        )
+                        receiver_is_robot_1 = ~giver_is_robot_1
+                        receiver_ee = torch.where(
+                            receiver_is_robot_1.unsqueeze(-1),
+                            handover_observation[:, 32:35],
+                            handover_observation[:, 39:42],
+                        )
+                        object_in_receiver = torch.where(
+                            receiver_is_robot_1.unsqueeze(-1),
+                            handover_observation[:, 46:53],
+                            handover_observation[:, 53:60],
+                        )
+                        receiver_action = torch.where(
+                            receiver_is_robot_1.unsqueeze(-1),
+                            actions[:, :7],
+                            actions[:, 7:14],
+                        )
+                        receiver_contacts = torch.where(
+                            receiver_is_robot_1.unsqueeze(-1),
+                            handover_observation[:, 66:68],
+                            handover_observation[:, 68:70],
+                        )
+                        canonical_offset = (
+                            receiver_recovery_policy.canonical_grasp_offset
+                            .to(
+                                dtype=handover_observation.dtype,
+                                device=handover_observation.device,
+                            )
+                        )
+                        first_handover_history[
+                            "receiver_approach_probe_frame"
+                        ][receiver_probe] = frame_index
+                        first_handover_history[
+                            "receiver_approach_probe_position_error_m"
+                        ][receiver_probe] = (
+                            object_in_receiver[receiver_probe, :3]
+                            + canonical_offset
+                            - receiver_ee[receiver_probe]
+                        )
+                        first_handover_history[
+                            "receiver_approach_probe_action"
+                        ][receiver_probe] = receiver_action[receiver_probe]
+                        first_handover_history[
+                            "receiver_approach_probe_contacts"
+                        ][receiver_probe] = receiver_contacts[receiver_probe]
                     all_receiver_activations = (
                         receiver_recovery_policy.last_activation_mask
                         & was_first_unresolved
@@ -6129,6 +6210,63 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         for label, mask in phase_masks.items()
                     },
                 },
+                "receiver_approach_probe": (
+                    {
+                        "active_approach_step": 100,
+                        "environment_indices": torch.nonzero(
+                            first_handover_history[
+                                "receiver_approach_probe_frame"
+                            ]
+                            >= 0,
+                            as_tuple=False,
+                        )
+                        .squeeze(-1)
+                        .cpu()
+                        .tolist(),
+                        "frame": first_handover_history[
+                            "receiver_approach_probe_frame"
+                        ][
+                            first_handover_history[
+                                "receiver_approach_probe_frame"
+                            ]
+                            >= 0
+                        ]
+                        .cpu()
+                        .tolist(),
+                        "position_error_m": first_handover_history[
+                            "receiver_approach_probe_position_error_m"
+                        ][
+                            first_handover_history[
+                                "receiver_approach_probe_frame"
+                            ]
+                            >= 0
+                        ]
+                        .cpu()
+                        .tolist(),
+                        "receiver_action": first_handover_history[
+                            "receiver_approach_probe_action"
+                        ][
+                            first_handover_history[
+                                "receiver_approach_probe_frame"
+                            ]
+                            >= 0
+                        ]
+                        .cpu()
+                        .tolist(),
+                        "receiver_contacts": first_handover_history[
+                            "receiver_approach_probe_contacts"
+                        ][
+                            first_handover_history[
+                                "receiver_approach_probe_frame"
+                            ]
+                            >= 0
+                        ]
+                        .cpu()
+                        .tolist(),
+                    }
+                    if receiver_recovery_policy is not None
+                    else None
+                ),
                 "unresolved": int(first_unresolved.sum().item()),
             }
         first_completed_count = int((~first_unresolved).sum().item())
