@@ -3577,7 +3577,31 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "and 16 grouped replicas"
         )
     if (
-        args.receiver_retry_candidate_sweep
+        args.receiver_retry_candidate_index is not None
+        and not 0 <= args.receiver_retry_candidate_index < 16
+    ):
+        return _fail(
+            "receiver retry candidate index must be in [0, 15]"
+        )
+    if (
+        args.receiver_retry_candidate_index is not None
+        and not (
+            args.receiver_candidate_value_checkpoint
+            and args.receiver_candidate_first_attempt
+            and not args.receiver_disable_retries
+            and args.receiver_recovery_sweep_replicas == 1
+        )
+    ):
+        return _fail(
+            "fixed receiver retry candidate requires the frozen promoted "
+            "common-16 scorer, unchanged first attempt, retries enabled, "
+            "and an ungrouped environment"
+        )
+    if (
+        (
+            args.receiver_retry_candidate_sweep
+            or args.receiver_retry_candidate_index is not None
+        )
         and args.receiver_retry_portfolio_checkpoint
     ):
         return _fail(
@@ -3592,6 +3616,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_context_selector_checkpoint
         or args.receiver_retry_portfolio_checkpoint
         or args.receiver_retry_candidate_sweep
+        or args.receiver_retry_candidate_index is not None
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
@@ -4319,6 +4344,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_context_selector_checkpoint
         or args.receiver_retry_portfolio_checkpoint
         or args.receiver_retry_candidate_sweep
+        or args.receiver_retry_candidate_index is not None
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
@@ -5063,6 +5089,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 if args.receiver_retry_candidate_sweep
                 else 1
             ),
+            retry_candidate_index=args.receiver_retry_candidate_index,
             attempt_actor_critic=receiver_attempt_actor_critic,
             attempt_feature_mean=receiver_attempt_feature_mean,
             attempt_feature_std=receiver_attempt_feature_std,
@@ -8168,6 +8195,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "search_mode": (
                         "retry_paired_common16"
                         if args.receiver_retry_candidate_sweep
+                        else "retry_common16_candidate"
+                        if args.receiver_retry_candidate_index is not None
                         else "dagger_local"
                         if (
                             args.receiver_recovery_local_sobol_candidate
@@ -9204,6 +9233,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "retry_candidate_sweep": (
                         args.receiver_retry_candidate_sweep
                     ),
+                    "retry_candidate_index": (
+                        args.receiver_retry_candidate_index
+                    ),
                     "sweep_replicas": (
                         args.receiver_recovery_sweep_replicas
                     ),
@@ -9623,6 +9655,14 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "assign the frozen common-16 candidates by grouped environment "
             "only on genuine post-reopen retries"
+        ),
+    )
+    play.add_argument(
+        "--receiver_retry_candidate_index",
+        type=int,
+        help=(
+            "force one frozen common-16 correction only on genuine "
+            "post-reopen retries"
         ),
     )
     play.add_argument(

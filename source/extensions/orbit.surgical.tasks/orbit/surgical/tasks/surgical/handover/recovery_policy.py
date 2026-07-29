@@ -1206,6 +1206,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         retry_candidate_portfolios: torch.Tensor | None = None,
         retry_force_imbalance_threshold: float = 0.005,
         retry_candidate_sweep_replicas: int = 1,
+        retry_candidate_index: int | None = None,
         attempt_actor_critic: ReceiverAttemptActorCritic | None = None,
         attempt_feature_mean: torch.Tensor | None = None,
         attempt_feature_std: torch.Tensor | None = None,
@@ -1260,6 +1261,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if retry_candidate_sweep_replicas <= 0:
             raise ValueError(
                 "receiver retry candidate sweep replicas must be positive"
+            )
+        if retry_candidate_index is not None and retry_candidate_index < 0:
+            raise ValueError(
+                "receiver retry candidate index must be non-negative"
             )
         if giver_stabilization_start_step < 0:
             raise ValueError(
@@ -1453,9 +1458,21 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 "receiver retry candidate sweep replicas must match the "
                 "frozen candidate count"
             )
+        if (
+            retry_candidate_index is not None
+            and (
+                candidate_value is None
+                or retry_candidate_index >= candidate_corrections.shape[0]
+            )
+        ):
+            raise ValueError(
+                "receiver retry candidate index must select a frozen "
+                "candidate"
+            )
         self.retry_candidate_sweep_replicas = int(
             retry_candidate_sweep_replicas
         )
+        self.retry_candidate_index = retry_candidate_index
         self.candidate_selector = candidate_selector
         if candidate_selector is None:
             if (
@@ -2211,16 +2228,24 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                         normalized_context
                     )
                     best_index = selector_logits.argmax(dim=-1)
-                if self.retry_candidate_sweep_replicas > 1:
+                if (
+                    self.retry_candidate_sweep_replicas > 1
+                    or self.retry_candidate_index is not None
+                ):
                     retry_sweep_active = (
                         self.retry_count[active_indices] > 0
                     )
                     if bool(retry_sweep_active.any()):
                         best_index = best_index.clone()
-                        best_index[retry_sweep_active] = (
-                            active_indices[retry_sweep_active]
-                            % self.retry_candidate_sweep_replicas
-                        )
+                        if self.retry_candidate_index is None:
+                            best_index[retry_sweep_active] = (
+                                active_indices[retry_sweep_active]
+                                % self.retry_candidate_sweep_replicas
+                            )
+                        else:
+                            best_index[retry_sweep_active] = (
+                                self.retry_candidate_index
+                            )
                 if self.retry_candidate_portfolios.numel() > 0:
                     portfolio_active = (
                         self.retry_count[active_indices] > 0

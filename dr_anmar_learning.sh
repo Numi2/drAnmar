@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -29,6 +29,7 @@ usage() {
     echo "  receiver-selector-update CHECKPOINT OUTPUT DATASET..."
     echo "  receiver-selector-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
+    echo "  receiver-retry-candidate INDEX DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-portfolio BASE CANDIDATE OUTPUT DATASET..."
     echo "  attempt-handover ATTEMPT_CHECKPOINT [num_envs] [frames] [output] [task]"
     echo "  selector-handover SELECTOR_CHECKPOINT [num_envs] [frames] [output] [task]"
@@ -365,6 +366,24 @@ case "${command}" in
             "${5:-${DR_ANMAR_LEARNING_OUTPUT}/receiver-retry-sweep}" \
             "${6:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
         ;;
+    receiver-retry-candidate)
+        candidate_index="${2:-}"
+        dataset="${3:-}"
+        if [[ -z "${candidate_index}" || -z "${dataset}" ]]; then
+            usage
+            exit 2
+        fi
+        exec env \
+            DR_ANMAR_PROMOTED_ALLOW_RETRY_CANDIDATE=1 \
+            DR_ANMAR_RECEIVER_RETRY_CANDIDATE_INDEX="${candidate_index}" \
+            DR_ANMAR_RECEIVER_RECOVERY_DATASET="${dataset}" \
+            DR_ANMAR_SEED_STREAM_OFFSET="${8:-0}" \
+            "${BASH_SOURCE[0]}" promoted-handover \
+            "${4:-256}" \
+            "${5:-2000}" \
+            "${6:-${DR_ANMAR_LEARNING_OUTPUT}/receiver-retry-candidate-${candidate_index}}" \
+            "${7:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        ;;
     attempt-handover)
         attempt_checkpoint="${2:-}"
         if [[ -z "${attempt_checkpoint}" ]]; then
@@ -452,6 +471,7 @@ case "${command}" in
         selector_sweep_dataset_env=""
         selector_seed_stream_offset_env=""
         retry_candidate_sweep_env=0
+        retry_candidate_index_env=""
         if [[ "${DR_ANMAR_PROMOTED_ALLOW_ATTEMPT:-0}" == "1" ]]; then
             attempt_checkpoint_env="${DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT:-}"
             attempt_stochastic_env="${DR_ANMAR_RECEIVER_ATTEMPT_STOCHASTIC:-0}"
@@ -502,6 +522,17 @@ case "${command}" in
                 exit 2
             fi
         fi
+        if [[ "${DR_ANMAR_PROMOTED_ALLOW_RETRY_CANDIDATE:-0}" == "1" ]]; then
+            retry_candidate_index_env="${DR_ANMAR_RECEIVER_RETRY_CANDIDATE_INDEX:-}"
+            receiver_disable_retries_env=0
+            receiver_recovery_dataset_env="${DR_ANMAR_RECEIVER_RECOVERY_DATASET:-}"
+            selector_sweep_id_env="receiver-retry-candidate-${retry_candidate_index_env}-v1"
+            selector_seed_stream_offset_env="${DR_ANMAR_SEED_STREAM_OFFSET:-0}"
+            if [[ -z "${retry_candidate_index_env}" || -z "${receiver_recovery_dataset_env}" ]]; then
+                echo "error: receiver-retry-candidate requires an index and dataset" >&2
+                exit 2
+            fi
+        fi
         exec env \
             DR_ANMAR_POLICY_RESIDUAL_SCALE=0.03 \
             DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT=0.01 \
@@ -539,6 +570,7 @@ case "${command}" in
             DR_ANMAR_RECEIVER_RECOVERY_RANDOM_CORRECTIONS="${selector_sweep_random_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_SWEEP_REPLICAS="${selector_sweep_replicas_env}" \
             DR_ANMAR_RECEIVER_RETRY_CANDIDATE_SWEEP="${retry_candidate_sweep_env}" \
+            DR_ANMAR_RECEIVER_RETRY_CANDIDATE_INDEX="${retry_candidate_index_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_SOBOL_SEED="${selector_sweep_sobol_seed_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_SWEEP_ID="${selector_sweep_id_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_DATASET="${receiver_recovery_dataset_env}" \
@@ -919,6 +951,12 @@ case "${command}" in
         if [[ "${DR_ANMAR_RECEIVER_RETRY_CANDIDATE_SWEEP:-0}" == "1" ]]; then
             pickup_recovery_args+=(
                 --receiver_retry_candidate_sweep
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RETRY_CANDIDATE_INDEX:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_retry_candidate_index
+                "${DR_ANMAR_RECEIVER_RETRY_CANDIDATE_INDEX}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_SEED:-}" ]]; then
