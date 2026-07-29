@@ -5422,11 +5422,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if receiver_recovery_policy is not None
         else None
     )
-    first_receiver_failure_giver_force_margin = (
-        torch.zeros_like(first_unresolved)
-        if receiver_recovery_policy is not None
-        else None
-    )
     first_receiver_reopen_started = (
         torch.zeros_like(first_unresolved)
         if receiver_recovery_policy is not None
@@ -6737,9 +6732,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert (
                         first_receiver_failure_giver_degradation is not None
                     )
-                    assert (
-                        first_receiver_failure_giver_force_margin is not None
-                    )
                     assert first_receiver_reopen_started is not None
                     assert (
                         first_receiver_giver_restore_qualified is not None
@@ -6786,10 +6778,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_receiver_failure_giver_degradation[first_dones] = (
                         receiver_recovery_policy
                         .first_failure_giver_degradation[first_dones]
-                    )
-                    first_receiver_failure_giver_force_margin[first_dones] = (
-                        receiver_recovery_policy
-                        .first_failure_giver_force_margin[first_dones]
                     )
                     first_receiver_reopen_started[first_dones] = (
                         receiver_recovery_policy.reopen_started[first_dones]
@@ -9209,11 +9197,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .normalized_giver_restore_force_margin
                         / 0.2
                     ),
-                    "giver_risk_threshold_n": (
-                        receiver_recovery_policy
-                        .normalized_giver_risk_threshold
-                        / 0.2
-                    ),
                     "giver_restore_steps": (
                         receiver_recovery_policy.giver_restore_steps
                     ),
@@ -9436,11 +9419,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         ),
                         "giver_custody_degradation": int(
                             first_receiver_failure_giver_degradation
-                            .sum()
-                            .item()
-                        ),
-                        "giver_force_margin": int(
-                            first_receiver_failure_giver_force_margin
                             .sum()
                             .item()
                         ),

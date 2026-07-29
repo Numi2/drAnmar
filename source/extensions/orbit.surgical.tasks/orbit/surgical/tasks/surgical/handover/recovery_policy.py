@@ -1682,9 +1682,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.normalized_giver_restore_force_margin = (
             self.normalized_contact_threshold
         )
-        self.normalized_giver_risk_threshold = (
-            2.0 * self.normalized_contact_threshold
-        )
         self.giver_restore_steps = 3
         self.close_dwell_steps = 15
         self.acquisition_timeout_steps = 500
@@ -1804,10 +1801,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dtype=torch.bool,
         )
         self.first_failure_giver_degradation = torch.empty(
-            0,
-            dtype=torch.bool,
-        )
-        self.first_failure_giver_force_margin = torch.empty(
             0,
             dtype=torch.bool,
         )
@@ -2005,9 +1998,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.first_attempt_failed
         )
         self.first_failure_giver_degradation = torch.zeros_like(
-            self.first_attempt_failed
-        )
-        self.first_failure_giver_force_margin = torch.zeros_like(
             self.first_attempt_failed
         )
         self.reopen_started = torch.zeros_like(
@@ -2901,15 +2891,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & ~self.giver_release_completed
         )
         retry_transfer = self.retry_count > 0
-        retry_receiver_custody = (
-            basic_receiver_custody
-            & giver_bilateral_live
-        )
-        confirming_receiver_custody = torch.where(
-            retry_transfer,
-            retry_receiver_custody,
-            basic_receiver_custody,
-        )
+        # Retry activation already proves three consecutive bilateral giver
+        # frames. Once the receiver closes, load transfer can legitimately
+        # unload either giver jaw. Requiring giver bilateral contact throughout
+        # receiver confirmation deadlocked every observed retry release.
+        confirming_receiver_custody = basic_receiver_custody
         self.receiver_secure_live_dwell[:] = torch.where(
             confirming_receiver_custody,
             self.receiver_secure_live_dwell + 1,
@@ -3257,28 +3243,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.giver_degradation_dwell + 1,
             torch.zeros_like(self.giver_degradation_dwell),
         )
-        giver_custody_degrading = (
-            self.giver_degradation_dwell >= 3
-        )
-        giver_force_margin_degrading = (
-            acquisition_active
-            & closing
-            & (self.close_dwell >= 3)
-            & any_contact
-            & ~bilateral_qualified
-            & giver_bilateral_live
-            & (
-                giver_contacts.amin(dim=-1)
-                < self.normalized_giver_risk_threshold
-            )
-        )
+        # The retry must begin on the first physical jaw-contact loss. Waiting
+        # three frames left too few episodes with recoverable giver custody.
+        giver_custody_degrading = giver_degradation_observed
         if self.enable_retries:
             failure = (
                 failed_close
                 | stalled_acquisition
                 | lost_after_acquisition
                 | giver_custody_degrading
-                | giver_force_margin_degrading
                 | gate_retry
             ) & (
                 self.retry_state != self.state_failed
@@ -3312,9 +3285,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             )
             self.first_failure_giver_degradation |= (
                 first_failure & giver_custody_degrading
-            )
-            self.first_failure_giver_force_margin |= (
-                first_failure & giver_force_margin_degrading
             )
             self.first_attempt_candidate_active[failure] = False
             self.failure_forces[failure] = receiver_contacts[
@@ -3562,7 +3532,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.first_failure_acquisition_stall[mask] = False
         self.first_failure_receiver_loss[mask] = False
         self.first_failure_giver_degradation[mask] = False
-        self.first_failure_giver_force_margin[mask] = False
         self.reopen_started[mask] = False
         self.giver_restore_qualified[mask] = False
         self.retry_release_authorized[mask] = False
