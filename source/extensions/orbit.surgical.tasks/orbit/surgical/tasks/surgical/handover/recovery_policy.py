@@ -3496,7 +3496,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & (phase == 3)
             & ~giver_any_contact
             & any_contact
-            & ~bilateral_live
         )
         retention_contact_centering_action = torch.zeros_like(
             receiver_hold_closed
