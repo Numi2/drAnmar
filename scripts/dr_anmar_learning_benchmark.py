@@ -3515,10 +3515,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "grouped receiver recovery Sobol block must stay inside [0, 64]"
         )
     if args.receiver_recovery_sweep_replicas > 1:
-        if not args.receiver_recovery_random_corrections:
+        if not (
+            args.receiver_recovery_random_corrections
+            or args.receiver_recovery_local_sweep
+        ):
             return _fail(
                 "grouped receiver recovery sweeps require randomized "
-                "corrections"
+                "or local corrections"
             )
         if args.num_envs % args.receiver_recovery_sweep_replicas != 0:
             return _fail(
@@ -3575,19 +3578,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "giver stabilization start step must be non-negative"
         )
-    if args.receiver_recovery_local_sobol_candidate is not None:
-        if not 0 <= args.receiver_recovery_local_sobol_candidate < 32:
+    if (
+        args.receiver_recovery_local_sobol_candidate is not None
+        or args.receiver_recovery_local_sweep
+    ):
+        if (
+            args.receiver_recovery_local_sobol_candidate is not None
+            and not 0 <= args.receiver_recovery_local_sobol_candidate < 32
+        ):
             return _fail(
                 "local receiver Sobol candidate must be in [0, 31]"
             )
-        if not args.receiver_recovery_checkpoint:
+        if not (
+            args.receiver_recovery_checkpoint
+            or args.receiver_candidate_value_checkpoint
+        ):
             return _fail(
-                "local receiver DAgger search requires a recovery checkpoint"
+                "local receiver DAgger search requires a recovery or "
+                "candidate-value checkpoint"
             )
         if not args.receiver_recovery_sweep_id:
             return _fail(
                 "local receiver DAgger candidates require a stable sweep id"
             )
+    if (
+        args.receiver_recovery_local_sweep
+        and args.receiver_recovery_sweep_replicas != 32
+    ):
+        return _fail(
+            "grouped local receiver DAgger requires exactly 32 replicas"
+        )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
@@ -4103,6 +4123,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 bool(args.receiver_recovery_random_corrections),
                 args.receiver_recovery_sobol_candidate is not None,
                 args.receiver_recovery_local_sobol_candidate is not None,
+                bool(args.receiver_recovery_local_sweep),
             )
         )
         > 1
@@ -4123,6 +4144,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_recovery_random_corrections
         or args.receiver_recovery_sobol_candidate is not None
         or args.receiver_recovery_local_sobol_candidate is not None
+        or args.receiver_recovery_local_sweep
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverReceiverRecoveryPolicy,
@@ -4575,7 +4597,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             correction[3:] = torch.deg2rad(correction[3:])
             receiver_recovery_policy.set_fixed_correction(correction)
-        elif args.receiver_recovery_local_sobol_candidate is not None:
+        elif (
+            args.receiver_recovery_local_sobol_candidate is not None
+            or args.receiver_recovery_local_sweep
+        ):
             if not (
                 0.0
                 < args.receiver_recovery_local_position_radius
@@ -4617,11 +4642,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 ),
                 dim=-1,
             )
-            receiver_recovery_policy.set_fixed_correction_delta(
-                local_corrections[
+            if args.receiver_recovery_local_sweep:
+                local_delta = local_corrections.repeat(
+                    env.unwrapped.num_envs // 32,
+                    1,
+                )
+            else:
+                local_delta = local_corrections[
                     args.receiver_recovery_local_sobol_candidate
                 ].expand(env.unwrapped.num_envs, -1)
-            )
+            receiver_recovery_policy.set_fixed_correction_delta(local_delta)
         elif (
             args.receiver_recovery_random_corrections
             or args.receiver_recovery_sobol_candidate is not None
@@ -7360,6 +7390,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         if (
                             args.receiver_recovery_local_sobol_candidate
                             is not None
+                            or args.receiver_recovery_local_sweep
                         )
                         else "global_sobol"
                         if args.receiver_recovery_sobol_candidate is not None
@@ -7372,6 +7403,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         if (
                             args.receiver_recovery_local_sobol_candidate
                             is not None
+                            or args.receiver_recovery_local_sweep
                         )
                         else None
                     ),
@@ -7382,6 +7414,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         if (
                             args.receiver_recovery_local_sobol_candidate
                             is not None
+                            or args.receiver_recovery_local_sweep
                         )
                         else None
                     ),
@@ -8025,6 +8058,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             args.receiver_recovery_local_sobol_candidate
                             is not None
                         )
+                        or args.receiver_recovery_local_sweep
                     ),
                     "sweep_replicas": (
                         args.receiver_recovery_sweep_replicas
@@ -8037,6 +8071,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "local_sobol_candidate": (
                         args.receiver_recovery_local_sobol_candidate
                     ),
+                    "local_sweep": args.receiver_recovery_local_sweep,
                     "local_position_radius_m": (
                         args.receiver_recovery_local_position_radius
                     ),
@@ -8361,6 +8396,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--receiver_recovery_sobol_candidate", type=int)
     play.add_argument("--receiver_recovery_local_sobol_candidate", type=int)
+    play.add_argument(
+        "--receiver_recovery_local_sweep",
+        action="store_true",
+    )
     play.add_argument(
         "--receiver_recovery_local_position_radius",
         type=float,
