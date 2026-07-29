@@ -1028,6 +1028,128 @@ class ReceiverCandidateValue(nn.Module):
         return self.network(features).squeeze(-1)
 
 
+class ReceiverAttemptActorCritic(nn.Module):
+    """One-decision residual actor-critic for receiver acquisition."""
+
+    input_dim = 36
+    action_dim = 6
+
+    def __init__(self, initial_std: float = 0.25) -> None:
+        super().__init__()
+        if not 0.05 <= initial_std <= 0.5:
+            raise ValueError(
+                "receiver attempt initial std must be in [0.05, 0.5]"
+            )
+        self.actor = nn.Sequential(
+            nn.Linear(self.input_dim, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 64),
+            nn.SiLU(),
+            nn.Linear(64, self.action_dim),
+        )
+        actor_final = self.actor[-1]
+        assert isinstance(actor_final, nn.Linear)
+        nn.init.zeros_(actor_final.weight)
+        nn.init.zeros_(actor_final.bias)
+        self.critic = nn.Sequential(
+            nn.Linear(self.input_dim, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 64),
+            nn.SiLU(),
+            nn.Linear(64, 1),
+        )
+        self.log_std = nn.Parameter(
+            torch.full((self.action_dim,), math.log(initial_std))
+        )
+
+    def bounded_log_std(self) -> torch.Tensor:
+        return self.log_std.clamp(math.log(0.05), math.log(0.5))
+
+    def value(self, features: torch.Tensor) -> torch.Tensor:
+        return torch.sigmoid(self.critic(features).squeeze(-1))
+
+    def action_statistics(
+        self,
+        features: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        mean = self.actor(features)
+        log_std = self.bounded_log_std().to(
+            device=features.device,
+            dtype=features.dtype,
+        )
+        return mean, log_std, self.value(features)
+
+    @staticmethod
+    def _log_probability(
+        pre_tanh: torch.Tensor,
+        action: torch.Tensor,
+        mean: torch.Tensor,
+        log_std: torch.Tensor,
+    ) -> torch.Tensor:
+        inverse_variance = torch.exp(-2.0 * log_std)
+        gaussian = (
+            -0.5 * (pre_tanh - mean).square() * inverse_variance
+            - log_std
+            - 0.5 * math.log(2.0 * math.pi)
+        ).sum(dim=-1)
+        squash = torch.log(
+            (1.0 - action.square()).clamp_min(1.0e-6)
+        ).sum(dim=-1)
+        return gaussian - squash
+
+    def act(
+        self,
+        features: torch.Tensor,
+        *,
+        stochastic: bool,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        mean, log_std, value = self.action_statistics(features)
+        if stochastic:
+            pre_tanh = mean + torch.exp(log_std) * torch.randn_like(mean)
+        else:
+            pre_tanh = mean
+        action = torch.tanh(pre_tanh)
+        return (
+            action,
+            self._log_probability(
+                pre_tanh,
+                action,
+                mean,
+                log_std,
+            ),
+            value,
+        )
+
+    def evaluate_actions(
+        self,
+        features: torch.Tensor,
+        action: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        clipped = action.clamp(-1.0 + 1.0e-6, 1.0 - 1.0e-6)
+        pre_tanh = torch.atanh(clipped)
+        mean, log_std, value = self.action_statistics(features)
+        log_probability = self._log_probability(
+            pre_tanh,
+            clipped,
+            mean,
+            log_std,
+        )
+        entropy = (
+            0.5
+            + 0.5 * math.log(2.0 * math.pi)
+            + log_std
+        ).sum().expand_as(log_probability)
+        return log_probability, entropy, value
+
+
 class HandoverReceiverRecoveryPolicy(nn.Module):
     """Frozen pickup composite plus isolated receiver-acquisition retries."""
 
@@ -1054,6 +1176,12 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         candidate_corrections: torch.Tensor | None = None,
         candidate_local_offsets: torch.Tensor | None = None,
         candidate_min_logit_advantage: float = 0.0,
+        attempt_actor_critic: ReceiverAttemptActorCritic | None = None,
+        attempt_feature_mean: torch.Tensor | None = None,
+        attempt_feature_std: torch.Tensor | None = None,
+        attempt_stochastic: bool = False,
+        attempt_position_cap_m: float = 0.001,
+        attempt_orientation_cap_rad: float = math.radians(1.0),
         candidate_first_attempt: bool = False,
         enable_retries: bool = True,
         stabilize_giver_during_acquisition: bool = False,
@@ -1104,6 +1232,18 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if candidate_min_logit_advantage < 0.0:
             raise ValueError(
                 "receiver candidate logit advantage must be non-negative"
+            )
+        if not 0.0 < attempt_position_cap_m <= 0.001:
+            raise ValueError(
+                "receiver attempt position cap must be in (0, 0.001]"
+            )
+        if not (
+            0.0
+            < attempt_orientation_cap_rad
+            <= math.radians(1.0)
+        ):
+            raise ValueError(
+                "receiver attempt orientation cap must be in (0, 1 degree]"
             )
         if stabilization_gate_step <= 0:
             raise ValueError(
@@ -1257,6 +1397,51 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             "candidate_local_offsets",
             candidate_local_offsets.detach().clone(),
         )
+        self.attempt_actor_critic = attempt_actor_critic
+        if attempt_actor_critic is None:
+            if attempt_feature_mean is not None or attempt_feature_std is not None:
+                raise ValueError(
+                    "receiver attempt statistics require an actor-critic"
+                )
+            attempt_feature_mean = torch.empty(0)
+            attempt_feature_std = torch.empty(0)
+        else:
+            if candidate_value is None:
+                raise ValueError(
+                    "receiver attempt actor requires the promoted candidate "
+                    "selector"
+                )
+            if (
+                attempt_feature_mean is None
+                or attempt_feature_std is None
+                or attempt_feature_mean.shape
+                != (ReceiverAttemptActorCritic.input_dim,)
+                or attempt_feature_std.shape
+                != (ReceiverAttemptActorCritic.input_dim,)
+            ):
+                raise ValueError(
+                    "receiver attempt feature statistics must have shape (36,)"
+                )
+            if bool(torch.any(attempt_feature_std <= 0.0)):
+                raise ValueError(
+                    "receiver attempt feature standard deviations must be "
+                    "positive"
+                )
+            for parameter in attempt_actor_critic.parameters():
+                parameter.requires_grad_(False)
+        self.register_buffer(
+            "attempt_feature_mean",
+            attempt_feature_mean.detach().clone(),
+        )
+        self.register_buffer(
+            "attempt_feature_std",
+            attempt_feature_std.detach().clone(),
+        )
+        self.attempt_stochastic = bool(attempt_stochastic)
+        self.attempt_position_cap_m = float(attempt_position_cap_m)
+        self.attempt_orientation_cap_rad = float(
+            attempt_orientation_cap_rad
+        )
         self.register_buffer(
             "canonical_grasp_offset",
             torch.tensor(
@@ -1386,6 +1571,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             0,
             dtype=torch.bool,
         )
+        self.last_attempt_features = torch.empty(
+            (0, ReceiverAttemptActorCritic.input_dim)
+        )
+        self.last_attempt_action = torch.empty(
+            (0, ReceiverAttemptActorCritic.action_dim)
+        )
+        self.last_attempt_log_probability = torch.empty(0)
+        self.last_attempt_value = torch.empty(0)
+        self.last_attempt_baseline_correction = torch.empty((0, 6))
+        self.last_attempt_baseline_advantage = torch.empty(0)
 
     def _initialize_state(self, raw: torch.Tensor) -> None:
         batch_size = raw.shape[0]
@@ -1507,6 +1702,36 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.receiver_retention_offset_latched = torch.zeros(
             batch_size,
             dtype=torch.bool,
+            device=device,
+        )
+        self.last_attempt_features = torch.zeros(
+            (batch_size, ReceiverAttemptActorCritic.input_dim),
+            dtype=dtype,
+            device=device,
+        )
+        self.last_attempt_action = torch.zeros(
+            (batch_size, ReceiverAttemptActorCritic.action_dim),
+            dtype=dtype,
+            device=device,
+        )
+        self.last_attempt_log_probability = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
+        )
+        self.last_attempt_value = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
+        )
+        self.last_attempt_baseline_correction = torch.zeros(
+            (batch_size, 6),
+            dtype=dtype,
+            device=device,
+        )
+        self.last_attempt_baseline_advantage = torch.zeros(
+            batch_size,
+            dtype=dtype,
             device=device,
         )
 
@@ -1820,6 +2045,78 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 self.selected_candidate_applied[active_indices] = (
                     candidate_applied
                 )
+                if self.attempt_actor_critic is not None:
+                    baseline_correction = proposed[activation].clone()
+                    normalized_baseline = torch.cat(
+                        (
+                            baseline_correction[:, :3]
+                            / self.position_cap_m,
+                            baseline_correction[:, 3:]
+                            / self.orientation_cap_rad,
+                        ),
+                        dim=-1,
+                    )
+                    attempt_features = torch.cat(
+                        (
+                            active_context,
+                            normalized_baseline,
+                            advantage.unsqueeze(-1),
+                        ),
+                        dim=-1,
+                    )
+                    if (
+                        attempt_features.shape[-1]
+                        != ReceiverAttemptActorCritic.input_dim
+                    ):
+                        raise RuntimeError(
+                            "receiver attempt feature shape drifted"
+                        )
+                    normalized_attempt_features = (
+                        attempt_features
+                        - self.attempt_feature_mean.to(
+                            device=raw.device,
+                            dtype=raw.dtype,
+                        )
+                    ) / self.attempt_feature_std.to(
+                        device=raw.device,
+                        dtype=raw.dtype,
+                    )
+                    (
+                        attempt_action,
+                        attempt_log_probability,
+                        attempt_value,
+                    ) = self.attempt_actor_critic.act(
+                        normalized_attempt_features,
+                        stochastic=self.attempt_stochastic,
+                    )
+                    attempt_residual = torch.cat(
+                        (
+                            attempt_action[:, :3]
+                            * self.attempt_position_cap_m,
+                            attempt_action[:, 3:]
+                            * self.attempt_orientation_cap_rad,
+                        ),
+                        dim=-1,
+                    )
+                    proposed[activation] = baseline_correction + attempt_residual
+                    self.last_attempt_features[active_indices] = (
+                        attempt_features.detach()
+                    )
+                    self.last_attempt_action[active_indices] = (
+                        attempt_action.detach()
+                    )
+                    self.last_attempt_log_probability[active_indices] = (
+                        attempt_log_probability.detach()
+                    )
+                    self.last_attempt_value[active_indices] = (
+                        attempt_value.detach()
+                    )
+                    self.last_attempt_baseline_correction[active_indices] = (
+                        baseline_correction.detach()
+                    )
+                    self.last_attempt_baseline_advantage[active_indices] = (
+                        advantage.detach()
+                    )
             if self._fixed_correction_delta is not None:
                 fixed_delta = self._fixed_correction_delta.to(
                     device=raw.device,
@@ -2581,6 +2878,12 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.selected_candidate_applied[mask] = False
         self.receiver_retention_offset[mask] = 0.0
         self.receiver_retention_offset_latched[mask] = False
+        self.last_attempt_features[mask] = 0.0
+        self.last_attempt_action[mask] = 0.0
+        self.last_attempt_log_probability[mask] = 0.0
+        self.last_attempt_value[mask] = 0.0
+        self.last_attempt_baseline_correction[mask] = 0.0
+        self.last_attempt_baseline_advantage[mask] = 0.0
 
     def reset(
         self,

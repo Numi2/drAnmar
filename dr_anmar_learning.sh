@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|attempt-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -23,6 +23,9 @@ usage() {
     echo "  sweep     [task] [iterations] [comma-separated env counts] [output]"
     echo "  pretrain  [task] [num_envs] [updates] [validation_frames] [output]"
     echo "  train     [task] [num_envs] [iterations] [output]"
+    echo "  receiver-attempt-bootstrap BASE CANDIDATE OUTPUT DATASET..."
+    echo "  receiver-attempt-update CHECKPOINT OUTPUT ROLLOUT..."
+    echo "  attempt-handover ATTEMPT_CHECKPOINT [num_envs] [frames] [output] [task]"
     echo "  promoted-handover [num_envs] [frames] [output] [task]"
     echo "  play      CHECKPOINT [task] [num_envs] [frames] [output]"
     echo "  record    CHECKPOINT [task] [frames] [output] [chunk_frames]"
@@ -218,6 +221,63 @@ case "${command}" in
             "${learning_rate_args[@]}" \
             "${giver_adaptation_args[@]}"
         ;;
+    receiver-attempt-bootstrap)
+        require_runtime
+        base_checkpoint="${2:-}"
+        candidate_checkpoint="${3:-}"
+        output="${4:-}"
+        if [[ -z "${base_checkpoint}" || -z "${candidate_checkpoint}" || -z "${output}" || "$#" -lt 5 ]]; then
+            usage
+            exit 2
+        fi
+        shift 4
+        dataset_args=()
+        for dataset in "$@"; do
+            dataset_args+=(--dataset "${dataset}")
+        done
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/train_dranmar_receiver_attempt_ppo.py" \
+            bootstrap \
+            --base_checkpoint "${base_checkpoint}" \
+            --candidate_checkpoint "${candidate_checkpoint}" \
+            --output "${output}" \
+            "${dataset_args[@]}"
+        ;;
+    receiver-attempt-update)
+        require_runtime
+        attempt_checkpoint="${2:-}"
+        output="${3:-}"
+        if [[ -z "${attempt_checkpoint}" || -z "${output}" || "$#" -lt 4 ]]; then
+            usage
+            exit 2
+        fi
+        shift 3
+        rollout_args=()
+        for rollout in "$@"; do
+            rollout_args+=(--rollout "${rollout}")
+        done
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/train_dranmar_receiver_attempt_ppo.py" \
+            update \
+            --checkpoint "${attempt_checkpoint}" \
+            --output "${output}" \
+            "${rollout_args[@]}"
+        ;;
+    attempt-handover)
+        attempt_checkpoint="${2:-}"
+        if [[ -z "${attempt_checkpoint}" ]]; then
+            usage
+            exit 2
+        fi
+        exec env \
+            DR_ANMAR_PROMOTED_ALLOW_ATTEMPT=1 \
+            DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT="${attempt_checkpoint}" \
+            "${BASH_SOURCE[0]}" promoted-handover \
+            "${3:-1200}" \
+            "${4:-2000}" \
+            "${5:-${DR_ANMAR_LEARNING_OUTPUT}/attempt-handover}" \
+            "${6:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        ;;
     promoted-handover)
         require_runtime
         base_sha256="f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad"
@@ -243,6 +303,18 @@ case "${command}" in
         if [[ "$(sha256_file "${receiver_checkpoint}")" != "${receiver_sha256}" ]]; then
             echo "error: promoted receiver checkpoint hash mismatch: ${receiver_checkpoint}" >&2
             exit 2
+        fi
+        attempt_checkpoint_env=""
+        attempt_stochastic_env=0
+        attempt_dataset_env=""
+        if [[ "${DR_ANMAR_PROMOTED_ALLOW_ATTEMPT:-0}" == "1" ]]; then
+            attempt_checkpoint_env="${DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT:-}"
+            attempt_stochastic_env="${DR_ANMAR_RECEIVER_ATTEMPT_STOCHASTIC:-0}"
+            attempt_dataset_env="${DR_ANMAR_RECEIVER_ATTEMPT_DATASET:-}"
+            if [[ -z "${attempt_checkpoint_env}" ]]; then
+                echo "error: attempt-handover requires an attempt checkpoint" >&2
+                exit 2
+            fi
         fi
         exec env \
             DR_ANMAR_POLICY_RESIDUAL_SCALE=0.03 \
@@ -283,6 +355,11 @@ case "${command}" in
             DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_SEED=104748 \
             DR_ANMAR_RECEIVER_RECOVERY_LOCAL_POSITION_RADIUS_M=0.001 \
             DR_ANMAR_RECEIVER_RECOVERY_LOCAL_ORIENTATION_RADIUS_DEG=1.0 \
+            DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT="${attempt_checkpoint_env}" \
+            DR_ANMAR_RECEIVER_ATTEMPT_STOCHASTIC="${attempt_stochastic_env}" \
+            DR_ANMAR_RECEIVER_ATTEMPT_DATASET="${attempt_dataset_env}" \
+            DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M=0.001 \
+            DR_ANMAR_RECEIVER_ATTEMPT_ORIENTATION_CAP_DEG=1.0 \
             "${BASH_SOURCE[0]}" play \
             "${base_checkpoint}" \
             "${task}" \
@@ -510,6 +587,33 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_candidate_value_checkpoint
                 "${DR_ANMAR_RECEIVER_CANDIDATE_VALUE_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_attempt_checkpoint
+                "${DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_ATTEMPT_STOCHASTIC:-0}" == "1" ]]; then
+            pickup_recovery_args+=(--receiver_attempt_stochastic)
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_DATASET:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_attempt_dataset
+                "${DR_ANMAR_RECEIVER_ATTEMPT_DATASET}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_attempt_position_cap
+                "${DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_ORIENTATION_CAP_DEG:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_attempt_orientation_cap_deg
+                "${DR_ANMAR_RECEIVER_ATTEMPT_ORIENTATION_CAP_DEG}"
             )
         fi
         if [[ "${DR_ANMAR_RECEIVER_CANDIDATE_LOCAL_REFINEMENT:-0}" == "1" ]]; then
@@ -823,6 +927,27 @@ case "${command}" in
             recovery_record_args+=(
                 --receiver_candidate_value_checkpoint
                 "${DR_ANMAR_RECEIVER_CANDIDATE_VALUE_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_attempt_checkpoint
+                "${DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_ATTEMPT_STOCHASTIC:-0}" == "1" ]]; then
+            recovery_record_args+=(--receiver_attempt_stochastic)
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_attempt_position_cap
+                "${DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_ORIENTATION_CAP_DEG:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_attempt_orientation_cap_deg
+                "${DR_ANMAR_RECEIVER_ATTEMPT_ORIENTATION_CAP_DEG}"
             )
         fi
         if [[ "${DR_ANMAR_RECEIVER_CANDIDATE_LOCAL_REFINEMENT:-0}" == "1" ]]; then

@@ -3564,6 +3564,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_retry_gate_checkpoint
         or args.receiver_stabilization_gate_checkpoint
         or args.receiver_candidate_value_checkpoint
+        or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
         or args.receiver_retention_servo
@@ -3671,6 +3672,34 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if args.receiver_candidate_min_logit_advantage < 0.0:
         return _fail(
             "receiver candidate logit advantage must be non-negative"
+        )
+    if args.receiver_attempt_checkpoint and not (
+        args.receiver_candidate_value_checkpoint
+        and args.receiver_candidate_first_attempt
+    ):
+        return _fail(
+            "receiver attempt PPO requires the promoted first-attempt "
+            "candidate selector"
+        )
+    if args.receiver_attempt_stochastic and not args.receiver_attempt_checkpoint:
+        return _fail(
+            "stochastic receiver attempts require an attempt checkpoint"
+        )
+    if args.receiver_attempt_dataset and not args.receiver_attempt_checkpoint:
+        return _fail(
+            "receiver attempt rollout output requires an attempt checkpoint"
+        )
+    if not 0.0 < args.receiver_attempt_position_cap <= 0.001:
+        return _fail(
+            "receiver attempt position cap must be in (0, 0.001]"
+        )
+    if not (
+        0.0
+        < args.receiver_attempt_orientation_cap_deg
+        <= 1.0
+    ):
+        return _fail(
+            "receiver attempt orientation cap must be in (0, 1 degree]"
         )
     if args.receiver_candidate_first_attempt and not (
         args.receiver_recovery_checkpoint
@@ -4218,6 +4247,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_retry_gate_checkpoint
         or args.receiver_stabilization_gate_checkpoint
         or args.receiver_candidate_value_checkpoint
+        or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
         or args.receiver_retention_servo
@@ -4229,6 +4259,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverReceiverRecoveryPolicy,
+            ReceiverAttemptActorCritic,
             ReceiverCandidateValue,
             ReceiverRecoveryHead,
             ReceiverRetryGate,
@@ -4248,6 +4279,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_candidate_value_std = None
         receiver_candidate_corrections = None
         receiver_candidate_local_offsets = None
+        receiver_attempt_actor_critic = None
+        receiver_attempt_feature_mean = None
+        receiver_attempt_feature_std = None
         if args.receiver_recovery_checkpoint:
             receiver_checkpoint = (
                 Path(args.receiver_recovery_checkpoint)
@@ -4642,6 +4676,106 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     dim=-1,
                 )
+        if args.receiver_attempt_checkpoint:
+            attempt_checkpoint = (
+                Path(args.receiver_attempt_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            if not attempt_checkpoint.is_file():
+                env.close()
+                return _fail(
+                    "receiver attempt checkpoint not found: "
+                    f"{attempt_checkpoint}"
+                )
+            attempt_payload = torch.load(
+                attempt_checkpoint,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            if (
+                not isinstance(attempt_payload, dict)
+                or attempt_payload.get("schema_version")
+                != "dranmar-receiver-attempt-ppo-1.0"
+                or "receiver_attempt_actor_critic" not in attempt_payload
+                or "feature_mean" not in attempt_payload
+                or "feature_std" not in attempt_payload
+            ):
+                env.close()
+                return _fail(
+                    "unsupported receiver attempt PPO checkpoint"
+                )
+            if (
+                attempt_payload.get("base_checkpoint_sha256")
+                != _sha256(checkpoint)
+                or attempt_payload.get(
+                    "receiver_candidate_checkpoint_sha256"
+                )
+                != _sha256(candidate_checkpoint)
+            ):
+                env.close()
+                return _fail(
+                    "receiver attempt PPO checkpoint does not match the "
+                    "frozen promoted composite"
+                )
+            expected_attempt_values = (
+                (
+                    "receiver_position_cap_m",
+                    float(args.receiver_recovery_position_cap),
+                ),
+                (
+                    "receiver_orientation_cap_rad",
+                    math.radians(
+                        args.receiver_recovery_orientation_cap_deg
+                    ),
+                ),
+                (
+                    "residual_position_cap_m",
+                    float(args.receiver_attempt_position_cap),
+                ),
+                (
+                    "residual_orientation_cap_rad",
+                    math.radians(
+                        args.receiver_attempt_orientation_cap_deg
+                    ),
+                ),
+            )
+            for field, expected in expected_attempt_values:
+                if not math.isclose(
+                    float(attempt_payload[field]),
+                    expected,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                ):
+                    env.close()
+                    return _fail(
+                        f"receiver attempt checkpoint {field} drifted"
+                    )
+            if int(attempt_payload["receiver_gate_step"]) != receiver_gate_step:
+                env.close()
+                return _fail(
+                    "receiver attempt checkpoint gate step drifted"
+                )
+            receiver_attempt_actor_critic = (
+                ReceiverAttemptActorCritic().to(env.unwrapped.device)
+            )
+            receiver_attempt_actor_critic.load_state_dict(
+                attempt_payload["receiver_attempt_actor_critic"],
+                strict=True,
+            )
+            receiver_attempt_actor_critic.eval()
+            receiver_attempt_feature_mean = attempt_payload[
+                "feature_mean"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_attempt_feature_std = attempt_payload[
+                "feature_std"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
         receiver_base_policy = (
             pickup_recovery_policy
             if pickup_recovery_policy is not None
@@ -4679,6 +4813,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             candidate_local_offsets=receiver_candidate_local_offsets,
             candidate_min_logit_advantage=(
                 args.receiver_candidate_min_logit_advantage
+            ),
+            attempt_actor_critic=receiver_attempt_actor_critic,
+            attempt_feature_mean=receiver_attempt_feature_mean,
+            attempt_feature_std=receiver_attempt_feature_std,
+            attempt_stochastic=args.receiver_attempt_stochastic,
+            attempt_position_cap_m=args.receiver_attempt_position_cap,
+            attempt_orientation_cap_rad=math.radians(
+                args.receiver_attempt_orientation_cap_deg
             ),
             candidate_first_attempt=(
                 args.receiver_candidate_first_attempt
@@ -5964,40 +6106,89 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         & was_first_unresolved
                     )
                     if bool(all_receiver_activations.any()):
-                        receiver_activation_events.append(
-                            {
-                                "environment_index": torch.nonzero(
-                                    all_receiver_activations,
-                                    as_tuple=False,
-                                )
-                                .squeeze(-1)
-                                .cpu(),
-                                "retry_count": (
-                                    receiver_recovery_policy.retry_count[
-                                        all_receiver_activations
-                                    ].cpu()
-                                ),
-                                "activation_frame": torch.full(
-                                    (
-                                        int(
-                                            all_receiver_activations.sum().item()
-                                        ),
+                        receiver_event = {
+                            "environment_index": torch.nonzero(
+                                all_receiver_activations,
+                                as_tuple=False,
+                            )
+                            .squeeze(-1)
+                            .cpu(),
+                            "retry_count": (
+                                receiver_recovery_policy.retry_count[
+                                    all_receiver_activations
+                                ].cpu()
+                            ),
+                            "activation_frame": torch.full(
+                                (
+                                    int(
+                                        all_receiver_activations.sum().item()
                                     ),
-                                    frame_index,
-                                    dtype=torch.long,
                                 ),
-                                "context": (
-                                    receiver_recovery_policy.last_context[
-                                        all_receiver_activations
-                                    ].cpu()
-                                ),
-                                "correction": (
-                                    receiver_recovery_policy.correction[
-                                        all_receiver_activations
-                                    ].cpu()
-                                ),
-                            }
-                        )
+                                frame_index,
+                                dtype=torch.long,
+                            ),
+                            "context": (
+                                receiver_recovery_policy.last_context[
+                                    all_receiver_activations
+                                ].cpu()
+                            ),
+                            "correction": (
+                                receiver_recovery_policy.correction[
+                                    all_receiver_activations
+                                ].cpu()
+                            ),
+                        }
+                        if (
+                            receiver_recovery_policy.attempt_actor_critic
+                            is not None
+                        ):
+                            receiver_event.update(
+                                {
+                                    "attempt_features": (
+                                        receiver_recovery_policy
+                                        .last_attempt_features[
+                                            all_receiver_activations
+                                        ]
+                                        .cpu()
+                                    ),
+                                    "attempt_action": (
+                                        receiver_recovery_policy
+                                        .last_attempt_action[
+                                            all_receiver_activations
+                                        ]
+                                        .cpu()
+                                    ),
+                                    "attempt_log_probability": (
+                                        receiver_recovery_policy
+                                        .last_attempt_log_probability[
+                                            all_receiver_activations
+                                        ]
+                                        .cpu()
+                                    ),
+                                    "attempt_value": (
+                                        receiver_recovery_policy
+                                        .last_attempt_value[
+                                            all_receiver_activations
+                                        ]
+                                        .cpu()
+                                    ),
+                                    "attempt_baseline_correction": (
+                                        receiver_recovery_policy
+                                        .last_attempt_baseline_correction[
+                                            all_receiver_activations
+                                        ]
+                                        .cpu()
+                                    ),
+                                    "attempt_baseline_advantage": (
+                                        receiver_recovery_policy
+                                        .last_attempt_baseline_advantage[
+                                            all_receiver_activations
+                                        ]
+                                        .cpu()
+                                    ),
+                                }
+                            )
+                        receiver_activation_events.append(receiver_event)
                     receiver_activation = (
                         all_receiver_activations
                         & ~first_receiver_activation_seen
@@ -7701,6 +7892,140 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "sha256": _sha256(dataset_path),
                 "samples": int(dataset_mask.sum().item()),
             }
+        receiver_attempt_dataset = None
+        if args.receiver_attempt_dataset:
+            if (
+                receiver_recovery_policy is None
+                or receiver_recovery_policy.attempt_actor_critic is None
+                or not receiver_activation_events
+            ):
+                env.close()
+                return _fail(
+                    "receiver attempt rollout has no actor activations"
+                )
+            attempt_environment = torch.cat(
+                [
+                    event["environment_index"]
+                    for event in receiver_activation_events
+                ]
+            ).long()
+            attempt_retry = torch.cat(
+                [
+                    event["retry_count"]
+                    for event in receiver_activation_events
+                ]
+            ).long()
+            selected_attempt = attempt_retry == 0
+            if not bool(selected_attempt.any()):
+                env.close()
+                return _fail(
+                    "receiver attempt rollout has no first-attempt decisions"
+                )
+            attempt_environment = attempt_environment[selected_attempt]
+            if torch.unique(attempt_environment).numel() != (
+                attempt_environment.numel()
+            ):
+                env.close()
+                return _fail(
+                    "receiver attempt rollout contains duplicate decisions"
+                )
+            attempt_dataset_path = (
+                Path(args.receiver_attempt_dataset)
+                .expanduser()
+                .resolve()
+            )
+            attempt_dataset_path.parent.mkdir(parents=True, exist_ok=True)
+
+            def _attempt_event_tensor(name: str) -> torch.Tensor:
+                return torch.cat(
+                    [
+                        event[name]
+                        for event in receiver_activation_events
+                    ]
+                )[selected_attempt]
+
+            attempt_checkpoint_path = (
+                Path(args.receiver_attempt_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            candidate_checkpoint_path = (
+                Path(args.receiver_candidate_value_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            torch.save(
+                {
+                    "schema_version": (
+                        "dranmar-receiver-attempt-ppo-rollout-1.0"
+                    ),
+                    "task": args.task,
+                    "seed": args.seed,
+                    "num_envs": env.unwrapped.num_envs,
+                    "num_frames": args.num_frames,
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "receiver_candidate_checkpoint_sha256": _sha256(
+                        candidate_checkpoint_path
+                    ),
+                    "receiver_attempt_checkpoint_sha256": _sha256(
+                        attempt_checkpoint_path
+                    ),
+                    "receiver_gate_step": receiver_recovery_policy.gate_step,
+                    "receiver_position_cap_m": (
+                        args.receiver_recovery_position_cap
+                    ),
+                    "receiver_orientation_cap_rad": math.radians(
+                        args.receiver_recovery_orientation_cap_deg
+                    ),
+                    "residual_position_cap_m": (
+                        args.receiver_attempt_position_cap
+                    ),
+                    "residual_orientation_cap_rad": math.radians(
+                        args.receiver_attempt_orientation_cap_deg
+                    ),
+                    "stochastic": args.receiver_attempt_stochastic,
+                    "environment_index": attempt_environment,
+                    "features": _attempt_event_tensor(
+                        "attempt_features"
+                    ).float(),
+                    "action": _attempt_event_tensor(
+                        "attempt_action"
+                    ).float(),
+                    "old_log_probability": _attempt_event_tensor(
+                        "attempt_log_probability"
+                    ).float(),
+                    "old_value": _attempt_event_tensor(
+                        "attempt_value"
+                    ).float(),
+                    "baseline_correction": _attempt_event_tensor(
+                        "attempt_baseline_correction"
+                    ).float(),
+                    "baseline_advantage": _attempt_event_tensor(
+                        "attempt_baseline_advantage"
+                    ).float(),
+                    "full_success": first_outcome_success.cpu()[
+                        attempt_environment
+                    ],
+                    "maximum_phase": first_handover_max_phase.cpu()[
+                        attempt_environment
+                    ],
+                    "termination_names": termination_names,
+                    "termination_flags": first_terminal_flags.cpu()[
+                        attempt_environment
+                    ],
+                },
+                attempt_dataset_path,
+            )
+            receiver_attempt_dataset = {
+                "path": str(attempt_dataset_path),
+                "sha256": _sha256(attempt_dataset_path),
+                "decisions": int(attempt_environment.numel()),
+                "successful": int(
+                    first_outcome_success.cpu()[
+                        attempt_environment
+                    ].sum().item()
+                ),
+            }
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -8144,6 +8469,39 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             ),
                         }
                         if args.receiver_candidate_value_checkpoint
+                        else None
+                    ),
+                    "attempt_ppo": (
+                        {
+                            "checkpoint": {
+                                "path": str(
+                                    Path(
+                                        args.receiver_attempt_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                                "sha256": _sha256(
+                                    Path(
+                                        args.receiver_attempt_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                            },
+                            "stochastic": (
+                                args.receiver_attempt_stochastic
+                            ),
+                            "residual_position_cap_m": (
+                                args.receiver_attempt_position_cap
+                            ),
+                            "residual_orientation_cap_deg": (
+                                args
+                                .receiver_attempt_orientation_cap_deg
+                            ),
+                            "rollout_dataset": receiver_attempt_dataset,
+                        }
+                        if args.receiver_attempt_checkpoint
                         else None
                     ),
                     "position_cap_m": (
@@ -8618,6 +8976,22 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--receiver_recovery_checkpoint")
     play.add_argument("--receiver_candidate_value_checkpoint")
+    play.add_argument("--receiver_attempt_checkpoint")
+    play.add_argument(
+        "--receiver_attempt_stochastic",
+        action="store_true",
+    )
+    play.add_argument("--receiver_attempt_dataset")
+    play.add_argument(
+        "--receiver_attempt_position_cap",
+        type=float,
+        default=0.001,
+    )
+    play.add_argument(
+        "--receiver_attempt_orientation_cap_deg",
+        type=float,
+        default=1.0,
+    )
     play.add_argument(
         "--receiver_candidate_local_refinement",
         action="store_true",

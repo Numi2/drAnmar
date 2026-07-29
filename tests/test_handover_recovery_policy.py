@@ -55,6 +55,7 @@ HandoverReceiverRecoveryPolicy = (
 )
 PickupRecoveryHead = RECOVERY_POLICY.PickupRecoveryHead
 ReceiverRecoveryHead = RECOVERY_POLICY.ReceiverRecoveryHead
+ReceiverAttemptActorCritic = RECOVERY_POLICY.ReceiverAttemptActorCritic
 
 
 class _FixedBasePolicy(nn.Module):
@@ -259,6 +260,37 @@ def test_receiver_recovery_head_contract_has_no_gripper_channel() -> None:
     output = head(torch.zeros(4, ReceiverRecoveryHead.input_dim))
     assert output.shape == (4, 6)
     assert torch.equal(output, torch.zeros_like(output))
+
+
+def test_receiver_attempt_actor_starts_as_exact_zero_residual() -> None:
+    actor_critic = ReceiverAttemptActorCritic()
+    features = torch.randn(32, ReceiverAttemptActorCritic.input_dim)
+
+    action, log_probability, value = actor_critic.act(
+        features,
+        stochastic=False,
+    )
+    evaluated_log_probability, entropy, evaluated_value = (
+        actor_critic.evaluate_actions(features, action)
+    )
+
+    assert torch.equal(action, torch.zeros_like(action))
+    assert action.shape == (32, 6)
+    assert torch.allclose(log_probability, evaluated_log_probability)
+    assert torch.allclose(value, evaluated_value)
+    assert entropy.shape == (32,)
+
+
+def test_receiver_attempt_stochastic_action_is_bounded() -> None:
+    actor_critic = ReceiverAttemptActorCritic(initial_std=0.25)
+    action, _, value = actor_critic.act(
+        torch.zeros(1024, ReceiverAttemptActorCritic.input_dim),
+        stochastic=True,
+    )
+
+    assert torch.all(action > -1.0)
+    assert torch.all(action < 1.0)
+    assert torch.all((0.0 <= value) & (value <= 1.0))
 
 
 def test_receiver_contact_loss_before_transfer_forces_full_reset() -> None:
