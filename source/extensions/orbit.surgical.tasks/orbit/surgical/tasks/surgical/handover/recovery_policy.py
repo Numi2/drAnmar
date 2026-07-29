@@ -223,6 +223,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self._fixed_correction: torch.Tensor | None = None
         self._fixed_correction_after_first_retry: torch.Tensor | None = None
         self._fixed_correction_delta: torch.Tensor | None = None
+        self._correction_candidates: torch.Tensor | None = None
         self.retry_state = torch.empty(0, dtype=torch.long)
         self.retry_count = torch.empty(0, dtype=torch.long)
         self.episode_step = torch.empty(0, dtype=torch.long)
@@ -354,6 +355,41 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self._fixed_correction_delta = correction_delta.detach().clone()
         self._fixed_correction = None
         self._fixed_correction_after_first_retry = None
+
+    def set_correction_candidates(
+        self,
+        candidates: torch.Tensor | None,
+    ) -> None:
+        """Snap learned cumulative corrections to proven physical choices."""
+
+        if candidates is None:
+            self._correction_candidates = None
+            return
+        if (
+            candidates.ndim != 2
+            or candidates.shape[0] < 2
+            or candidates.shape[1] != 6
+        ):
+            raise ValueError(
+                "pickup correction candidates must have shape [N>=2, 6]"
+            )
+        if bool(
+            (
+                candidates[:, :3].norm(dim=-1)
+                > self.position_cap_m + 1.0e-8
+            ).any()
+        ):
+            raise ValueError("pickup correction candidate exceeds position cap")
+        if bool(
+            (
+                candidates[:, 3:].norm(dim=-1)
+                > self.orientation_cap_rad + 1.0e-8
+            ).any()
+        ):
+            raise ValueError(
+                "pickup correction candidate exceeds orientation cap"
+            )
+        self._correction_candidates = candidates.detach().clone()
 
     def _select_role(
         self,
@@ -521,6 +557,35 @@ class HandoverPickupRecoveryPolicy(nn.Module):
                     "fixed correction delta batch does not match policy batch"
                 )
             proposed = proposed + fixed_delta
+        if self._correction_candidates is not None:
+            candidates = self._correction_candidates.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            normalized_proposed = torch.cat(
+                (
+                    proposed[:, :3] / self.position_cap_m,
+                    proposed[:, 3:] / self.orientation_cap_rad,
+                ),
+                dim=-1,
+            )
+            normalized_candidates = torch.cat(
+                (
+                    candidates[:, :3] / self.position_cap_m,
+                    candidates[:, 3:] / self.orientation_cap_rad,
+                ),
+                dim=-1,
+            )
+            nearest = torch.argmin(
+                (
+                    normalized_proposed.unsqueeze(1)
+                    - normalized_candidates.unsqueeze(0)
+                )
+                .square()
+                .sum(dim=-1),
+                dim=-1,
+            )
+            proposed = candidates[nearest]
         projected = torch.cat(
             (
                 _project_vector(proposed[:, :3], self.position_cap_m),

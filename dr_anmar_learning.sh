@@ -339,6 +339,11 @@ case "${command}" in
                 "--pickup_recovery_fixed_correction_after_first_retry=${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION_AFTER_FIRST_RETRY}"
             )
         fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_CORRECTION_CANDIDATES:-}" ]]; then
+            pickup_recovery_args+=(
+                "--pickup_recovery_correction_candidates=${DR_ANMAR_PICKUP_RECOVERY_CORRECTION_CANDIDATES}"
+            )
+        fi
         if [[ "${DR_ANMAR_PICKUP_RECOVERY_RANDOM_CORRECTIONS:-0}" == "1" ]]; then
             pickup_recovery_args+=(--pickup_recovery_random_corrections)
         fi
@@ -612,6 +617,11 @@ case "${command}" in
         if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION_AFTER_FIRST_RETRY:-}" ]]; then
             recovery_record_args+=(
                 "--pickup_recovery_fixed_correction_after_first_retry=${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION_AFTER_FIRST_RETRY}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_CORRECTION_CANDIDATES:-}" ]]; then
+            recovery_record_args+=(
+                "--pickup_recovery_correction_candidates=${DR_ANMAR_PICKUP_RECOVERY_CORRECTION_CANDIDATES}"
             )
         fi
         if [[ "${DR_ANMAR_RECEIVER_RECOVERY:-0}" == "1" ]]; then

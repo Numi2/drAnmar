@@ -3406,6 +3406,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "later pickup correction requires a first-retry correction"
         )
+    if args.pickup_recovery_correction_candidates:
+        if not args.pickup_recovery_checkpoint:
+            return _fail(
+                "pickup correction candidates require a learned checkpoint"
+            )
+        if (
+            args.pickup_recovery_fixed_correction
+            or args.pickup_recovery_random_corrections
+            or args.pickup_recovery_sobol_candidate is not None
+            or args.pickup_recovery_local_sobol_candidate is not None
+        ):
+            return _fail(
+                "learned pickup candidates cannot be combined with "
+                "fixed or Sobol corrections"
+            )
     if args.pickup_recovery_sobol_start < 0:
         return _fail("pickup recovery Sobol start must be non-negative")
     if args.pickup_recovery_sobol_start > 0 and (
@@ -4019,6 +4034,38 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             else:
                 randomized = candidate_corrections
             pickup_recovery_policy.set_fixed_correction(randomized)
+        if args.pickup_recovery_correction_candidates:
+            candidate_values = []
+            for encoded_candidate in (
+                args.pickup_recovery_correction_candidates.split(";")
+            ):
+                values = [
+                    float(value.strip())
+                    for value in encoded_candidate.split(",")
+                ]
+                if len(values) != 6:
+                    env.close()
+                    return _fail(
+                        "each learned pickup candidate requires "
+                        "dx,dy,dz,rx,ry,rz"
+                    )
+                candidate_values.append(values)
+            if len(candidate_values) < 2:
+                env.close()
+                return _fail(
+                    "learned pickup selection requires at least two candidates"
+                )
+            correction_candidates = torch.tensor(
+                candidate_values,
+                dtype=torch.float32,
+                device=env.unwrapped.device,
+            )
+            correction_candidates[:, 3:] = torch.deg2rad(
+                correction_candidates[:, 3:]
+            )
+            pickup_recovery_policy.set_correction_candidates(
+                correction_candidates
+            )
         pickup_recovery_policy.eval()
         policy = pickup_recovery_policy
     else:
@@ -7133,6 +7180,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "fixed_correction_after_first_retry": (
                         args.pickup_recovery_fixed_correction_after_first_retry
                     ),
+                    "correction_candidates": (
+                        args.pickup_recovery_correction_candidates
+                    ),
                     "randomized_corrections": (
                         args.pickup_recovery_random_corrections
                         or args.pickup_recovery_sobol_candidate is not None
@@ -7485,6 +7535,13 @@ def _parser() -> argparse.ArgumentParser:
         "--pickup_recovery_fixed_correction_after_first_retry",
         help=(
             "retry-two-and-later correction as "
+            "dx,dy,dz metres and rx,ry,rz degrees"
+        ),
+    )
+    play.add_argument(
+        "--pickup_recovery_correction_candidates",
+        help=(
+            "semicolon-separated learned correction choices; each choice is "
             "dx,dy,dz metres and rx,ry,rz degrees"
         ),
     )
