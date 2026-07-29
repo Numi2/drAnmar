@@ -6999,6 +6999,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "acquisition_timeout_steps": (
                         receiver_recovery_policy.acquisition_timeout_steps
                     ),
+                    "giver_custody_loss_steps": (
+                        receiver_recovery_policy.giver_custody_loss_steps
+                    ),
                     "fixed_correction": (
                         args.receiver_recovery_fixed_correction
                     ),
