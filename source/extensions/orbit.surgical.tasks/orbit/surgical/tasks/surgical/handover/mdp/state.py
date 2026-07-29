@@ -262,6 +262,14 @@ def handover_state(
     receiver_acquired = (
         (phase == 2) & giver_contact & receiver_contact
     )
+    if bool(
+        getattr(
+            env,
+            "_dr_anmar_receiver_acquisition_requires_live_contact",
+            False,
+        )
+    ):
+        receiver_acquired &= receiver_contact_now
     state["receiver_acquisition_offset_w"][receiver_acquired] = (
         object_pos_w[receiver_acquired]
         - receiver_position_w[receiver_acquired]

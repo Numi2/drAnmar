@@ -3662,6 +3662,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
         env_kwargs["render_mode"] = "rgb_array"
     env = gym.make(args.task, **env_kwargs)
+    env.unwrapped._dr_anmar_receiver_acquisition_requires_live_contact = (
+        args.receiver_acquisition_requires_live_contact
+    )
     if args.video:
         video_folder = Path(
             args.video_folder or Path(args.output_path).resolve() / "videos"
@@ -7640,6 +7643,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "task": args.task,
             "seed": args.seed,
             "episode_length_s": float(env_cfg.episode_length_s),
+            "receiver_acquisition_requires_live_contact": (
+                args.receiver_acquisition_requires_live_contact
+            ),
             "reset_rotation_randomization_deg": (
                 args.recovery_demo_rotation_deg
             ),
@@ -8563,6 +8569,10 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_secure_settle_steps",
         type=int,
         default=0,
+    )
+    play.add_argument(
+        "--receiver_acquisition_requires_live_contact",
+        action="store_true",
     )
     play.add_argument(
         "--receiver_retention_servo",
