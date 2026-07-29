@@ -27,7 +27,7 @@ def _sha256(path: Path) -> str:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Rank 65 receiver-recovery correction candidates"
+        description="Rank receiver-recovery correction candidates"
     )
     parser.add_argument("--dataset", action="append", required=True)
     parser.add_argument("--output", required=True)
@@ -205,8 +205,12 @@ def main(argv: list[str]) -> int:
     if features.shape[-1] != ReceiverCandidateValue.input_dim:
         raise ValueError("receiver candidate value feature shape drifted")
 
-    candidates = torch.empty((65, 6), dtype=torch.float32)
-    for candidate in range(65):
+    candidate_count = int(candidate_index.max().item()) + 1
+    candidates = torch.empty(
+        (candidate_count, 6),
+        dtype=torch.float32,
+    )
+    for candidate in range(candidate_count):
         values = correction[
             (candidate_index == candidate)
             & (sample_seed == args.candidate_seed)

@@ -1210,7 +1210,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 != (ReceiverCandidateValue.input_dim,)
                 or candidate_value_feature_std.shape
                 != (ReceiverCandidateValue.input_dim,)
-                or candidate_corrections.shape != (65, 6)
+                or candidate_corrections.ndim != 2
+                or candidate_corrections.shape[0] < 2
+                or candidate_corrections.shape[1] != 6
             ):
                 raise ValueError(
                     "receiver candidate value checkpoint shape drifted"
@@ -1663,6 +1665,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     device=raw.device,
                     dtype=raw.dtype,
                 )
+                candidate_count = candidates.shape[0]
                 normalized_candidates = torch.cat(
                     (
                         candidates[:, :3] / self.position_cap_m,
@@ -1672,7 +1675,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 )
                 candidate_features = torch.cat(
                     (
-                        active_context.unsqueeze(1).expand(-1, 65, -1),
+                        active_context.unsqueeze(1).expand(
+                            -1,
+                            candidate_count,
+                            -1,
+                        ),
                         normalized_candidates.unsqueeze(0).expand(
                             active_context.shape[0],
                             -1,
@@ -1693,7 +1700,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 )
                 candidate_scores = self.candidate_value(
                     normalized_features.reshape(-1, 35)
-                ).reshape(active_context.shape[0], 65)
+                ).reshape(active_context.shape[0], candidate_count)
                 best_score, best_index = candidate_scores.max(dim=-1)
                 active_indices = torch.nonzero(
                     activation,
