@@ -3620,6 +3620,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
+        or args.receiver_retry_giver_contact_centering
         or args.receiver_retention_contact_centering
         or args.receiver_retention_servo
     ) and not (
@@ -5123,6 +5124,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             receiver_custody_confirmation_steps=(
                 args.receiver_custody_confirmation_steps
+            ),
+            retry_giver_contact_centering=(
+                args.receiver_retry_giver_contact_centering
             ),
             receiver_retention_contact_centering=(
                 args.receiver_retention_contact_centering
@@ -9404,6 +9408,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .receiver_retention_contact_centering
                     ),
+                    "retry_giver_contact_centering": (
+                        receiver_recovery_policy
+                        .retry_giver_contact_centering
+                    ),
                     "retention_servo_gain": (
                         receiver_recovery_policy
                         .receiver_retention_servo_gain
@@ -9943,6 +9951,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--receiver_acquisition_requires_live_contact",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_retry_giver_contact_centering",
         action="store_true",
     )
     play.add_argument(
