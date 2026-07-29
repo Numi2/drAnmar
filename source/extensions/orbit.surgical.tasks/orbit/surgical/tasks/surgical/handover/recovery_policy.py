@@ -557,6 +557,52 @@ class HandoverPickupRecoveryPolicy(nn.Module):
                     "fixed correction delta batch does not match policy batch"
                 )
             proposed = proposed + fixed_delta
+        elif self.candidate_value is not None:
+            active_context = context[activation]
+            candidates = self.candidate_corrections.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            normalized_candidates = torch.cat(
+                (
+                    candidates[:, :3] / self.position_cap_m,
+                    candidates[:, 3:] / self.orientation_cap_rad,
+                ),
+                dim=-1,
+            )
+            candidate_features = torch.cat(
+                (
+                    active_context.unsqueeze(1).expand(-1, 65, -1),
+                    normalized_candidates.unsqueeze(0).expand(
+                        active_context.shape[0],
+                        -1,
+                        -1,
+                    ),
+                ),
+                dim=-1,
+            )
+            normalized_features = (
+                candidate_features
+                - self.candidate_value_feature_mean.to(
+                    device=raw.device,
+                    dtype=raw.dtype,
+                )
+            ) / self.candidate_value_feature_std.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            candidate_scores = self.candidate_value(
+                normalized_features.reshape(-1, 35)
+            ).reshape(active_context.shape[0], 65)
+            best_score, best_index = candidate_scores.max(dim=-1)
+            active_indices = torch.nonzero(
+                activation,
+                as_tuple=False,
+            ).squeeze(-1)
+            proposed = proposed.clone()
+            proposed[activation] = candidates[best_index]
+            self.selected_candidate_index[active_indices] = best_index
+            self.selected_candidate_score[active_indices] = best_score
         if self._correction_candidates is not None:
             candidates = self._correction_candidates.to(
                 device=raw.device,
@@ -1005,6 +1051,29 @@ class ReceiverRetryGate(nn.Module):
         return self.network(context).squeeze(-1)
 
 
+class ReceiverCandidateValue(nn.Module):
+    """Score a receiver correction candidate for one failed-grasp state."""
+
+    input_dim = 35
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(self.input_dim, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 64),
+            nn.SiLU(),
+            nn.Linear(64, 1),
+        )
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return self.network(features).squeeze(-1)
+
+
 class HandoverReceiverRecoveryPolicy(nn.Module):
     """Frozen pickup composite plus isolated receiver-acquisition retries."""
 
@@ -1023,6 +1092,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         stabilization_gate_feature_std: torch.Tensor | None = None,
         stabilization_gate_step: int = 100,
         stabilization_gate_threshold: float = 0.8,
+        candidate_value: ReceiverCandidateValue | None = None,
+        candidate_value_feature_mean: torch.Tensor | None = None,
+        candidate_value_feature_std: torch.Tensor | None = None,
+        candidate_corrections: torch.Tensor | None = None,
         enable_retries: bool = True,
         stabilize_giver_during_acquisition: bool = False,
         giver_stabilization_start_step: int = 0,
@@ -1141,6 +1214,54 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             "stabilization_gate_feature_std",
             stabilization_gate_feature_std.detach().clone(),
         )
+        self.candidate_value = candidate_value
+        if candidate_value is None:
+            if (
+                candidate_value_feature_mean is not None
+                or candidate_value_feature_std is not None
+                or candidate_corrections is not None
+            ):
+                raise ValueError(
+                    "receiver candidate tensors require a value model"
+                )
+            candidate_value_feature_mean = torch.empty(0)
+            candidate_value_feature_std = torch.empty(0)
+            candidate_corrections = torch.empty((0, 6))
+        else:
+            if (
+                candidate_value_feature_mean is None
+                or candidate_value_feature_std is None
+                or candidate_corrections is None
+                or candidate_value_feature_mean.shape
+                != (ReceiverCandidateValue.input_dim,)
+                or candidate_value_feature_std.shape
+                != (ReceiverCandidateValue.input_dim,)
+                or candidate_corrections.shape != (65, 6)
+            ):
+                raise ValueError(
+                    "receiver candidate value checkpoint shape drifted"
+                )
+            if bool(
+                torch.any(candidate_value_feature_std <= 0.0)
+            ):
+                raise ValueError(
+                    "receiver candidate feature standard deviations "
+                    "must be positive"
+                )
+            for parameter in candidate_value.parameters():
+                parameter.requires_grad_(False)
+        self.register_buffer(
+            "candidate_value_feature_mean",
+            candidate_value_feature_mean.detach().clone(),
+        )
+        self.register_buffer(
+            "candidate_value_feature_std",
+            candidate_value_feature_std.detach().clone(),
+        )
+        self.register_buffer(
+            "candidate_corrections",
+            candidate_corrections.detach().clone(),
+        )
         self.register_buffer(
             "canonical_grasp_offset",
             torch.tensor(
@@ -1236,6 +1357,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dtype=torch.bool,
         )
         self.stabilization_gate_probability = torch.empty(0)
+        self.selected_candidate_index = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.selected_candidate_score = torch.empty(0)
 
     def _initialize_state(self, raw: torch.Tensor) -> None:
         batch_size = raw.shape[0]
@@ -1321,6 +1447,17 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.first_attempt_failed
         )
         self.stabilization_gate_probability = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
+        )
+        self.selected_candidate_index = torch.full(
+            (batch_size,),
+            -1,
+            dtype=torch.long,
+            device=device,
+        )
+        self.selected_candidate_score = torch.zeros(
             batch_size,
             dtype=dtype,
             device=device,
@@ -2089,6 +2226,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.stabilization_gate_evaluated[mask] = False
         self.stabilization_gate_selected[mask] = False
         self.stabilization_gate_probability[mask] = 0.0
+        self.selected_candidate_index[mask] = -1
+        self.selected_candidate_score[mask] = 0.0
 
     def reset(
         self,

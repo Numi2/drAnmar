@@ -3548,6 +3548,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_recovery_checkpoint
         or args.receiver_retry_gate_checkpoint
         or args.receiver_stabilization_gate_checkpoint
+        or args.receiver_candidate_value_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
     ) and not (
@@ -4115,6 +4116,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_recovery_checkpoint
         or args.receiver_retry_gate_checkpoint
         or args.receiver_stabilization_gate_checkpoint
+        or args.receiver_candidate_value_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
         or args.receiver_recovery_fixed_correction
@@ -4124,6 +4126,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverReceiverRecoveryPolicy,
+            ReceiverCandidateValue,
             ReceiverRecoveryHead,
             ReceiverRetryGate,
         )
@@ -4137,6 +4140,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_stabilization_gate_mean = None
         receiver_stabilization_gate_std = None
         receiver_stabilization_gate_step = 100
+        receiver_candidate_value = None
+        receiver_candidate_value_mean = None
+        receiver_candidate_value_std = None
+        receiver_candidate_corrections = None
         if args.receiver_recovery_checkpoint:
             receiver_checkpoint = (
                 Path(args.receiver_recovery_checkpoint)
@@ -4396,6 +4403,111 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 device=env.unwrapped.device,
                 dtype=torch.float32,
             )
+        if args.receiver_candidate_value_checkpoint:
+            candidate_checkpoint = (
+                Path(args.receiver_candidate_value_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            if not candidate_checkpoint.is_file():
+                env.close()
+                return _fail(
+                    "receiver candidate value checkpoint not found: "
+                    f"{candidate_checkpoint}"
+                )
+            candidate_payload = torch.load(
+                candidate_checkpoint,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            if (
+                not isinstance(candidate_payload, dict)
+                or candidate_payload.get("schema_version")
+                != "dranmar-receiver-candidate-value-1.0"
+                or "receiver_candidate_value" not in candidate_payload
+                or "feature_mean" not in candidate_payload
+                or "feature_std" not in candidate_payload
+                or "candidate_corrections" not in candidate_payload
+            ):
+                env.close()
+                return _fail(
+                    "unsupported receiver candidate value checkpoint"
+                )
+            if (
+                candidate_payload.get("base_checkpoint_sha256")
+                != _sha256(checkpoint)
+            ):
+                env.close()
+                return _fail(
+                    "receiver candidate value was trained against "
+                    "another base policy"
+                )
+            expected_pickup_hash = (
+                _sha256(
+                    Path(args.pickup_recovery_checkpoint)
+                    .expanduser()
+                    .resolve()
+                )
+                if args.pickup_recovery_checkpoint
+                else None
+            )
+            if (
+                candidate_payload.get(
+                    "pickup_recovery_checkpoint_sha256"
+                )
+                != expected_pickup_hash
+            ):
+                env.close()
+                return _fail(
+                    "receiver candidate value was trained against "
+                    "another pickup-recovery policy"
+                )
+            if (
+                not math.isclose(
+                    float(candidate_payload["position_cap_m"]),
+                    args.receiver_recovery_position_cap,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                )
+                or not math.isclose(
+                    float(candidate_payload["orientation_cap_rad"]),
+                    math.radians(
+                        args.receiver_recovery_orientation_cap_deg
+                    ),
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                )
+            ):
+                env.close()
+                return _fail(
+                    "receiver candidate value correction caps drifted"
+                )
+            receiver_candidate_value = ReceiverCandidateValue().to(
+                env.unwrapped.device
+            )
+            receiver_candidate_value.load_state_dict(
+                candidate_payload["receiver_candidate_value"],
+                strict=True,
+            )
+            receiver_candidate_value.eval()
+            receiver_candidate_value_mean = candidate_payload[
+                "feature_mean"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_candidate_value_std = candidate_payload[
+                "feature_std"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_candidate_corrections = candidate_payload[
+                "candidate_corrections"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
         receiver_base_policy = (
             pickup_recovery_policy
             if pickup_recovery_policy is not None
@@ -4420,6 +4532,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             stabilization_gate_threshold=(
                 args.receiver_stabilization_gate_threshold
             ),
+            candidate_value=receiver_candidate_value,
+            candidate_value_feature_mean=receiver_candidate_value_mean,
+            candidate_value_feature_std=receiver_candidate_value_std,
+            candidate_corrections=receiver_candidate_corrections,
             enable_retries=not args.receiver_disable_retries,
             stabilize_giver_during_acquisition=(
                 args.receiver_stabilize_giver_during_acquisition
@@ -4769,6 +4885,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         torch.zeros(
             env.unwrapped.num_envs,
             dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_selected_candidate_index = (
+        torch.full(
+            (env.unwrapped.num_envs,),
+            -1,
+            dtype=torch.long,
             device=env.unwrapped.device,
         )
         if receiver_recovery_policy is not None
@@ -5514,6 +5640,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_receiver_stabilization_gate_probability
                         is not None
                     )
+                    assert (
+                        first_receiver_selected_candidate_index
+                        is not None
+                    )
                     assert first_handover_history is not None
                     receiver_gate_observed = (
                         receiver_recovery_policy.gate_evaluated
@@ -5550,6 +5680,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .stabilization_gate_selected
                         & was_first_unresolved
                     )
+                    receiver_candidate_selected = (
+                        receiver_recovery_policy
+                        .selected_candidate_index
+                        >= 0
+                    ) & (
+                        first_receiver_selected_candidate_index < 0
+                    ) & was_first_unresolved
+                    first_receiver_selected_candidate_index[
+                        receiver_candidate_selected
+                    ] = receiver_recovery_policy.selected_candidate_index[
+                        receiver_candidate_selected
+                    ]
                     first_receiver_approach = (
                         receiver_recovery_policy.acquisition_started
                         & (receiver_recovery_policy.retry_count == 0)
@@ -7684,6 +7826,44 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         if args.receiver_recovery_checkpoint
                         else None
                     ),
+                    "candidate_value_checkpoint": (
+                        {
+                            "path": str(
+                                Path(
+                                    args
+                                    .receiver_candidate_value_checkpoint
+                                )
+                                .expanduser()
+                                .resolve()
+                            ),
+                            "sha256": _sha256(
+                                Path(
+                                    args
+                                    .receiver_candidate_value_checkpoint
+                                )
+                                .expanduser()
+                                .resolve()
+                            ),
+                            "selected_candidate_histogram": {
+                                str(candidate): int(
+                                    (
+                                        first_receiver_selected_candidate_index
+                                        == candidate
+                                    )
+                                    .sum()
+                                    .item()
+                                )
+                                for candidate in torch.unique(
+                                    first_receiver_selected_candidate_index[
+                                        first_receiver_selected_candidate_index
+                                        >= 0
+                                    ]
+                                ).tolist()
+                            },
+                        }
+                        if args.receiver_candidate_value_checkpoint
+                        else None
+                    ),
                     "position_cap_m": (
                         args.receiver_recovery_position_cap
                     ),
@@ -8118,6 +8298,7 @@ def _parser() -> argparse.ArgumentParser:
         help="enable the isolated post-reset receiver recovery head",
     )
     play.add_argument("--receiver_recovery_checkpoint")
+    play.add_argument("--receiver_candidate_value_checkpoint")
     play.add_argument(
         "--receiver_disable_retries",
         action="store_true",
