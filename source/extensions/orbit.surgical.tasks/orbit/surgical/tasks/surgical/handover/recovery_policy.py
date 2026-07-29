@@ -2254,12 +2254,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & (phase == 2)
             & self.acquisition_started
         )
-        receiver_settle_contact = (
-            (phase == 3)
-            & bilateral_live
-        )
+        receiver_settle_phase = phase == 3
         self.receiver_secure_settle_dwell[:] = torch.where(
-            receiver_settle_contact,
+            receiver_settle_phase,
             self.receiver_secure_settle_dwell + 1,
             torch.zeros_like(self.receiver_secure_settle_dwell),
         )
