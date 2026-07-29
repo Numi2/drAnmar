@@ -4607,6 +4607,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "first_receiver_approach_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
             "minimum_giver_contact_force_at_first_lift_n": torch.full(
                 (env.unwrapped.num_envs,),
                 torch.nan,
@@ -5153,6 +5159,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert first_receiver_activation_seen is not None
                     assert first_receiver_activation_frame is not None
                     assert first_receiver_peak_jaw_force_n is not None
+                    assert first_handover_history is not None
+                    first_receiver_approach = (
+                        receiver_recovery_policy.acquisition_started
+                        & (receiver_recovery_policy.retry_count == 0)
+                        & (
+                            first_handover_history[
+                                "first_receiver_approach_frame"
+                            ]
+                            < 0
+                        )
+                        & was_first_unresolved
+                    )
+                    first_handover_history[
+                        "first_receiver_approach_frame"
+                    ][first_receiver_approach] = frame_index
                     all_receiver_activations = (
                         receiver_recovery_policy.last_activation_mask
                         & was_first_unresolved
@@ -5852,9 +5873,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "first_receiver_acquisition_frame"
                 ][mask]
                 receiver_acquired = first_receiver_acquisition_frame >= 0
+                first_receiver_approach_frame = first_handover_history[
+                    "first_receiver_approach_frame"
+                ][mask]
+                receiver_approach_measured = (
+                    receiver_acquired
+                    & (first_receiver_approach_frame >= 0)
+                )
                 lift_to_receiver_acquisition_steps = (
                     first_receiver_acquisition_frame[receiver_acquired]
                     - first_lift_frame[receiver_acquired]
+                )
+                approach_to_receiver_acquisition_steps = (
+                    first_receiver_acquisition_frame[
+                        receiver_approach_measured
+                    ]
+                    - first_receiver_approach_frame[
+                        receiver_approach_measured
+                    ]
                 )
                 minimum_lift_contact_force = first_handover_history[
                     "minimum_giver_contact_force_at_first_lift_n"
@@ -6007,6 +6043,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "lift_to_receiver_acquisition_steps": (
                         scalar_quantiles(
                             lift_to_receiver_acquisition_steps
+                        )
+                    ),
+                    "approach_to_receiver_acquisition_steps": (
+                        scalar_quantiles(
+                            approach_to_receiver_acquisition_steps
                         )
                     ),
                     "minimum_giver_contact_force_at_first_lift_n": (
