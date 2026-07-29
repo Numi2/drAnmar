@@ -58,6 +58,17 @@
     "giver_stabilization": false,
     "secure_settle_steps": 0
   },
+  "promotion_smoke": {
+    "kind": "real_isaac_physx_composite_load",
+    "controller_commit": "d90b6fc247cd62b789f2c0acd12af10cf8b65523",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "environments": 1,
+    "control_frames": 600,
+    "episode_completed": false,
+    "purpose": "Verify the promoted launcher loads the pinned composite and exact runtime configuration on the GPU; performance evidence is the 1800-episode development cohort below.",
+    "evidence_path": "/home/numi/dr_anmar/repro/recovery80/promoted-launcher-smoke600-d90b6fc/dranmar_play_20260729T103213Z.json",
+    "evidence_sha256": "c1baa111658a198a0c4a7d431402060195e0f5d811dab7f5239b50e9b385763e"
+  },
   "development_evidence": {
     "environments_per_seed": 600,
     "seeds": {
