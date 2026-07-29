@@ -221,6 +221,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
 
         self._batch_size = 0
         self._fixed_correction: torch.Tensor | None = None
+        self._fixed_correction_after_first_retry: torch.Tensor | None = None
         self._fixed_correction_delta: torch.Tensor | None = None
         self.retry_state = torch.empty(0, dtype=torch.long)
         self.retry_count = torch.empty(0, dtype=torch.long)
@@ -309,11 +310,32 @@ class HandoverPickupRecoveryPolicy(nn.Module):
 
         if correction is None:
             self._fixed_correction = None
+            self._fixed_correction_after_first_retry = None
             return
         if correction.ndim not in {1, 2} or correction.shape[-1] != 6:
             raise ValueError("fixed pickup recovery correction must end in 6")
         self._fixed_correction = correction.detach().clone()
+        self._fixed_correction_after_first_retry = None
         self._fixed_correction_delta = None
+
+    def set_fixed_correction_after_first_retry(
+        self,
+        correction: torch.Tensor | None,
+    ) -> None:
+        """Escalate to a second fixed correction on retry two and later."""
+
+        if correction is None:
+            self._fixed_correction_after_first_retry = None
+            return
+        if self._fixed_correction is None:
+            raise ValueError(
+                "later pickup correction requires a first-retry correction"
+            )
+        if correction.ndim not in {1, 2} or correction.shape[-1] != 6:
+            raise ValueError("later pickup recovery correction must end in 6")
+        self._fixed_correction_after_first_retry = (
+            correction.detach().clone()
+        )
 
     def set_fixed_correction_delta(
         self,
@@ -331,6 +353,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             raise ValueError("fixed pickup correction delta must end in 6")
         self._fixed_correction_delta = correction_delta.detach().clone()
         self._fixed_correction = None
+        self._fixed_correction_after_first_retry = None
 
     def _select_role(
         self,
@@ -468,6 +491,22 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             if fixed.shape[0] != raw.shape[0]:
                 raise ValueError(
                     "fixed correction batch does not match policy batch"
+                )
+            if self._fixed_correction_after_first_retry is not None:
+                later = self._fixed_correction_after_first_retry.to(
+                    device=raw.device,
+                    dtype=raw.dtype,
+                )
+                if later.ndim == 1:
+                    later = later.expand(raw.shape[0], -1)
+                if later.shape[0] != raw.shape[0]:
+                    raise ValueError(
+                        "later correction batch does not match policy batch"
+                    )
+                fixed = torch.where(
+                    (self.retry_count > 1).unsqueeze(-1),
+                    later,
+                    fixed,
                 )
             proposed = fixed
         elif self._fixed_correction_delta is not None:

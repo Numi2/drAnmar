@@ -3399,6 +3399,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
     if args.pickup_recovery_sweep_replicas < 1:
         return _fail("pickup recovery sweep replicas must be positive")
+    if (
+        args.pickup_recovery_fixed_correction_after_first_retry
+        and not args.pickup_recovery_fixed_correction
+    ):
+        return _fail(
+            "later pickup correction requires a first-retry correction"
+        )
     if args.pickup_recovery_sobol_start < 0:
         return _fail("pickup recovery Sobol start must be non-negative")
     if args.pickup_recovery_sobol_start > 0 and (
@@ -3868,6 +3875,30 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             correction[3:] = torch.deg2rad(correction[3:])
             pickup_recovery_policy.set_fixed_correction(correction)
+            if args.pickup_recovery_fixed_correction_after_first_retry:
+                later_values = [
+                    float(value.strip())
+                    for value in (
+                        args.pickup_recovery_fixed_correction_after_first_retry
+                    ).split(",")
+                ]
+                if len(later_values) != 6:
+                    env.close()
+                    return _fail(
+                        "later pickup recovery correction requires "
+                        "dx,dy,dz,rx,ry,rz"
+                    )
+                later_correction = torch.tensor(
+                    later_values,
+                    dtype=torch.float32,
+                    device=env.unwrapped.device,
+                )
+                later_correction[3:] = torch.deg2rad(
+                    later_correction[3:]
+                )
+                pickup_recovery_policy.set_fixed_correction_after_first_retry(
+                    later_correction
+                )
         elif args.pickup_recovery_local_sobol_candidate is not None:
             if not (
                 0.0
@@ -7099,6 +7130,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "fixed_correction": (
                         args.pickup_recovery_fixed_correction
                     ),
+                    "fixed_correction_after_first_retry": (
+                        args.pickup_recovery_fixed_correction_after_first_retry
+                    ),
                     "randomized_corrections": (
                         args.pickup_recovery_random_corrections
                         or args.pickup_recovery_sobol_candidate is not None
@@ -7444,6 +7478,13 @@ def _parser() -> argparse.ArgumentParser:
         "--pickup_recovery_fixed_correction",
         help=(
             "controlled retry correction as "
+            "dx,dy,dz metres and rx,ry,rz degrees"
+        ),
+    )
+    play.add_argument(
+        "--pickup_recovery_fixed_correction_after_first_retry",
+        help=(
+            "retry-two-and-later correction as "
             "dx,dy,dz metres and rx,ry,rz degrees"
         ),
     )
