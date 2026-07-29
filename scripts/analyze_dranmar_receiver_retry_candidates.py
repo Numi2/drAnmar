@@ -266,6 +266,12 @@ def _main(args: argparse.Namespace) -> int:
         "complete_environment_indices": complete_environments,
         "oracle_retained_successes": int(oracle.sum()),
         "oracle_retained_rate": float(oracle.float().mean()),
+        "portfolio_justified": bool(oracle.any()),
+        "decision": (
+            "retry_portfolio_supported_by_paired_retained_outcomes"
+            if bool(oracle.any())
+            else "do_not_build_retry_portfolio_zero_paired_retained_oracle"
+        ),
         "maximum_context_drift": max(context_drift),
         "greedy_order": order,
         "greedy_trace": trace,
@@ -301,6 +307,11 @@ def _main(args: argparse.Namespace) -> int:
         ),
     }
     if args.portfolio_output:
+        if not bool(oracle.any()):
+            raise ValueError(
+                "refusing to build a retry portfolio from zero paired "
+                "retained-success coverage"
+            )
         output = Path(args.portfolio_output).expanduser().resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
         portfolio = {
