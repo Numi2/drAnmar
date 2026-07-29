@@ -422,6 +422,18 @@ case "${command}" in
                 --receiver_recovery_random_corrections
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SWEEP_REPLICAS:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_sweep_replicas
+                "${DR_ANMAR_RECEIVER_RECOVERY_SWEEP_REPLICAS}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_START:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_sobol_start
+                "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_START}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_CANDIDATE:-}" ]]; then
             pickup_recovery_args+=(
                 --receiver_recovery_sobol_candidate

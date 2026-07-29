@@ -3464,10 +3464,63 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             return _fail(
                 "receiver recovery Sobol candidate must be in [0, 64]"
             )
+        if args.receiver_recovery_sweep_replicas != 1:
+            return _fail(
+                "replayed receiver Sobol candidates and grouped replicas "
+                "are exclusive"
+            )
         if not args.receiver_recovery_sweep_id:
             return _fail(
                 "replayed receiver Sobol candidates require a stable sweep id"
             )
+    if args.receiver_recovery_sweep_replicas < 1:
+        return _fail("receiver recovery sweep replicas must be positive")
+    if args.receiver_recovery_sobol_start < 0:
+        return _fail("receiver recovery Sobol start must be non-negative")
+    if args.receiver_recovery_sobol_start > 0 and (
+        args.receiver_recovery_sweep_replicas <= 1
+        or not args.receiver_recovery_random_corrections
+    ):
+        return _fail(
+            "receiver recovery Sobol start requires a grouped randomized sweep"
+        )
+    if (
+        args.receiver_recovery_sobol_start
+        + args.receiver_recovery_sweep_replicas
+        > 65
+    ):
+        return _fail(
+            "grouped receiver recovery Sobol block must stay inside [0, 64]"
+        )
+    if args.receiver_recovery_sweep_replicas > 1:
+        if not args.receiver_recovery_random_corrections:
+            return _fail(
+                "grouped receiver recovery sweeps require randomized "
+                "corrections"
+            )
+        if args.num_envs % args.receiver_recovery_sweep_replicas != 0:
+            return _fail(
+                "receiver recovery sweep replicas must divide num_envs"
+            )
+        if (
+            args.pickup_recovery_sweep_replicas > 1
+            and args.pickup_recovery_sweep_replicas
+            != args.receiver_recovery_sweep_replicas
+        ):
+            return _fail(
+                "simultaneous grouped pickup and receiver sweeps must use "
+                "the same replica count"
+            )
+        from orbit.surgical.tasks.surgical.handover.mdp import (
+            reset_root_state_uniform_grouped,
+        )
+
+        env_cfg.events.reset_object_position.func = (
+            reset_root_state_uniform_grouped
+        )
+        env_cfg.events.reset_object_position.params["replicas"] = (
+            args.receiver_recovery_sweep_replicas
+        )
     if args.receiver_recovery and not (
         1
         <= args.receiver_recovery_acquisition_timeout_steps
@@ -4161,6 +4214,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     dim=0,
                 )
+            elif args.receiver_recovery_sweep_replicas > 1:
+                sobol_candidates = (
+                    2.0 * sobol.draw(64) - 1.0
+                ).to(env.unwrapped.device)
+                all_candidates = torch.cat(
+                    (
+                        torch.zeros_like(sobol_candidates[:1]),
+                        sobol_candidates[1:],
+                        sobol_candidates[:1],
+                    ),
+                    dim=0,
+                )
+                start = args.receiver_recovery_sobol_start
+                normalized = all_candidates[
+                    start : start
+                    + args.receiver_recovery_sweep_replicas
+                ]
             else:
                 normalized = (
                     2.0 * sobol.draw(env.unwrapped.num_envs) - 1.0
@@ -4176,11 +4246,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 ),
                 dim=-1,
             )
-            candidate_corrections[0] = 0.0
+            if args.receiver_recovery_sobol_start == 0:
+                candidate_corrections[0] = 0.0
             if args.receiver_recovery_sobol_candidate is not None:
                 randomized = candidate_corrections[
                     args.receiver_recovery_sobol_candidate
                 ].expand(env.unwrapped.num_envs, -1)
+            elif args.receiver_recovery_sweep_replicas > 1:
+                randomized = candidate_corrections.repeat(
+                    env.unwrapped.num_envs
+                    // args.receiver_recovery_sweep_replicas,
+                    1,
+                )
             else:
                 randomized = candidate_corrections
             receiver_recovery_policy.set_fixed_correction(randomized)
@@ -6353,6 +6430,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.long,
                 device=env.unwrapped.device,
             )
+            receiver_sweep_replicas = (
+                args.receiver_recovery_sweep_replicas
+            )
             receiver_safety_names = {
                 "excessive_object_force",
                 "needle_dropped_after_pickup",
@@ -6435,11 +6515,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         attempt_environment,
                         args.receiver_recovery_sobol_candidate,
                     )
+                elif receiver_sweep_replicas > 1:
+                    attempt_candidate = (
+                        attempt_environment % receiver_sweep_replicas
+                    ) + args.receiver_recovery_sobol_start
                 else:
                     attempt_candidate = torch.zeros_like(
                         attempt_environment
                     )
-                attempt_state = attempt_environment.clone()
+                attempt_state = (
+                    attempt_environment // receiver_sweep_replicas
+                )
                 later_attempt = attempt_retry > 1
                 attempt_state[later_attempt] = (
                     attempt_environment[later_attempt]
@@ -6510,7 +6596,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             torch.save(
                 {
                     "schema_version": (
-                        "dranmar-receiver-recovery-dataset-1.1"
+                        "dranmar-receiver-recovery-dataset-1.2"
                     ),
                     "task": args.task,
                     "seed": args.seed,
@@ -6533,6 +6619,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "orientation_cap_rad": math.radians(
                         args.receiver_recovery_orientation_cap_deg
                     ),
+                    "sweep_replicas": receiver_sweep_replicas,
+                    "sobol_start": args.receiver_recovery_sobol_start,
                     "sweep_id": args.receiver_recovery_sweep_id,
                     "search_mode": (
                         "dagger_local"
@@ -6542,6 +6630,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                         else "global_sobol"
                         if args.receiver_recovery_sobol_candidate is not None
+                        else "grouped_approximate"
+                        if receiver_sweep_replicas > 1
                         else "policy"
                     ),
                     "local_position_radius_m": (
@@ -6566,9 +6656,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "environment_index": environment_index[
                         dataset_mask
                     ].cpu(),
-                    "state_index": environment_index[
-                        dataset_mask
-                    ].cpu(),
+                    "state_index": (
+                        environment_index[dataset_mask]
+                        // receiver_sweep_replicas
+                    ).cpu(),
                     "candidate_index": (
                         torch.full_like(
                             environment_index[dataset_mask],
@@ -6589,9 +6680,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 is not None
                             )
                         )
-                        else torch.zeros_like(
+                        else (
                             environment_index[dataset_mask]
-                        )
+                            % receiver_sweep_replicas
+                        ) + args.receiver_recovery_sobol_start
                     ).cpu(),
                     "context": first_receiver_context[
                         dataset_mask
@@ -7021,6 +7113,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             is not None
                         )
                     ),
+                    "sweep_replicas": (
+                        args.receiver_recovery_sweep_replicas
+                    ),
+                    "sobol_start": args.receiver_recovery_sobol_start,
                     "sweep_id": args.receiver_recovery_sweep_id,
                     "sobol_candidate": (
                         args.receiver_recovery_sobol_candidate
@@ -7299,6 +7395,16 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--receiver_recovery_random_corrections",
         action="store_true",
+    )
+    play.add_argument(
+        "--receiver_recovery_sweep_replicas",
+        type=int,
+        default=1,
+    )
+    play.add_argument(
+        "--receiver_recovery_sobol_start",
+        type=int,
+        default=0,
     )
     play.add_argument("--receiver_recovery_sobol_candidate", type=int)
     play.add_argument("--receiver_recovery_local_sobol_candidate", type=int)
