@@ -982,6 +982,29 @@ class ReceiverRecoveryHead(PickupRecoveryHead):
     """Separate one-shot receiver retry head with no gripper authority."""
 
 
+class ReceiverRetryGate(nn.Module):
+    """Predict whether the canonical receiver approach needs an early retry."""
+
+    input_dim = 105
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(self.input_dim, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 64),
+            nn.LayerNorm(64),
+            nn.SiLU(),
+            nn.Linear(64, 32),
+            nn.SiLU(),
+            nn.Linear(32, 1),
+        )
+
+    def forward(self, context: torch.Tensor) -> torch.Tensor:
+        return self.network(context).squeeze(-1)
+
+
 class HandoverReceiverRecoveryPolicy(nn.Module):
     """Frozen pickup composite plus isolated receiver-acquisition retries."""
 
