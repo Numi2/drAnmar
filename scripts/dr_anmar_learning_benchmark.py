@@ -3504,6 +3504,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         and args.receiver_recovery_sobol_seed < 0
     ):
         return _fail("receiver recovery Sobol seed must be non-negative")
+    if (
+        args.receiver_recovery_local_sobol_seed is not None
+        and args.receiver_recovery_local_sobol_seed < 0
+    ):
+        return _fail(
+            "receiver recovery local Sobol seed must be non-negative"
+        )
     if args.receiver_recovery_sobol_start > 0 and (
         args.receiver_recovery_sweep_replicas <= 1
         or not args.receiver_recovery_random_corrections
@@ -4606,10 +4613,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.float32,
             )
             if args.receiver_candidate_local_refinement:
+                receiver_local_sobol_seed = (
+                    args.receiver_recovery_local_sobol_seed
+                    if args.receiver_recovery_local_sobol_seed is not None
+                    else args.seed + 19
+                )
                 local_sobol = torch.quasirandom.SobolEngine(
                     dimension=6,
                     scramble=True,
-                    seed=args.seed + 19,
+                    seed=receiver_local_sobol_seed,
                 )
                 local_normalized = torch.cat(
                     (
@@ -4741,10 +4753,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 return _fail(
                     "local receiver orientation radius must be inside the cap"
                 )
+            receiver_local_sobol_seed = (
+                args.receiver_recovery_local_sobol_seed
+                if args.receiver_recovery_local_sobol_seed is not None
+                else args.seed + 19
+            )
             local_sobol = torch.quasirandom.SobolEngine(
                 dimension=6,
                 scramble=True,
-                seed=args.seed + 19,
+                seed=receiver_local_sobol_seed,
             )
             local_normalized = torch.cat(
                 (
@@ -7580,6 +7597,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                         else None
                     ),
+                    "local_sobol_seed": (
+                        args.receiver_recovery_local_sobol_seed
+                        if args.receiver_recovery_local_sobol_seed
+                        is not None
+                        else args.seed + 19
+                    ),
                     "local_orientation_radius_rad": (
                         math.radians(
                             args.receiver_recovery_local_orientation_radius_deg
@@ -8327,6 +8350,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         args.receiver_recovery_local_sobol_candidate
                     ),
                     "local_sweep": args.receiver_recovery_local_sweep,
+                    "local_sobol_seed": (
+                        args.receiver_recovery_local_sobol_seed
+                        if args.receiver_recovery_local_sobol_seed
+                        is not None
+                        else args.seed + 19
+                    ),
                     "local_position_radius_m": (
                         args.receiver_recovery_local_position_radius
                     ),
@@ -8701,6 +8730,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--receiver_recovery_sobol_seed", type=int)
     play.add_argument("--receiver_recovery_sobol_candidate", type=int)
     play.add_argument("--receiver_recovery_local_sobol_candidate", type=int)
+    play.add_argument("--receiver_recovery_local_sobol_seed", type=int)
     play.add_argument(
         "--receiver_recovery_local_sweep",
         action="store_true",
