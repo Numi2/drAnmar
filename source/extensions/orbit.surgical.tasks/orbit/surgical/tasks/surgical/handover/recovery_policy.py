@@ -3538,6 +3538,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         retention_contact_centering_active = (
             self.receiver_retention_contact_centering
             & (phase == 3)
+            & (self.retry_count == 0)
             & ~giver_any_contact
             & any_contact
         )
