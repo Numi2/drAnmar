@@ -1663,9 +1663,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             active_custody_verification
         )
         self.active_custody_verification_steps = 3
-        self.normalized_active_custody_force_imbalance_limit = (
-            2.0 * self.normalized_contact_threshold
-        )
         self.receiver_retention_contact_centering = bool(
             receiver_retention_contact_centering
         )
@@ -1692,6 +1689,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.orientation_action_limit = 0.6
         self.contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
+        self.normalized_active_custody_force_imbalance_limit = (
+            2.0 * self.normalized_contact_threshold
+        )
         # A single qualified contact frame is not enough to restart motion.
         # Require three consecutive bilateral giver frames at the task's
         # physical 0.01 N qualification threshold. The screen showed that a
