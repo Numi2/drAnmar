@@ -3243,9 +3243,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.giver_degradation_dwell + 1,
             torch.zeros_like(self.giver_degradation_dwell),
         )
-        # The retry must begin on the first physical jaw-contact loss. Waiting
-        # three frames left too few episodes with recoverable giver custody.
-        giver_custody_degrading = giver_degradation_observed
+        # A one-frame giver contact flicker occurs in otherwise successful
+        # transfers. Latch only persistent physical custody degradation.
+        giver_custody_degrading = (
+            self.giver_degradation_dwell >= 3
+        )
         if self.enable_retries:
             failure = (
                 failed_close
