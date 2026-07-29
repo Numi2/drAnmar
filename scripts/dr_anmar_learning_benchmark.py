@@ -8950,6 +8950,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .receiver_custody_confirmation_steps
                     ),
+                    "retry_custody_confirmation_steps": (
+                        receiver_recovery_policy
+                        .retry_custody_confirmation_steps
+                    ),
                     "retention_servo": (
                         receiver_recovery_policy
                         .receiver_retention_servo

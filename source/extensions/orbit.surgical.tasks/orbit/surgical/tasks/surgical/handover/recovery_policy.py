@@ -1610,6 +1610,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.receiver_custody_confirmation_steps = int(
             receiver_custody_confirmation_steps
         )
+        self.retry_custody_confirmation_steps = max(
+            self.receiver_custody_confirmation_steps,
+            3,
+        )
         self.receiver_retention_servo = bool(receiver_retention_servo)
         self.receiver_retention_servo_gain = float(
             receiver_retention_servo_gain
@@ -2351,6 +2355,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                         local_best_index,
                     ]
                     selected_score = local_best_score
+                    selected_correction = torch.where(
+                        portfolio_active.unsqueeze(-1),
+                        candidates[best_index],
+                        selected_correction,
+                    )
+                    selected_score = torch.where(
+                        portfolio_active,
+                        best_score,
+                        selected_score,
+                    )
                 advantage = selected_score - zero_score
                 candidate_applied = (
                     advantage >= self.candidate_min_logit_advantage
@@ -2740,11 +2754,22 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.receiver_secure_live_dwell + 1,
             torch.zeros_like(self.receiver_secure_live_dwell),
         )
+        retry_confirmation_steps = torch.where(
+            self.retry_count > 0,
+            torch.full_like(
+                self.retry_count,
+                self.retry_custody_confirmation_steps,
+            ),
+            torch.full_like(
+                self.retry_count,
+                self.receiver_custody_confirmation_steps,
+            ),
+        )
         self.receiver_release_authorized |= (
             confirming_receiver_custody
             & (
                 self.receiver_secure_live_dwell
-                >= self.receiver_custody_confirmation_steps
+                >= retry_confirmation_steps
             )
         )
         contact_lost_before_release = (
