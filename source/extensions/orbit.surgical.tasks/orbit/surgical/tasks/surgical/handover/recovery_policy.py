@@ -1649,6 +1649,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.acquisition_dwell = torch.empty(0, dtype=torch.long)
         self.acquisition_started = torch.empty(0, dtype=torch.bool)
         self.custody_loss_dwell = torch.empty(0, dtype=torch.long)
+        self.giver_degradation_dwell = torch.empty(
+            0,
+            dtype=torch.long,
+        )
         self.open_settle_dwell = torch.empty(0, dtype=torch.long)
         self.ever_bilateral = torch.empty(0, dtype=torch.bool)
         self.bilateral_contact_history = torch.empty(
@@ -1765,6 +1769,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             device=device,
         )
         self.custody_loss_dwell = torch.zeros_like(self.retry_count)
+        self.giver_degradation_dwell = torch.zeros_like(self.retry_count)
         self.open_settle_dwell = torch.zeros_like(self.retry_count)
         self.ever_bilateral = torch.zeros(
             batch_size,
@@ -3047,12 +3052,20 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 )
             )
         )
-        giver_custody_degrading = (
+        giver_degradation_observed = (
             acquisition_active
             & self.gate_evaluated
             & ~bilateral_qualified
             & giver_any_contact
             & ~giver_bilateral_live
+        )
+        self.giver_degradation_dwell[:] = torch.where(
+            giver_degradation_observed,
+            self.giver_degradation_dwell + 1,
+            torch.zeros_like(self.giver_degradation_dwell),
+        )
+        giver_custody_degrading = (
+            self.giver_degradation_dwell >= 3
         )
         if self.enable_retries:
             failure = (
@@ -3088,6 +3101,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.acquisition_dwell[failure] = 0
             self.acquisition_started[failure] = False
             self.custody_loss_dwell[failure] = 0
+            self.giver_degradation_dwell[failure] = 0
             self.receiver_secure_live_dwell[failure] = 0
             self.receiver_release_authorized[failure] = False
 
@@ -3265,6 +3279,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.acquisition_dwell[mask] = 0
         self.acquisition_started[mask] = False
         self.custody_loss_dwell[mask] = 0
+        self.giver_degradation_dwell[mask] = 0
         self.open_settle_dwell[mask] = 0
         self.ever_bilateral[mask] = False
         self.bilateral_contact_history[mask] = False
