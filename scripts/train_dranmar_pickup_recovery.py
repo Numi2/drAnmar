@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -37,6 +38,16 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--weight_decay", type=float, default=1.0e-6)
     parser.add_argument("--validation_fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=104729)
+    parser.add_argument("--position_cap_m", type=float)
+    parser.add_argument("--orientation_cap_deg", type=float)
+    parser.add_argument(
+        "--pair_first_retry_across_sweeps",
+        action="store_true",
+        help=(
+            "compare corrections from matching seed/environment first-retry "
+            "states even when their sweep IDs differ"
+        ),
+    )
     parser.add_argument("--require_collection_gate", action="store_true")
     parser.add_argument("--minimum_per_cohort", type=int, default=1000)
     return parser
@@ -92,16 +103,35 @@ def main(argv: list[str]) -> int:
             )
 
     base_hashes = {payload["base_checkpoint_sha256"] for payload in payloads}
-    position_caps = {float(payload["position_cap_m"]) for payload in payloads}
-    orientation_caps = {
+    source_position_caps = {
+        float(payload["position_cap_m"]) for payload in payloads
+    }
+    source_orientation_caps = {
         float(payload["orientation_cap_rad"]) for payload in payloads
     }
     if len(base_hashes) != 1:
         raise ValueError("recovery datasets do not share one base checkpoint")
-    if len(position_caps) != 1 or len(orientation_caps) != 1:
-        raise ValueError("recovery datasets do not share correction caps")
-    position_cap = position_caps.pop()
-    orientation_cap = orientation_caps.pop()
+    if args.position_cap_m is None:
+        if len(source_position_caps) != 1:
+            raise ValueError(
+                "mixed dataset position caps require --position_cap_m"
+            )
+        position_cap = next(iter(source_position_caps))
+    else:
+        position_cap = float(args.position_cap_m)
+    if args.orientation_cap_deg is None:
+        if len(source_orientation_caps) != 1:
+            raise ValueError(
+                "mixed dataset orientation caps require "
+                "--orientation_cap_deg"
+            )
+        orientation_cap = next(iter(source_orientation_caps))
+    else:
+        orientation_cap = math.radians(float(args.orientation_cap_deg))
+    if not 0.0 < position_cap <= 0.005:
+        raise ValueError("position cap must be in (0, 0.005]")
+    if not 0.0 < orientation_cap <= math.radians(5.0):
+        raise ValueError("orientation cap must be in (0, 5 degrees]")
 
     total_samples = sum(
         int((payload.get("attempts") or payload)["context"].shape[0])
@@ -125,7 +155,15 @@ def main(argv: list[str]) -> int:
     for payload_index, payload in enumerate(payloads):
         has_attempt_records = payload.get("attempts") is not None
         samples = payload.get("attempts") or payload
-        payload_context = samples["context"].float()
+        payload_context = samples["context"].float().clone()
+        source_position_cap = float(payload["position_cap_m"])
+        source_orientation_cap = float(payload["orientation_cap_rad"])
+        payload_context[:, 23:26] *= (
+            source_position_cap / position_cap
+        )
+        payload_context[:, 26:29] *= (
+            source_orientation_cap / orientation_cap
+        )
         payload_correction = samples["correction"].float()
         safe_lift = samples.get(
             "safe_lift",
@@ -162,14 +200,22 @@ def main(argv: list[str]) -> int:
             )
         )
         sweep_id = payload.get("sweep_id")
-        if sweep_id:
-            group_prefix = (
-                f"{sweep_id}|seed={int(payload['seed'])}|"
-                f"num_envs={int(payload['num_envs'])}"
-            )
-        else:
-            group_prefix = f"dataset={payload_index}"
         for sample_index in range(payload_context.shape[0]):
+            if (
+                args.pair_first_retry_across_sweeps
+                and int(retry_count[sample_index].item()) <= 1
+            ):
+                group_prefix = (
+                    f"paired-first-retry|seed={int(payload['seed'])}|"
+                    f"num_envs={int(payload['num_envs'])}"
+                )
+            elif sweep_id:
+                group_prefix = (
+                    f"{sweep_id}|seed={int(payload['seed'])}|"
+                    f"num_envs={int(payload['num_envs'])}"
+                )
+            else:
+                group_prefix = f"dataset={payload_index}"
             key = (
                 group_prefix,
                 int(state_index[sample_index].item()),
@@ -373,6 +419,13 @@ def main(argv: list[str]) -> int:
             "batch_size": args.batch_size,
             "learning_rate": args.learning_rate,
             "weight_decay": args.weight_decay,
+            "pair_first_retry_across_sweeps": (
+                args.pair_first_retry_across_sweeps
+            ),
+            "source_position_caps_m": sorted(source_position_caps),
+            "source_orientation_caps_rad": sorted(
+                source_orientation_caps
+            ),
             "dataset_samples": total_samples,
             "safe_lift_candidates": safe_lift_candidate_count,
             "end_to_end_successful_candidates": (
