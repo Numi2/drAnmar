@@ -48,6 +48,16 @@ def _parser() -> argparse.ArgumentParser:
             "states even when their sweep IDs differ"
         ),
     )
+    parser.add_argument(
+        "--first_retry_only",
+        action="store_true",
+        help="train the correction selector only from first-retry states",
+    )
+    parser.add_argument(
+        "--balance_target_magnitudes",
+        action="store_true",
+        help="balance discrete correction strengths in the imitation loss",
+    )
     parser.add_argument("--require_collection_gate", action="store_true")
     parser.add_argument("--minimum_per_cohort", type=int, default=1000)
     return parser
@@ -211,6 +221,11 @@ def main(argv: list[str]) -> int:
         sweep_id = payload.get("sweep_id")
         for sample_index in range(payload_context.shape[0]):
             if (
+                args.first_retry_only
+                and int(retry_count[sample_index].item()) > 1
+            ):
+                continue
+            if (
                 args.pair_first_retry_across_sweeps
                 and int(retry_count[sample_index].item()) <= 1
             ):
@@ -339,6 +354,29 @@ def main(argv: list[str]) -> int:
         ),
         dim=-1,
     ).clamp(-1.0, 1.0)
+    target_strength_class = torch.round(
+        normalized_target.norm(dim=-1) * 1000.0
+    ).long()
+    (
+        target_strength_classes,
+        target_strength_inverse,
+        target_strength_counts,
+    ) = torch.unique(
+        target_strength_class,
+        sorted=True,
+        return_inverse=True,
+        return_counts=True,
+    )
+    if args.balance_target_magnitudes:
+        target_weights = (
+            positive_context.shape[0]
+            / (
+                target_strength_classes.shape[0]
+                * target_strength_counts[target_strength_inverse].float()
+            )
+        )
+    else:
+        target_weights = torch.ones(positive_context.shape[0])
 
     permutation = torch.randperm(
         positive_context.shape[0],
@@ -352,6 +390,7 @@ def main(argv: list[str]) -> int:
     training_indices = permutation[validation_count:]
     training_context = positive_context[training_indices]
     training_target = normalized_target[training_indices]
+    training_weights = target_weights[training_indices]
     validation_context = positive_context[validation_indices]
     validation_target = normalized_target[validation_indices]
 
@@ -375,9 +414,15 @@ def main(argv: list[str]) -> int:
         for start in range(0, order.numel(), args.batch_size):
             indices = order[start : start + args.batch_size]
             predicted = head(training_context[indices])
-            loss = functional.smooth_l1_loss(
+            sample_loss = functional.smooth_l1_loss(
                 predicted,
                 training_target[indices],
+                reduction="none",
+            ).mean(dim=-1)
+            loss = (
+                sample_loss * training_weights[indices]
+            ).sum() / training_weights[indices].sum().clamp_min(
+                1.0e-8
             )
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -434,6 +479,18 @@ def main(argv: list[str]) -> int:
             "pair_first_retry_across_sweeps": (
                 args.pair_first_retry_across_sweeps
             ),
+            "first_retry_only": args.first_retry_only,
+            "balance_target_magnitudes": (
+                args.balance_target_magnitudes
+            ),
+            "target_strength_classes": {
+                str(int(class_value.item())): int(count.item())
+                for class_value, count in zip(
+                    target_strength_classes,
+                    target_strength_counts,
+                    strict=True,
+                )
+            },
             "source_position_caps_m": sorted(source_position_caps),
             "source_orientation_caps_rad": sorted(
                 source_orientation_caps
