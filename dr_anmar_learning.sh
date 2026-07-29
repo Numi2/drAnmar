@@ -817,6 +817,11 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_CUSTODY_CONFIRMATION_STEPS}"
             )
         fi
+        if [[ "${DR_ANMAR_RECEIVER_RETENTION_CONTACT_CENTERING:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_retention_contact_centering
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
             pickup_recovery_args+=(
                 --receiver_recovery_checkpoint
@@ -1185,6 +1190,11 @@ case "${command}" in
             recovery_record_args+=(
                 --receiver_secure_settle_steps
                 "${DR_ANMAR_RECEIVER_SECURE_SETTLE_STEPS}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_RETENTION_CONTACT_CENTERING:-0}" == "1" ]]; then
+            recovery_record_args+=(
+                --receiver_retention_contact_centering
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
