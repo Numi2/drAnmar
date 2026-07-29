@@ -8889,25 +8889,91 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
         ):
             probe_mask = first_receiver_active_custody_probe_evaluated
-            probe_pre_force_n = (
-                first_receiver_active_custody_probe_pre_forces[
-                    probe_mask
-                ]
-                / 0.2
-            )
-            probe_post_force_n = (
-                first_receiver_active_custody_probe_post_forces[
-                    probe_mask
-                ]
-                / 0.2
-            )
+
+            def _probe_force_statistics(
+                cohort_mask: torch.Tensor,
+            ) -> dict[str, Any] | None:
+                selected = probe_mask & cohort_mask
+                if not bool(selected.any()):
+                    return None
+                pre_force_n = (
+                    first_receiver_active_custody_probe_pre_forces[
+                        selected
+                    ]
+                    / 0.2
+                )
+                post_force_n = (
+                    first_receiver_active_custody_probe_post_forces[
+                        selected
+                    ]
+                    / 0.2
+                )
+                pre_min_n = pre_force_n.min(dim=-1).values
+                post_min_n = post_force_n.min(dim=-1).values
+                min_delta_n = post_min_n - pre_min_n
+                quantiles = torch.tensor(
+                    (0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0),
+                    dtype=pre_force_n.dtype,
+                    device=pre_force_n.device,
+                )
+                return {
+                    "episodes": int(selected.sum().item()),
+                    "pre_mean_n": pre_force_n.mean(dim=0).tolist(),
+                    "post_mean_n": post_force_n.mean(dim=0).tolist(),
+                    "delta_mean_n": (
+                        post_force_n - pre_force_n
+                    ).mean(dim=0).tolist(),
+                    "pre_min_force_quantiles_n": torch.quantile(
+                        pre_min_n,
+                        quantiles,
+                    ).tolist(),
+                    "post_min_force_quantiles_n": torch.quantile(
+                        post_min_n,
+                        quantiles,
+                    ).tolist(),
+                    "min_force_delta_quantiles_n": torch.quantile(
+                        min_delta_n,
+                        quantiles,
+                    ).tolist(),
+                }
+
+            all_environments = torch.ones_like(probe_mask)
+            outcome_cohorts = {
+                "success": first_outcome_success,
+            }
+            for termination_name in (
+                "receiver_retention_lost",
+                "needle_dropped_after_pickup",
+                "time_out",
+            ):
+                if termination_name in termination_names:
+                    outcome_cohorts[termination_name] = (
+                        first_terminal_flags[
+                            :,
+                            termination_names.index(termination_name),
+                        ]
+                    )
             receiver_probe_force_response = {
-                "episodes": int(probe_mask.sum().item()),
-                "pre_mean_n": probe_pre_force_n.mean(dim=0).tolist(),
-                "post_mean_n": probe_post_force_n.mean(dim=0).tolist(),
-                "delta_mean_n": (
-                    probe_post_force_n - probe_pre_force_n
-                ).mean(dim=0).tolist(),
+                "quantile_probabilities": [
+                    0.0,
+                    0.1,
+                    0.25,
+                    0.5,
+                    0.75,
+                    0.9,
+                    1.0,
+                ],
+                "all": _probe_force_statistics(all_environments),
+                "probe_survived": _probe_force_statistics(
+                    first_receiver_active_custody_probe_survived
+                ),
+                "probe_failed": _probe_force_statistics(
+                    ~first_receiver_active_custody_probe_survived
+                ),
+                "terminal_outcomes": {
+                    name: _probe_force_statistics(mask)
+                    for name, mask in outcome_cohorts.items()
+                },
             }
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
