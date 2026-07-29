@@ -426,6 +426,7 @@ case "${command}" in
         selector_checkpoint_env=""
         retry_portfolio_checkpoint_env=""
         custody_confirmation_steps_env=0
+        receiver_acquisition_timeout_env=500
         receiver_disable_retries_env=1
         receiver_recovery_dataset_env=""
         selector_sweep_random_env=0
@@ -452,7 +453,7 @@ case "${command}" in
         fi
         if [[ "${DR_ANMAR_PROMOTED_ALLOW_PORTFOLIO:-0}" == "1" ]]; then
             retry_portfolio_checkpoint_env="${DR_ANMAR_RECEIVER_RETRY_PORTFOLIO_CHECKPOINT:-}"
-            custody_confirmation_steps_env=3
+            receiver_acquisition_timeout_env=200
             receiver_disable_retries_env=0
             receiver_recovery_dataset_env="${DR_ANMAR_RECEIVER_RECOVERY_DATASET:-}"
             if [[ -z "${retry_portfolio_checkpoint_env}" ]]; then
@@ -512,6 +513,7 @@ case "${command}" in
             DR_ANMAR_RECEIVER_RECOVERY_SOBOL_SEED="${selector_sweep_sobol_seed_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_SWEEP_ID="${selector_sweep_id_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_DATASET="${receiver_recovery_dataset_env}" \
+            DR_ANMAR_RECEIVER_RECOVERY_ACQUISITION_TIMEOUT_STEPS="${receiver_acquisition_timeout_env}" \
             DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M=0.0025 \
             DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG=2.0 \
             DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_SEED=104748 \
