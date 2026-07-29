@@ -4282,6 +4282,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_attempt_actor_critic = None
         receiver_attempt_feature_mean = None
         receiver_attempt_feature_std = None
+        receiver_attempt_source_revision = None
         if args.receiver_recovery_checkpoint:
             receiver_checkpoint = (
                 Path(args.receiver_recovery_checkpoint)
@@ -4700,6 +4701,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 or "receiver_attempt_actor_critic" not in attempt_payload
                 or "feature_mean" not in attempt_payload
                 or "feature_std" not in attempt_payload
+                or not isinstance(
+                    attempt_payload.get("source_revision"),
+                    str,
+                )
+                or len(attempt_payload["source_revision"]) != 40
             ):
                 env.close()
                 return _fail(
@@ -4776,6 +4782,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 device=env.unwrapped.device,
                 dtype=torch.float32,
             )
+            receiver_attempt_source_revision = attempt_payload[
+                "source_revision"
+            ]
         receiver_base_policy = (
             pickup_recovery_policy
             if pickup_recovery_policy is not None
@@ -8491,6 +8500,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             },
                             "stochastic": (
                                 args.receiver_attempt_stochastic
+                            ),
+                            "source_revision": (
+                                receiver_attempt_source_revision
                             ),
                             "residual_position_cap_m": (
                                 args.receiver_attempt_position_cap

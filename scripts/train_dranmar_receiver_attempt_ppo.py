@@ -9,6 +9,7 @@ import importlib.util
 import json
 import math
 import random
+import subprocess
 import sys
 import types
 from pathlib import Path
@@ -28,6 +29,18 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _source_revision() -> str:
+    repo_root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
 
 
 def _repo_models() -> tuple[type[torch.nn.Module], type[torch.nn.Module]]:
@@ -390,6 +403,7 @@ def _bootstrap(args: argparse.Namespace) -> int:
         )
     checkpoint = {
         "schema_version": SCHEMA_VERSION,
+        "source_revision": _source_revision(),
         "receiver_attempt_actor_critic": model.state_dict(),
         "feature_mean": feature_mean,
         "feature_std": feature_std,
@@ -606,6 +620,9 @@ def _update(args: argparse.Namespace) -> int:
     )
     training["updates"] = int(training["updates"]) + 1
     training["rollouts"].extend(rollout_reports)
+    training.setdefault("update_source_revisions", []).append(
+        _source_revision()
+    )
     training["last_update"] = {
         "decisions": int(features.shape[0]),
         "successful": int(reward.sum().item()),
