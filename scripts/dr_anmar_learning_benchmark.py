@@ -5392,6 +5392,56 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if receiver_recovery_policy is not None
         else None
     )
+    first_receiver_failure_giver_any = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_failure_giver_bilateral = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_failure_close_miss = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_failure_acquisition_stall = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_failure_receiver_loss = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_failure_giver_degradation = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_reopen_started = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_giver_restore_qualified = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_retry_release_authorized = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_retry_release_aborted = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
     first_receiver_recovered_acquisition = (
         torch.zeros_like(first_unresolved)
         if receiver_recovery_policy is not None
@@ -6665,6 +6715,34 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert first_receiver_retry_count is not None
                     assert first_receiver_failed is not None
                     assert (
+                        first_receiver_failure_giver_any is not None
+                    )
+                    assert (
+                        first_receiver_failure_giver_bilateral is not None
+                    )
+                    assert (
+                        first_receiver_failure_close_miss is not None
+                    )
+                    assert (
+                        first_receiver_failure_acquisition_stall is not None
+                    )
+                    assert (
+                        first_receiver_failure_receiver_loss is not None
+                    )
+                    assert (
+                        first_receiver_failure_giver_degradation is not None
+                    )
+                    assert first_receiver_reopen_started is not None
+                    assert (
+                        first_receiver_giver_restore_qualified is not None
+                    )
+                    assert (
+                        first_receiver_retry_release_authorized is not None
+                    )
+                    assert (
+                        first_receiver_retry_release_aborted is not None
+                    )
+                    assert (
                         first_receiver_recovered_acquisition is not None
                     )
                     assert first_receiver_correction is not None
@@ -6675,6 +6753,46 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy.first_attempt_failed[
                             first_dones
                         ]
+                    )
+                    first_receiver_failure_giver_any[first_dones] = (
+                        receiver_recovery_policy.first_failure_giver_any[
+                            first_dones
+                        ]
+                    )
+                    first_receiver_failure_giver_bilateral[first_dones] = (
+                        receiver_recovery_policy
+                        .first_failure_giver_bilateral[first_dones]
+                    )
+                    first_receiver_failure_close_miss[first_dones] = (
+                        receiver_recovery_policy
+                        .first_failure_close_miss[first_dones]
+                    )
+                    first_receiver_failure_acquisition_stall[first_dones] = (
+                        receiver_recovery_policy
+                        .first_failure_acquisition_stall[first_dones]
+                    )
+                    first_receiver_failure_receiver_loss[first_dones] = (
+                        receiver_recovery_policy
+                        .first_failure_receiver_loss[first_dones]
+                    )
+                    first_receiver_failure_giver_degradation[first_dones] = (
+                        receiver_recovery_policy
+                        .first_failure_giver_degradation[first_dones]
+                    )
+                    first_receiver_reopen_started[first_dones] = (
+                        receiver_recovery_policy.reopen_started[first_dones]
+                    )
+                    first_receiver_giver_restore_qualified[first_dones] = (
+                        receiver_recovery_policy
+                        .giver_restore_qualified[first_dones]
+                    )
+                    first_receiver_retry_release_authorized[first_dones] = (
+                        receiver_recovery_policy
+                        .retry_release_authorized[first_dones]
+                    )
+                    first_receiver_retry_release_aborted[first_dones] = (
+                        receiver_recovery_policy
+                        .retry_release_aborted[first_dones]
                     )
                     first_receiver_recovered_acquisition[first_dones] = (
                         receiver_recovery_policy.recovered_acquisition[
@@ -9074,6 +9192,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .retry_custody_confirmation_steps
                     ),
+                    "custody_force_margin_n": (
+                        receiver_recovery_policy
+                        .normalized_custody_force_margin
+                        / 0.2
+                    ),
+                    "giver_restore_steps": (
+                        receiver_recovery_policy.giver_restore_steps
+                    ),
                     "retention_servo": (
                         receiver_recovery_policy
                         .receiver_retention_servo
@@ -9272,6 +9398,42 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "gate_dataset": receiver_gate_dataset,
                     "first_attempt_failures": int(
                         first_receiver_failed.sum().item()
+                    ),
+                    "failure_latched_with_giver_any": int(
+                        first_receiver_failure_giver_any.sum().item()
+                    ),
+                    "failure_latched_with_giver_bilateral": int(
+                        first_receiver_failure_giver_bilateral.sum().item()
+                    ),
+                    "first_failure_causes": {
+                        "close_miss": int(
+                            first_receiver_failure_close_miss.sum().item()
+                        ),
+                        "acquisition_stall": int(
+                            first_receiver_failure_acquisition_stall
+                            .sum()
+                            .item()
+                        ),
+                        "receiver_custody_loss": int(
+                            first_receiver_failure_receiver_loss.sum().item()
+                        ),
+                        "giver_custody_degradation": int(
+                            first_receiver_failure_giver_degradation
+                            .sum()
+                            .item()
+                        ),
+                    },
+                    "reopen_started_episodes": int(
+                        first_receiver_reopen_started.sum().item()
+                    ),
+                    "giver_restore_qualified_episodes": int(
+                        first_receiver_giver_restore_qualified.sum().item()
+                    ),
+                    "retry_release_authorized_episodes": int(
+                        first_receiver_retry_release_authorized.sum().item()
+                    ),
+                    "retry_release_aborted_episodes": int(
+                        first_receiver_retry_release_aborted.sum().item()
                     ),
                     "episodes_with_retries": int(
                         (first_receiver_retry_count > 0).sum().item()

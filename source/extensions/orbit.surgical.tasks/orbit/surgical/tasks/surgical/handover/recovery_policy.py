@@ -1649,7 +1649,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.retry_custody_confirmation_steps = max(
             self.receiver_custody_confirmation_steps,
-            3,
+            5,
         )
         self.receiver_retention_servo = bool(receiver_retention_servo)
         self.receiver_retention_servo_gain = float(
@@ -1674,6 +1674,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.orientation_action_limit = 0.6
         self.contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
+        # A qualified contact at exactly 0.01 N is sufficient for phase
+        # bookkeeping but is not enough reserve for an attempted transfer.
+        # Retry custody uses a fixed two-times margin (0.02 N per jaw) before
+        # either another approach or giver release is allowed.
+        self.normalized_custody_force_margin = (
+            2.0 * self.normalized_contact_threshold
+        )
+        self.giver_restore_steps = 3
         self.close_dwell_steps = 15
         self.acquisition_timeout_steps = 500
         self.open_settle_steps = 3
@@ -1694,6 +1702,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             0,
             dtype=torch.long,
         )
+        self.giver_restore_dwell = torch.empty(0, dtype=torch.long)
         self.open_settle_dwell = torch.empty(0, dtype=torch.long)
         self.ever_bilateral = torch.empty(0, dtype=torch.bool)
         self.bilateral_contact_history = torch.empty(
@@ -1770,6 +1779,43 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             0,
             dtype=torch.bool,
         )
+        self.first_failure_giver_any = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.first_failure_giver_bilateral = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.first_failure_close_miss = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.first_failure_acquisition_stall = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.first_failure_receiver_loss = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.first_failure_giver_degradation = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.reopen_started = torch.empty(0, dtype=torch.bool)
+        self.giver_restore_qualified = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.retry_release_authorized = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.retry_release_aborted = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
         self.receiver_retention_offset = torch.empty((0, 3))
         self.receiver_retention_offset_latched = torch.empty(
             0,
@@ -1811,6 +1857,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.custody_loss_dwell = torch.zeros_like(self.retry_count)
         self.giver_degradation_dwell = torch.zeros_like(self.retry_count)
+        self.giver_restore_dwell = torch.zeros_like(self.retry_count)
         self.open_settle_dwell = torch.zeros_like(self.retry_count)
         self.ever_bilateral = torch.zeros(
             batch_size,
@@ -1932,6 +1979,36 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.first_attempt_failed
         )
         self.giver_release_completed = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.first_failure_giver_any = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.first_failure_giver_bilateral = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.first_failure_close_miss = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.first_failure_acquisition_stall = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.first_failure_receiver_loss = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.first_failure_giver_degradation = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.reopen_started = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.giver_restore_qualified = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.retry_release_authorized = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.retry_release_aborted = torch.zeros_like(
             self.first_attempt_failed
         )
         self.receiver_retention_offset = torch.zeros(
@@ -2735,6 +2812,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             giver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
+        giver_force_margin_live = torch.all(
+            giver_contacts >= self.normalized_custody_force_margin,
+            dim=-1,
+        )
         receiver_ee_position = self._select_role(
             raw[:, 32:35],
             raw[:, 39:42],
@@ -2757,6 +2838,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.receiver_retention_offset_latched |= phase >= 3
         bilateral_live = torch.all(
             receiver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        receiver_force_margin_live = torch.all(
+            receiver_contacts >= self.normalized_custody_force_margin,
             dim=-1,
         )
         self.bilateral_contact_history = torch.roll(
@@ -2801,12 +2886,24 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.custody_loss_dwell + 1,
             torch.zeros_like(self.custody_loss_dwell),
         )
-        confirming_receiver_custody = (
+        basic_receiver_custody = (
             (phase == 3)
             & (self.retry_state == self.state_secure)
             & bilateral_live
             & giver_any_contact
             & ~self.giver_release_completed
+        )
+        retry_transfer = self.retry_count > 0
+        retry_receiver_custody = (
+            basic_receiver_custody
+            & giver_bilateral_live
+            & giver_force_margin_live
+            & receiver_force_margin_live
+        )
+        confirming_receiver_custody = torch.where(
+            retry_transfer,
+            retry_receiver_custody,
+            basic_receiver_custody,
         )
         self.receiver_secure_live_dwell[:] = torch.where(
             confirming_receiver_custody,
@@ -2824,26 +2921,49 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 self.receiver_custody_confirmation_steps,
             ),
         )
-        self.receiver_release_authorized |= (
+        release_authorized_now = (
             confirming_receiver_custody
             & (
                 self.receiver_secure_live_dwell
                 >= retry_confirmation_steps
             )
         )
+        self.receiver_release_authorized |= release_authorized_now
+        self.retry_release_authorized |= (
+            release_authorized_now & retry_transfer
+        )
         contact_lost_before_release = (
             (phase == 3)
-            & giver_any_contact
             & ~bilateral_live
             & ~self.giver_release_completed
         )
-        self.receiver_release_authorized[
+        retry_margin_lost_before_release = (
+            (phase == 3)
+            & retry_transfer
+            & giver_any_contact
+            & self.receiver_release_authorized
+            & ~receiver_force_margin_live
+            & ~self.giver_release_completed
+        )
+        release_aborted = (
             contact_lost_before_release
+            | retry_margin_lost_before_release
+        )
+        self.receiver_release_authorized[
+            release_aborted
         ] = False
+        self.retry_release_aborted |= (
+            release_aborted & retry_transfer & giver_any_contact
+        )
         self.giver_release_completed |= (
             (phase >= 3)
             & self.receiver_release_authorized
             & ~giver_any_contact
+            & bilateral_live
+            & (
+                ~retry_transfer
+                | receiver_force_margin_live
+            )
         )
         receiver_retry_phase = (
             (phase == 2)
@@ -3109,11 +3229,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & first_or_retry
             & ~bilateral_qualified
             & (self.close_dwell >= self.close_dwell_steps)
-            & torch.all(
-                receiver_joint_displacement
-                >= self.closed_joint_displacement_rad,
-                dim=-1,
-            )
         )
         stalled_acquisition = (
             acquisition_active
@@ -3138,7 +3253,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         giver_degradation_observed = (
             acquisition_active
-            & self.gate_evaluated
             & ~bilateral_qualified
             & giver_any_contact
             & ~giver_bilateral_live
@@ -3168,6 +3282,29 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         else:
             failure = torch.zeros_like(failed_close)
         if bool(failure.any()):
+            first_failure = (
+                failure
+                & (self.retry_count == 0)
+                & ~self.first_attempt_failed
+            )
+            self.first_failure_giver_any[first_failure] = (
+                giver_any_contact[first_failure]
+            )
+            self.first_failure_giver_bilateral[first_failure] = (
+                giver_bilateral_live[first_failure]
+            )
+            self.first_failure_close_miss |= (
+                first_failure & failed_close
+            )
+            self.first_failure_acquisition_stall |= (
+                first_failure & stalled_acquisition
+            )
+            self.first_failure_receiver_loss |= (
+                first_failure & lost_after_acquisition
+            )
+            self.first_failure_giver_degradation |= (
+                first_failure & giver_custody_degrading
+            )
             self.first_attempt_candidate_active[failure] = False
             self.failure_forces[failure] = receiver_contacts[
                 failure
@@ -3186,6 +3323,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.acquisition_started[failure] = False
             self.custody_loss_dwell[failure] = 0
             self.giver_degradation_dwell[failure] = 0
+            self.giver_restore_dwell[failure] = 0
             self.receiver_secure_live_dwell[failure] = 0
             self.receiver_release_authorized[failure] = False
 
@@ -3195,6 +3333,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         # wait for restored bilateral giver custody before the next approach.
         ready_to_reopen = failed_grasp & giver_any_contact
         self.retry_state[ready_to_reopen] = self.state_reopening
+        self.reopen_started |= ready_to_reopen
         failed_grasp = self.retry_state == self.state_failed
         resetting = (
             (self.retry_state == self.state_reopening)
@@ -3215,15 +3354,27 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.open_settle_dwell + 1,
             torch.zeros_like(self.open_settle_dwell),
         )
+        giver_restored = (
+            (self.retry_state == self.state_open_settle)
+            & giver_bilateral_live
+            & giver_force_margin_live
+        )
+        self.giver_restore_dwell[:] = torch.where(
+            giver_restored,
+            self.giver_restore_dwell + 1,
+            torch.zeros_like(self.giver_restore_dwell),
+        )
         activation = (
             (self.retry_state == self.state_open_settle)
             & (self.open_settle_dwell >= self.open_settle_steps)
-            & giver_bilateral_live
+            & (self.giver_restore_dwell >= self.giver_restore_steps)
         )
         if bool(activation.any()):
+            self.giver_restore_qualified |= activation
             self.retry_count[activation] += 1
             self.retry_state[activation] = self.state_learned_retry
             self.open_settle_dwell[activation] = 0
+            self.giver_restore_dwell[activation] = 0
             self.acquisition_dwell[activation] = 0
             self.acquisition_started[activation] = True
             self._activate_recovery(raw, giver_is_robot_1, activation)
@@ -3364,6 +3515,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.acquisition_started[mask] = False
         self.custody_loss_dwell[mask] = 0
         self.giver_degradation_dwell[mask] = 0
+        self.giver_restore_dwell[mask] = 0
         self.open_settle_dwell[mask] = 0
         self.ever_bilateral[mask] = False
         self.bilateral_contact_history[mask] = False
@@ -3393,6 +3545,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.receiver_secure_live_dwell[mask] = 0
         self.receiver_release_authorized[mask] = False
         self.giver_release_completed[mask] = False
+        self.first_failure_giver_any[mask] = False
+        self.first_failure_giver_bilateral[mask] = False
+        self.first_failure_close_miss[mask] = False
+        self.first_failure_acquisition_stall[mask] = False
+        self.first_failure_receiver_loss[mask] = False
+        self.first_failure_giver_degradation[mask] = False
+        self.reopen_started[mask] = False
+        self.giver_restore_qualified[mask] = False
+        self.retry_release_authorized[mask] = False
+        self.retry_release_aborted[mask] = False
         self.receiver_retention_offset[mask] = 0.0
         self.receiver_retention_offset_latched[mask] = False
         self.last_attempt_features[mask] = 0.0
