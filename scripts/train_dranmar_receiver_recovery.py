@@ -118,6 +118,14 @@ def main(argv: list[str]) -> int:
         samples = payload.get("attempts") or payload
         context = samples["context"].float()
         correction = samples["correction"].float()
+        previous_correction = torch.cat(
+            (
+                context[:, 23:26] * position_cap,
+                context[:, 26:29] * orientation_cap,
+            ),
+            dim=-1,
+        )
+        correction_delta = correction - previous_correction
         safe_acquisition = samples["safe_acquisition"].bool()
         retained = samples.get(
             "retained",
@@ -163,6 +171,7 @@ def main(argv: list[str]) -> int:
                 {
                     "context": context[sample_index],
                     "correction": correction[sample_index],
+                    "delta": correction_delta[sample_index],
                     "safe": bool(safe_acquisition[sample_index].item()),
                     "retained": bool(retained[sample_index].item()),
                     "peak_force": float(
@@ -178,7 +187,7 @@ def main(argv: list[str]) -> int:
                 }
             )
     demonstration_context = []
-    demonstration_correction = []
+    demonstration_delta = []
     retained_demonstrations = 0
     for key, candidates in candidate_groups.items():
         successful = [
@@ -186,8 +195,12 @@ def main(argv: list[str]) -> int:
         ]
         if not successful:
             continue
+        retained_successful = [
+            candidate for candidate in successful if candidate["retained"]
+        ]
+        eligible = retained_successful or successful
         chosen = min(
-            successful,
+            eligible,
             key=lambda candidate: (
                 float(
                     torch.cat(
@@ -202,11 +215,10 @@ def main(argv: list[str]) -> int:
                 ),
                 candidate["peak_force"],
                 candidate["steps"],
-                not candidate["retained"],
             ),
         )
         demonstration_context.append(chosen["context"])
-        demonstration_correction.append(chosen["correction"])
+        demonstration_delta.append(chosen["delta"])
         retained_demonstrations += int(chosen["retained"])
 
     if len(demonstration_context) < 32:
@@ -214,7 +226,7 @@ def main(argv: list[str]) -> int:
             "at least 32 distinct safe receiver-recovery states are required"
         )
     context = torch.stack(demonstration_context)
-    physical_target = torch.stack(demonstration_correction)
+    physical_target = torch.stack(demonstration_delta)
     normalized_target = torch.cat(
         (
             physical_target[:, :3] / position_cap,
@@ -306,7 +318,9 @@ def main(argv: list[str]) -> int:
         "position_cap_m": position_cap,
         "orientation_cap_rad": orientation_cap,
         "training": {
-            "algorithm": "successful_offset_behavior_cloning",
+            "algorithm": (
+                "retained_successful_offset_delta_behavior_cloning"
+            ),
             "seed": args.seed,
             "epochs": args.epochs,
             "batch_size": args.batch_size,
