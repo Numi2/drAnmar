@@ -3243,6 +3243,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         giver_degradation_observed = (
             acquisition_active
             & ~bilateral_qualified
+            & any_contact
             & giver_any_contact
             & ~giver_bilateral_live
         )
