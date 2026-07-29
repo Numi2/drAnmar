@@ -4676,6 +4676,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 torch.nan,
                 device=env.unwrapped.device,
             ),
+            "receiver_approach_probe_observation": torch.full_like(
+                handover_observation,
+                torch.nan,
+            ),
             "minimum_giver_contact_force_at_first_lift_n": torch.full(
                 (env.unwrapped.num_envs,),
                 torch.nan,
@@ -5297,6 +5301,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_history[
                             "receiver_approach_probe_contacts"
                         ][receiver_probe] = receiver_contacts[receiver_probe]
+                        first_handover_history[
+                            "receiver_approach_probe_observation"
+                        ][receiver_probe] = handover_observation[receiver_probe]
                     all_receiver_activations = (
                         receiver_recovery_policy.last_activation_mask
                         & was_first_unresolved
@@ -6287,6 +6294,72 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             }
         first_completed_count = int((~first_unresolved).sum().item())
         first_success_count = int(first_outcome_success.sum().item())
+        receiver_gate_dataset = None
+        if (
+            receiver_recovery_policy is not None
+            and args.receiver_recovery_gate_dataset
+        ):
+            assert first_handover_history is not None
+            assert first_handover_max_phase is not None
+            gate_mask = (
+                first_handover_history["receiver_approach_probe_frame"] >= 0
+            )
+            gate_dataset_path = (
+                Path(args.receiver_recovery_gate_dataset)
+                .expanduser()
+                .resolve()
+            )
+            gate_dataset_path.parent.mkdir(parents=True, exist_ok=True)
+            torch.save(
+                {
+                    "schema_version": (
+                        "dranmar-receiver-retry-gate-dataset-1.0"
+                    ),
+                    "task": args.task,
+                    "seed": args.seed,
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "pickup_recovery_checkpoint_sha256": (
+                        _sha256(
+                            Path(args.pickup_recovery_checkpoint)
+                            .expanduser()
+                            .resolve()
+                        )
+                        if args.pickup_recovery_checkpoint
+                        else None
+                    ),
+                    "active_approach_step": 100,
+                    "environment_index": torch.arange(
+                        env.unwrapped.num_envs,
+                        dtype=torch.long,
+                    )[gate_mask.cpu()],
+                    "observation": first_handover_history[
+                        "receiver_approach_probe_observation"
+                    ][gate_mask].cpu(),
+                    "receiver_action": first_handover_history[
+                        "receiver_approach_probe_action"
+                    ][gate_mask].cpu(),
+                    "position_error_m": first_handover_history[
+                        "receiver_approach_probe_position_error_m"
+                    ][gate_mask].cpu(),
+                    "receiver_contacts": first_handover_history[
+                        "receiver_approach_probe_contacts"
+                    ][gate_mask].cpu(),
+                    "eventual_acquisition": (
+                        first_handover_max_phase[gate_mask] >= 3
+                    ).cpu(),
+                    "full_success": first_outcome_success[gate_mask].cpu(),
+                    "termination_names": termination_names,
+                    "termination_flags": first_terminal_flags[
+                        gate_mask
+                    ].cpu(),
+                },
+                gate_dataset_path,
+            )
+            receiver_gate_dataset = {
+                "path": str(gate_dataset_path),
+                "sha256": _sha256(gate_dataset_path),
+                "samples": int(gate_mask.sum().item()),
+            }
         pickup_recovery_dataset = None
         if (
             pickup_recovery_policy is not None
@@ -7326,6 +7399,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         args.receiver_recovery_local_orientation_radius_deg
                     ),
                     "dataset": receiver_recovery_dataset,
+                    "gate_dataset": receiver_gate_dataset,
                     "first_attempt_failures": int(
                         first_receiver_failed.sum().item()
                     ),
@@ -7623,6 +7697,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--receiver_recovery_sweep_id")
     play.add_argument("--receiver_recovery_dataset")
+    play.add_argument("--receiver_recovery_gate_dataset")
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 

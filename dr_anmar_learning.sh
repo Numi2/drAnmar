@@ -480,6 +480,12 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_RECOVERY_DATASET}"
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_GATE_DATASET:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_gate_dataset
+                "${DR_ANMAR_RECEIVER_RECOVERY_GATE_DATASET}"
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
