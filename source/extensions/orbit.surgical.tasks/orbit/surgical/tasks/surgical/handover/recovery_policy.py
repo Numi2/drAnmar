@@ -865,11 +865,10 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         # until the five-step bilateral filter is empty, so a late contact
         # sample cannot turn the required reopening into a premature release.
         failed_grasp = self.retry_state == self.state_failed
-        # The giver still owns the needle after a failed receiver grasp, so
-        # holding the receiver closed until contact history clears can
-        # deadlock the reset. Enter reopening immediately; the force-free,
-        # fully-open settle gate below still prevents an early retry.
-        ready_to_reopen = failed_grasp
+        ready_to_reopen = failed_grasp & ~torch.any(
+            self.bilateral_contact_history,
+            dim=-1,
+        )
         self.retry_state[ready_to_reopen] = self.state_reopening
         failed_grasp = self.retry_state == self.state_failed
         resetting = (
@@ -2023,6 +2022,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             giver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
+        giver_bilateral_live = torch.all(
+            giver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
         receiver_ee_position = self._select_role(
             raw[:, 32:35],
             raw[:, 39:42],
@@ -2380,10 +2383,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.custody_loss_dwell[failure] = 0
 
         failed_grasp = self.retry_state == self.state_failed
-        ready_to_reopen = failed_grasp & ~torch.any(
-            self.bilateral_contact_history,
-            dim=-1,
-        )
+        # Receiver reopening is safe only while the giver has current
+        # bilateral custody. Waiting for receiver history to empty deadlocks
+        # closed jaws, while opening without giver custody drops the needle.
+        ready_to_reopen = failed_grasp & giver_bilateral_live
         self.retry_state[ready_to_reopen] = self.state_reopening
         failed_grasp = self.retry_state == self.state_failed
         resetting = (
