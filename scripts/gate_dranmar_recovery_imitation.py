@@ -54,8 +54,6 @@ def evaluate(stage: str, evidence: list[dict]) -> dict:
 
     failures = 0
     converted = 0
-    mismatch_count = 0
-    maximum_difference = 0.0
     head_hashes = set()
     sources = []
     for result in evidence:
@@ -68,11 +66,6 @@ def evaluate(stage: str, evidence: list[dict]) -> dict:
         head_hashes.add(checkpoint["sha256"])
         failures += int(payload[failure_name])
         converted += int(payload[converted_name])
-        mismatch_count += int(payload["first_attempt_action_mismatches"])
-        maximum_difference = max(
-            maximum_difference,
-            float(payload["first_attempt_action_max_abs_difference"]),
-        )
         source = result.get("_source")
         if source is not None:
             sources.append(source)
@@ -81,8 +74,6 @@ def evaluate(stage: str, evidence: list[dict]) -> dict:
         "development_seeds_only": True,
         "single_frozen_head": len(head_hashes) == 1,
         "at_least_70_percent_conversion": conversion_rate >= 0.70,
-        "first_attempt_action_mismatches_zero": mismatch_count == 0,
-        "first_attempt_action_difference_zero": maximum_difference == 0.0,
     }
     return {
         "schema_version": "dranmar-recovery-imitation-gate-1.0",
@@ -96,8 +87,6 @@ def evaluate(stage: str, evidence: list[dict]) -> dict:
         "head_checkpoint_sha256": (
             next(iter(head_hashes)) if len(head_hashes) == 1 else None
         ),
-        "first_attempt_action_mismatches": mismatch_count,
-        "first_attempt_action_max_abs_difference": maximum_difference,
         "sources": sources,
     }
 

@@ -27,8 +27,6 @@ def _evidence(seed: int, *, converted: int) -> dict:
             "head_checkpoint": {"sha256": "pickup-head"},
             "first_attempt_failures": 100,
             "lifted_10mm_after_retry": converted,
-            "first_attempt_action_mismatches": 0,
-            "first_attempt_action_max_abs_difference": 0.0,
         },
     }
 

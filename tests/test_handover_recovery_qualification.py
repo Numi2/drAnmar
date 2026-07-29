@@ -66,8 +66,6 @@ def _run(seed: int, *, candidate: bool) -> dict:
                 "position_cap_m": 0.0025,
                 "orientation_cap_deg": 2.0,
                 "retry_count_by_environment": retry_counts,
-                "first_attempt_action_mismatches": 0,
-                "first_attempt_action_max_abs_difference": 0.0,
             }
             if candidate
             else {"enabled": False}
@@ -79,8 +77,6 @@ def _run(seed: int, *, candidate: bool) -> dict:
                 "position_cap_m": 0.0025,
                 "orientation_cap_deg": 2.0,
                 "retry_count_by_environment": retry_counts,
-                "first_attempt_action_mismatches": 0,
-                "first_attempt_action_max_abs_difference": 0.0,
             }
             if candidate
             else {"enabled": False}

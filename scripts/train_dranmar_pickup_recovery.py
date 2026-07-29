@@ -112,7 +112,6 @@ def main(argv: list[str]) -> int:
     positive_context_parts = []
     positive_correction_parts = []
     candidate_groups: dict[tuple[str, int], list[dict[str, object]]] = {}
-    strict_replay_groups: set[tuple[str, int]] = set()
     collection_cohorts = {
         f"{failure}|retry_{retry}": 0
         for failure in (
@@ -197,23 +196,9 @@ def main(argv: list[str]) -> int:
                     ),
                 }
             )
-            if sweep_id:
-                strict_replay_groups.add(key)
     collection_state_count = 0
-    for key, candidates in candidate_groups.items():
-        if key in strict_replay_groups:
-            reference = next(
-                (
-                    candidate
-                    for candidate in candidates
-                    if candidate["candidate_index"] == 0
-                ),
-                None,
-            )
-            if reference is None:
-                continue
-        else:
-            reference = candidates[0]
+    for candidates in candidate_groups.values():
+        reference = candidates[0]
         context = reference["context"]
         loss_flags = context[18:20] > 0.5
         ever_bilateral = bool((context[20] > 0.5).item())
@@ -252,62 +237,7 @@ def main(argv: list[str]) -> int:
             f"unique_states={collection_state_count}, "
             f"raw_samples={total_samples}, cohorts={collection_cohorts}"
         )
-    maximum_replay_context_spread = 0.0
-    maximum_observed_replay_context_spread = 0.0
-    excluded_context_drift_candidates = 0
-    replay_groups_without_canonical_reference = 0
-    for key, candidates in candidate_groups.items():
-        candidate_contexts = torch.stack(
-            [candidate["context"] for candidate in candidates]
-        )
-        if key in strict_replay_groups:
-            canonical = next(
-                (
-                    candidate
-                    for candidate in candidates
-                    if candidate["candidate_index"] == 0
-                ),
-                None,
-            )
-            if canonical is None:
-                replay_groups_without_canonical_reference += 1
-                continue
-            reference = canonical["context"]
-            per_candidate_spread = (
-                candidate_contexts - reference
-            ).abs().amax(dim=-1)
-            maximum_observed_replay_context_spread = max(
-                maximum_observed_replay_context_spread,
-                float(per_candidate_spread.max().item()),
-            )
-            exact = per_candidate_spread <= 1.0e-5
-            excluded_context_drift_candidates += int(
-                (~exact).sum().item()
-            )
-            candidates = [
-                candidate
-                for candidate, keep in zip(
-                    candidates,
-                    exact.tolist(),
-                    strict=True,
-                )
-                if keep
-            ]
-            if not candidates:
-                continue
-            exact_contexts = torch.stack(
-                [candidate["context"] for candidate in candidates]
-            )
-            exact_spread = float(
-                (exact_contexts - exact_contexts[:1])
-                .abs()
-                .max()
-                .item()
-            )
-            maximum_replay_context_spread = max(
-                maximum_replay_context_spread,
-                exact_spread,
-            )
+    for candidates in candidate_groups.values():
         successful = [
             candidate
             for candidate in candidates
@@ -452,18 +382,6 @@ def main(argv: list[str]) -> int:
                 positive_context.shape[0]
             ),
             "paired_failed_states": len(candidate_groups),
-            "maximum_replay_context_spread": (
-                maximum_replay_context_spread
-            ),
-            "maximum_observed_replay_context_spread": (
-                maximum_observed_replay_context_spread
-            ),
-            "excluded_context_drift_candidates": (
-                excluded_context_drift_candidates
-            ),
-            "replay_groups_without_canonical_reference": (
-                replay_groups_without_canonical_reference
-            ),
             "collection_gate": {
                 "passed": collection_gate_passed,
                 "unique_states": collection_state_count,

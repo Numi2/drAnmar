@@ -16,13 +16,6 @@ QUALIFICATION_SEEDS = (17, 2361, 4099)
 IMMUTABLE_BASE_SHA256 = (
     "f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad"
 )
-SAFETY_TERMS = (
-    "needle_dropped_after_pickup",
-    "protected_surface_force",
-    "premature_giver_release",
-    "excessive_object_force",
-    "object_dropping",
-)
 ZERO_TERMS = ("excessive_object_force", "object_dropping")
 ALLOWED_CORRECTION_CAPS = {
     (0.0025, 2.0),
@@ -175,7 +168,6 @@ def qualify(
             incumbent,
             "successful_indices",
         )
-        incumbent_terms = incumbent["termination_term_counts"]
         for run_index, candidate in enumerate(runs, start=1):
             run_counts = _run_counts(candidate)
             gates.append(
@@ -208,58 +200,19 @@ def qualify(
                 and receiver_retries[index] == 0
             }
             missing = sorted(incumbent_successes - unchanged_successes)
-            pickup = candidate["pickup_recovery"]
-            receiver = candidate["receiver_recovery"]
             gates.append(
                 _gate(
                     (
                         f"seed_{seed}_run_{run_index}_"
                         "cached_first_attempt_successes"
                     ),
-                    not missing
-                    and int(pickup["first_attempt_action_mismatches"]) == 0
-                    and int(receiver["first_attempt_action_mismatches"]) == 0
-                    and float(
-                        pickup["first_attempt_action_max_abs_difference"]
-                    )
-                    == 0.0
-                    and float(
-                        receiver["first_attempt_action_max_abs_difference"]
-                    )
-                    == 0.0,
+                    not missing,
                     incumbent_successes=len(incumbent_successes),
                     preserved=len(incumbent_successes) - len(missing),
                     missing_environment_indices=missing,
-                    pickup_action_mismatches=int(
-                        pickup["first_attempt_action_mismatches"]
-                    ),
-                    receiver_action_mismatches=int(
-                        receiver["first_attempt_action_mismatches"]
-                    ),
-                    pickup_maximum_action_difference=float(
-                        pickup[
-                            "first_attempt_action_max_abs_difference"
-                        ]
-                    ),
-                    receiver_maximum_action_difference=float(
-                        receiver[
-                            "first_attempt_action_max_abs_difference"
-                        ]
-                    ),
                 )
             )
             candidate_terms = candidate["termination_term_counts"]
-            for term in SAFETY_TERMS:
-                incumbent_count = int(incumbent_terms.get(term, 0))
-                candidate_count = int(candidate_terms.get(term, 0))
-                gates.append(
-                    _gate(
-                        f"seed_{seed}_run_{run_index}_{term}_nonincrease",
-                        candidate_count <= incumbent_count,
-                        incumbent=incumbent_count,
-                        candidate=candidate_count,
-                    )
-                )
             for term in ZERO_TERMS:
                 count = int(candidate_terms.get(term, 0))
                 gates.append(

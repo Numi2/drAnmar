@@ -239,11 +239,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self.first_attempt_failed = torch.empty(0, dtype=torch.bool)
         self.recovered_custody = torch.empty(0, dtype=torch.bool)
         self.activation_count = torch.empty(0, dtype=torch.long)
-        self.first_attempt_action_mismatch_count = torch.empty(
-            0,
-            dtype=torch.long,
-        )
-        self.first_attempt_action_max_abs_difference = torch.empty(0)
         self.last_context = torch.empty((0, self.context_dim))
         self.last_activation_mask = torch.empty(0, dtype=torch.bool)
 
@@ -297,14 +292,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
         self.recovered_custody = torch.zeros_like(self.first_attempt_failed)
         self.activation_count = torch.zeros_like(self.retry_count)
-        self.first_attempt_action_mismatch_count = torch.zeros_like(
-            self.retry_count
-        )
-        self.first_attempt_action_max_abs_difference = torch.zeros(
-            batch_size,
-            dtype=dtype,
-            device=device,
-        )
         self.last_context = torch.zeros(
             (batch_size, self.context_dim),
             dtype=dtype,
@@ -658,9 +645,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
 
         giver_is_robot_1 = raw[:, 82] > 0.5
-        canonical_before = (
-            self.retry_state == self.state_canonical
-        )
         giver_contacts = self._select_role(
             raw[:, 66:68],
             raw[:, 68:70],
@@ -841,25 +825,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             giver_is_robot_1,
             learned_retry,
         )
-        result = result.clamp(-1.0, 1.0)
-        preservation_mask = canonical_before & ~failure
-        action_difference = (result - base_action).abs()
-        action_mismatch = preservation_mask & torch.any(
-            action_difference != 0.0,
-            dim=-1,
-        )
-        self.first_attempt_action_mismatch_count += (
-            action_mismatch.to(torch.long)
-        )
-        self.first_attempt_action_max_abs_difference[:] = torch.where(
-            preservation_mask,
-            torch.maximum(
-                self.first_attempt_action_max_abs_difference,
-                action_difference.amax(dim=-1),
-            ),
-            self.first_attempt_action_max_abs_difference,
-        )
-        return result
+        return result.clamp(-1.0, 1.0)
 
     def _clear_state(self, mask: torch.Tensor) -> None:
         self.retry_state[mask] = self.state_canonical
@@ -876,8 +842,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self.first_attempt_failed[mask] = False
         self.recovered_custody[mask] = False
         self.activation_count[mask] = 0
-        self.first_attempt_action_mismatch_count[mask] = 0
-        self.first_attempt_action_max_abs_difference[mask] = 0.0
 
     def reset(
         self,
@@ -998,11 +962,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.first_attempt_failed = torch.empty(0, dtype=torch.bool)
         self.recovered_acquisition = torch.empty(0, dtype=torch.bool)
         self.activation_count = torch.empty(0, dtype=torch.long)
-        self.first_attempt_action_mismatch_count = torch.empty(
-            0,
-            dtype=torch.long,
-        )
-        self.first_attempt_action_max_abs_difference = torch.empty(0)
         self.last_context = torch.empty((0, self.context_dim))
         self.last_activation_mask = torch.empty(0, dtype=torch.bool)
 
@@ -1061,14 +1020,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.first_attempt_failed
         )
         self.activation_count = torch.zeros_like(self.retry_count)
-        self.first_attempt_action_mismatch_count = torch.zeros_like(
-            self.retry_count
-        )
-        self.first_attempt_action_max_abs_difference = torch.zeros(
-            batch_size,
-            dtype=dtype,
-            device=device,
-        )
         self.last_context = torch.zeros(
             (batch_size, self.context_dim),
             dtype=dtype,
@@ -1444,10 +1395,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         giver_is_robot_1 = raw[:, 82] > 0.5
         receiver_is_robot_1 = ~giver_is_robot_1
         phase = torch.argmax(raw[:, 77:82], dim=-1)
-        canonical_before = (
-            (self.retry_state == self.state_canonical)
-            & (phase == 2)
-        )
         receiver_contacts = self._select_role(
             raw[:, 66:68],
             raw[:, 68:70],
@@ -1687,23 +1634,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             corrected_receiver_action,
             receiver_is_robot_1,
             learned_retry,
-        ).clamp(-1.0, 1.0)
-        preservation_mask = canonical_before & ~failure
-        action_difference = (result - base_action).abs()
-        mismatch = preservation_mask & torch.any(
-            action_difference != 0.0,
-            dim=-1,
         )
-        self.first_attempt_action_mismatch_count += mismatch.to(torch.long)
-        self.first_attempt_action_max_abs_difference[:] = torch.where(
-            preservation_mask,
-            torch.maximum(
-                self.first_attempt_action_max_abs_difference,
-                action_difference.amax(dim=-1),
-            ),
-            self.first_attempt_action_max_abs_difference,
-        )
-        return result
+        return result.clamp(-1.0, 1.0)
 
     def _clear_state(self, mask: torch.Tensor) -> None:
         self.retry_state[mask] = self.state_canonical
@@ -1722,8 +1654,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.first_attempt_failed[mask] = False
         self.recovered_acquisition[mask] = False
         self.activation_count[mask] = 0
-        self.first_attempt_action_mismatch_count[mask] = 0
-        self.first_attempt_action_max_abs_difference[mask] = 0.0
 
     def reset(
         self,

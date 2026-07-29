@@ -75,6 +75,7 @@ def main(argv: list[str]) -> int:
         if payload.get("schema_version") not in {
             "dranmar-receiver-recovery-dataset-1.0",
             "dranmar-receiver-recovery-dataset-1.1",
+            "dranmar-receiver-recovery-dataset-1.2",
         }:
             raise ValueError(f"unsupported receiver dataset: {path}")
         samples = payload.get("attempts") or payload
@@ -109,7 +110,6 @@ def main(argv: list[str]) -> int:
     orientation_cap = orientation_caps.pop()
 
     candidate_groups: dict[tuple[str, int], list[dict[str, object]]] = {}
-    strict_replay_groups: set[tuple[str, int]] = set()
     total_samples = 0
     successful_candidate_count = 0
     retained_candidate_count = 0
@@ -177,67 +177,10 @@ def main(argv: list[str]) -> int:
                     ),
                 }
             )
-            if sweep_id:
-                strict_replay_groups.add(key)
-
-    maximum_replay_context_spread = 0.0
-    maximum_observed_replay_context_spread = 0.0
-    excluded_context_drift_candidates = 0
-    replay_groups_without_canonical_reference = 0
     demonstration_context = []
     demonstration_correction = []
     retained_demonstrations = 0
     for key, candidates in candidate_groups.items():
-        contexts = torch.stack(
-            [candidate["context"] for candidate in candidates]
-        )
-        if key in strict_replay_groups:
-            canonical = next(
-                (
-                    candidate
-                    for candidate in candidates
-                    if candidate["candidate_index"] == 0
-                ),
-                None,
-            )
-            if canonical is None:
-                replay_groups_without_canonical_reference += 1
-                continue
-            reference = canonical["context"]
-            per_candidate_spread = (
-                contexts - reference
-            ).abs().amax(dim=-1)
-            maximum_observed_replay_context_spread = max(
-                maximum_observed_replay_context_spread,
-                float(per_candidate_spread.max().item()),
-            )
-            exact = per_candidate_spread <= 1.0e-5
-            excluded_context_drift_candidates += int(
-                (~exact).sum().item()
-            )
-            candidates = [
-                candidate
-                for candidate, keep in zip(
-                    candidates,
-                    exact.tolist(),
-                    strict=True,
-                )
-                if keep
-            ]
-            if not candidates:
-                continue
-            exact_contexts = torch.stack(
-                [candidate["context"] for candidate in candidates]
-            )
-            maximum_replay_context_spread = max(
-                maximum_replay_context_spread,
-                float(
-                    (exact_contexts - exact_contexts[:1])
-                    .abs()
-                    .max()
-                    .item()
-                ),
-            )
         successful = [
             candidate for candidate in candidates if candidate["safe"]
         ]
@@ -375,18 +318,6 @@ def main(argv: list[str]) -> int:
             "successful_demonstrations": int(context.shape[0]),
             "retained_demonstrations": retained_demonstrations,
             "paired_failed_states": len(candidate_groups),
-            "maximum_replay_context_spread": (
-                maximum_replay_context_spread
-            ),
-            "maximum_observed_replay_context_spread": (
-                maximum_observed_replay_context_spread
-            ),
-            "excluded_context_drift_candidates": (
-                excluded_context_drift_candidates
-            ),
-            "replay_groups_without_canonical_reference": (
-                replay_groups_without_canonical_reference
-            ),
             "training_demonstrations": int(training_context.shape[0]),
             "validation_demonstrations": int(validation_context.shape[0]),
             "final_training_loss": final_training_loss,
