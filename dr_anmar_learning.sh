@@ -406,6 +406,12 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG}"
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_ACQUISITION_TIMEOUT_STEPS:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_acquisition_timeout_steps
+                "${DR_ANMAR_RECEIVER_RECOVERY_ACQUISITION_TIMEOUT_STEPS}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION:-}" ]]; then
             pickup_recovery_args+=(
                 "--receiver_recovery_fixed_correction=${DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION}"

@@ -3468,6 +3468,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             return _fail(
                 "replayed receiver Sobol candidates require a stable sweep id"
             )
+    if args.receiver_recovery and not (
+        1
+        <= args.receiver_recovery_acquisition_timeout_steps
+        < args.num_frames
+    ):
+        return _fail(
+            "receiver acquisition timeout must be inside the episode"
+        )
     if args.receiver_recovery_local_sobol_candidate is not None:
         if not 0 <= args.receiver_recovery_local_sobol_candidate < 32:
             return _fail(
@@ -4062,6 +4070,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             episode_frames=args.num_frames,
         ).to(env.unwrapped.device)
+        receiver_recovery_policy.acquisition_timeout_steps = (
+            args.receiver_recovery_acquisition_timeout_steps
+        )
         if args.receiver_recovery_fixed_correction:
             correction_values = [
                 float(value.strip())
@@ -6999,9 +7010,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "acquisition_timeout_steps": (
                         receiver_recovery_policy.acquisition_timeout_steps
                     ),
-                    "giver_custody_loss_steps": (
-                        receiver_recovery_policy.giver_custody_loss_steps
-                    ),
                     "fixed_correction": (
                         args.receiver_recovery_fixed_correction
                     ),
@@ -7281,6 +7289,11 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_recovery_orientation_cap_deg",
         type=float,
         default=5.0,
+    )
+    play.add_argument(
+        "--receiver_recovery_acquisition_timeout_steps",
+        type=int,
+        default=500,
     )
     play.add_argument("--receiver_recovery_fixed_correction")
     play.add_argument(
