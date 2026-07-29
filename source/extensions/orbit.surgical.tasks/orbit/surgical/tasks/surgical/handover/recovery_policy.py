@@ -557,52 +557,6 @@ class HandoverPickupRecoveryPolicy(nn.Module):
                     "fixed correction delta batch does not match policy batch"
                 )
             proposed = proposed + fixed_delta
-        elif self.candidate_value is not None:
-            active_context = context[activation]
-            candidates = self.candidate_corrections.to(
-                device=raw.device,
-                dtype=raw.dtype,
-            )
-            normalized_candidates = torch.cat(
-                (
-                    candidates[:, :3] / self.position_cap_m,
-                    candidates[:, 3:] / self.orientation_cap_rad,
-                ),
-                dim=-1,
-            )
-            candidate_features = torch.cat(
-                (
-                    active_context.unsqueeze(1).expand(-1, 65, -1),
-                    normalized_candidates.unsqueeze(0).expand(
-                        active_context.shape[0],
-                        -1,
-                        -1,
-                    ),
-                ),
-                dim=-1,
-            )
-            normalized_features = (
-                candidate_features
-                - self.candidate_value_feature_mean.to(
-                    device=raw.device,
-                    dtype=raw.dtype,
-                )
-            ) / self.candidate_value_feature_std.to(
-                device=raw.device,
-                dtype=raw.dtype,
-            )
-            candidate_scores = self.candidate_value(
-                normalized_features.reshape(-1, 35)
-            ).reshape(active_context.shape[0], 65)
-            best_score, best_index = candidate_scores.max(dim=-1)
-            active_indices = torch.nonzero(
-                activation,
-                as_tuple=False,
-            ).squeeze(-1)
-            proposed = proposed.clone()
-            proposed[activation] = candidates[best_index]
-            self.selected_candidate_index[active_indices] = best_index
-            self.selected_candidate_score[active_indices] = best_score
         if self._correction_candidates is not None:
             candidates = self._correction_candidates.to(
                 device=raw.device,
@@ -1650,6 +1604,52 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     "fixed receiver correction delta batch does not match policy"
                 )
             proposed = proposed + fixed_delta
+        elif self.candidate_value is not None:
+            active_context = context[activation]
+            candidates = self.candidate_corrections.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            normalized_candidates = torch.cat(
+                (
+                    candidates[:, :3] / self.position_cap_m,
+                    candidates[:, 3:] / self.orientation_cap_rad,
+                ),
+                dim=-1,
+            )
+            candidate_features = torch.cat(
+                (
+                    active_context.unsqueeze(1).expand(-1, 65, -1),
+                    normalized_candidates.unsqueeze(0).expand(
+                        active_context.shape[0],
+                        -1,
+                        -1,
+                    ),
+                ),
+                dim=-1,
+            )
+            normalized_features = (
+                candidate_features
+                - self.candidate_value_feature_mean.to(
+                    device=raw.device,
+                    dtype=raw.dtype,
+                )
+            ) / self.candidate_value_feature_std.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            candidate_scores = self.candidate_value(
+                normalized_features.reshape(-1, 35)
+            ).reshape(active_context.shape[0], 65)
+            best_score, best_index = candidate_scores.max(dim=-1)
+            active_indices = torch.nonzero(
+                activation,
+                as_tuple=False,
+            ).squeeze(-1)
+            proposed = proposed.clone()
+            proposed[activation] = candidates[best_index]
+            self.selected_candidate_index[active_indices] = best_index
+            self.selected_candidate_score[active_indices] = best_score
         projected = torch.cat(
             (
                 _project_vector(proposed[:, :3], self.position_cap_m),
