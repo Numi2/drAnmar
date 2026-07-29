@@ -273,6 +273,12 @@ def main(argv: list[str]) -> int:
                 raise ValueError(
                     f"candidate {candidate} correction is not deterministic"
                 )
+            all_values = correction[candidate_index == candidate]
+            if float((all_values - mean).abs().max().item()) > 1.0e-6:
+                raise ValueError(
+                    f"candidate {candidate} correction differs across "
+                    "development seeds"
+                )
             candidates[candidate] = mean
 
     if args.validation_seed is not None:

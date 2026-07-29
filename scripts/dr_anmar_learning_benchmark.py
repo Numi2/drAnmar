@@ -3499,6 +3499,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail("receiver recovery sweep replicas must be positive")
     if args.receiver_recovery_sobol_start < 0:
         return _fail("receiver recovery Sobol start must be non-negative")
+    if (
+        args.receiver_recovery_sobol_seed is not None
+        and args.receiver_recovery_sobol_seed < 0
+    ):
+        return _fail("receiver recovery Sobol seed must be non-negative")
     if args.receiver_recovery_sobol_start > 0 and (
         args.receiver_recovery_sweep_replicas <= 1
         or not args.receiver_recovery_random_corrections
@@ -4774,10 +4779,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             args.receiver_recovery_random_corrections
             or args.receiver_recovery_sobol_candidate is not None
         ):
+            receiver_sobol_seed = (
+                args.receiver_recovery_sobol_seed
+                if args.receiver_recovery_sobol_seed is not None
+                else args.seed + 1
+            )
             sobol = torch.quasirandom.SobolEngine(
                 dimension=6,
                 scramble=True,
-                seed=args.seed + 1,
+                seed=receiver_sobol_seed,
             )
             if args.receiver_recovery_sobol_candidate is not None:
                 sobol_candidates = (
@@ -7542,6 +7552,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "sweep_replicas": receiver_sweep_replicas,
                     "sobol_start": args.receiver_recovery_sobol_start,
+                    "sobol_seed": (
+                        args.receiver_recovery_sobol_seed
+                        if args.receiver_recovery_sobol_seed is not None
+                        else args.seed + 1
+                    ),
                     "sweep_id": args.receiver_recovery_sweep_id,
                     "search_mode": (
                         "dagger_local"
@@ -8299,6 +8314,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         args.receiver_recovery_sweep_replicas
                     ),
                     "sobol_start": args.receiver_recovery_sobol_start,
+                    "sobol_seed": (
+                        args.receiver_recovery_sobol_seed
+                        if args.receiver_recovery_sobol_seed is not None
+                        else args.seed + 1
+                    ),
                     "sweep_id": args.receiver_recovery_sweep_id,
                     "sobol_candidate": (
                         args.receiver_recovery_sobol_candidate
@@ -8678,6 +8698,7 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         default=0,
     )
+    play.add_argument("--receiver_recovery_sobol_seed", type=int)
     play.add_argument("--receiver_recovery_sobol_candidate", type=int)
     play.add_argument("--receiver_recovery_local_sobol_candidate", type=int)
     play.add_argument(
