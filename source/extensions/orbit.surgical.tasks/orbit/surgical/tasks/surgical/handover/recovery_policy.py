@@ -1674,14 +1674,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.orientation_action_limit = 0.6
         self.contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
-        # A qualified contact at exactly 0.01 N is sufficient for phase
-        # bookkeeping but is not enough reserve for another approach. Wait for
-        # a fixed two-times giver margin (0.02 N per jaw) before retry motion.
-        # Release itself uses five consecutive live bilateral frames because
-        # the screen showed that simultaneous force-margin gating could never
-        # authorize a physically valid transfer.
+        # A single qualified contact frame is not enough to restart motion.
+        # Require three consecutive bilateral giver frames at the task's
+        # physical 0.01 N qualification threshold. The screen showed that a
+        # doubled 0.02 N threshold prevented every genuine retry from starting.
+        # Release separately uses five consecutive live bilateral frames.
         self.normalized_giver_restore_force_margin = (
-            2.0 * self.normalized_contact_threshold
+            self.normalized_contact_threshold
         )
         self.giver_restore_steps = 3
         self.close_dwell_steps = 15
