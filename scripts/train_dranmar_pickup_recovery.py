@@ -140,7 +140,7 @@ def main(argv: list[str]) -> int:
     safe_lift_candidate_count = 0
     end_to_end_successful_candidate_count = 0
     positive_context_parts = []
-    positive_correction_parts = []
+    positive_delta_parts = []
     candidate_groups: dict[tuple[str, int], list[dict[str, object]]] = {}
     collection_cohorts = {
         f"{failure}|retry_{retry}": 0
@@ -155,9 +155,17 @@ def main(argv: list[str]) -> int:
     for payload_index, payload in enumerate(payloads):
         has_attempt_records = payload.get("attempts") is not None
         samples = payload.get("attempts") or payload
-        payload_context = samples["context"].float().clone()
+        source_context = samples["context"].float()
         source_position_cap = float(payload["position_cap_m"])
         source_orientation_cap = float(payload["orientation_cap_rad"])
+        previous_correction = torch.cat(
+            (
+                source_context[:, 23:26] * source_position_cap,
+                source_context[:, 26:29] * source_orientation_cap,
+            ),
+            dim=-1,
+        )
+        payload_context = source_context.clone()
         payload_context[:, 23:26] *= (
             source_position_cap / position_cap
         )
@@ -165,6 +173,7 @@ def main(argv: list[str]) -> int:
             source_orientation_cap / orientation_cap
         )
         payload_correction = samples["correction"].float()
+        payload_delta = payload_correction - previous_correction
         safe_lift = samples.get(
             "safe_lift",
             samples["recovered_custody"].bool()
@@ -224,6 +233,7 @@ def main(argv: list[str]) -> int:
                 {
                     "context": payload_context[sample_index],
                     "correction": payload_correction[sample_index],
+                    "delta": payload_delta[sample_index],
                     "safe_lift": bool(safe_lift[sample_index].item()),
                     "full_success": bool(
                         full_success[sample_index].item()
@@ -310,13 +320,13 @@ def main(argv: list[str]) -> int:
             ),
         )
         positive_context_parts.append(chosen["context"])
-        positive_correction_parts.append(chosen["correction"])
+        positive_delta_parts.append(chosen["delta"])
     if positive_context_parts:
         positive_context = torch.stack(positive_context_parts)
-        positive_correction = torch.stack(positive_correction_parts)
+        positive_delta = torch.stack(positive_delta_parts)
     else:
         positive_context = torch.empty(0, PickupRecoveryHead.input_dim)
-        positive_correction = torch.empty(0, PickupRecoveryHead.output_dim)
+        positive_delta = torch.empty(0, PickupRecoveryHead.output_dim)
     if positive_context.shape[0] < 32:
         raise ValueError(
             "at least 32 distinct end-to-end successful recovery states "
@@ -324,8 +334,8 @@ def main(argv: list[str]) -> int:
         )
     normalized_target = torch.cat(
         (
-            positive_correction[:, :3] / position_cap,
-            positive_correction[:, 3:] / orientation_cap,
+            positive_delta[:, :3] / position_cap,
+            positive_delta[:, 3:] / orientation_cap,
         ),
         dim=-1,
     ).clamp(-1.0, 1.0)
@@ -413,7 +423,9 @@ def main(argv: list[str]) -> int:
         "position_cap_m": position_cap,
         "orientation_cap_rad": orientation_cap,
         "training": {
-            "algorithm": "end_to_end_successful_offset_behavior_cloning",
+            "algorithm": (
+                "end_to_end_successful_offset_delta_behavior_cloning"
+            ),
             "seed": args.seed,
             "epochs": args.epochs,
             "batch_size": args.batch_size,
