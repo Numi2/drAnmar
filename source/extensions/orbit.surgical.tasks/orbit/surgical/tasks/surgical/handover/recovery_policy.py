@@ -984,6 +984,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.episode_step = torch.empty(0, dtype=torch.long)
         self.close_dwell = torch.empty(0, dtype=torch.long)
         self.acquisition_dwell = torch.empty(0, dtype=torch.long)
+        self.acquisition_started = torch.empty(0, dtype=torch.bool)
         self.custody_loss_dwell = torch.empty(0, dtype=torch.long)
         self.open_settle_dwell = torch.empty(0, dtype=torch.long)
         self.ever_bilateral = torch.empty(0, dtype=torch.bool)
@@ -1023,6 +1024,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.episode_step = torch.zeros_like(self.retry_count)
         self.close_dwell = torch.zeros_like(self.retry_count)
         self.acquisition_dwell = torch.zeros_like(self.retry_count)
+        self.acquisition_started = torch.zeros(
+            batch_size,
+            dtype=torch.bool,
+            device=device,
+        )
         self.custody_loss_dwell = torch.zeros_like(self.retry_count)
         self.open_settle_dwell = torch.zeros_like(self.retry_count)
         self.ever_bilateral = torch.zeros(
@@ -1496,7 +1502,36 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             (self.retry_state == self.state_canonical)
             | (self.retry_state == self.state_learned_retry)
         )
-        acquisition_active = (phase == 2) & first_or_retry
+        receiver_base_action = self._select_role(
+            base_action[:, :7],
+            base_action[:, 7:14],
+            receiver_is_robot_1,
+        )
+        canonical_approach_commanded = (
+            (self.retry_state == self.state_canonical)
+            & (phase == 2)
+            & (
+                torch.linalg.vector_norm(
+                    receiver_base_action[:, :6],
+                    dim=-1,
+                )
+                > 1.0e-6
+            )
+        )
+        # Phase 2 begins while the giver may still be presenting the needle.
+        # Start the failure clock only when the frozen policy actually commands
+        # receiver motion, so transport time cannot trigger a false retry.
+        self.acquisition_started |= canonical_approach_commanded
+        self.acquisition_started |= (
+            (self.retry_state == self.state_learned_retry)
+            & (phase == 2)
+        )
+        self.acquisition_started &= (phase == 2) & first_or_retry
+        acquisition_active = (
+            (phase == 2)
+            & first_or_retry
+            & self.acquisition_started
+        )
         self.acquisition_dwell[:] = torch.where(
             acquisition_active,
             self.acquisition_dwell + 1,
@@ -1563,6 +1598,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.open_settle_dwell[failure] = 0
             self.close_dwell[failure] = 0
             self.acquisition_dwell[failure] = 0
+            self.acquisition_started[failure] = False
             self.custody_loss_dwell[failure] = 0
 
         failed_grasp = self.retry_state == self.state_failed
@@ -1600,6 +1636,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.retry_state[activation] = self.state_learned_retry
             self.open_settle_dwell[activation] = 0
             self.acquisition_dwell[activation] = 0
+            self.acquisition_started[activation] = True
             self._activate_recovery(raw, giver_is_robot_1, activation)
 
         receiver_hold_closed = torch.zeros(
@@ -1674,6 +1711,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.episode_step[mask] = 0
         self.close_dwell[mask] = 0
         self.acquisition_dwell[mask] = 0
+        self.acquisition_started[mask] = False
         self.custody_loss_dwell[mask] = 0
         self.open_settle_dwell[mask] = 0
         self.ever_bilateral[mask] = False
