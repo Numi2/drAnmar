@@ -85,6 +85,54 @@ def _greedy_coverage_order(
     return order, trace
 
 
+def _rank_partial_attempts(
+    retained: torch.Tensor,
+    acquired: torch.Tensor,
+    dropped: torch.Tensor,
+    candidate_index: torch.Tensor,
+) -> tuple[list[int], list[dict[str, int | float]]]:
+    ranked: list[tuple[tuple[float, ...], int, dict[str, int | float]]] = []
+    for candidate in range(16):
+        mask = candidate_index == candidate
+        attempts = int(mask.sum())
+        retained_count = int(retained[mask].sum())
+        acquired_count = int(acquired[mask].sum())
+        drop_count = int(dropped[mask].sum())
+        acquisition_rate = (
+            acquired_count / attempts if attempts else 0.0
+        )
+        drop_rate = drop_count / attempts if attempts else 1.0
+        result: dict[str, int | float] = {
+            "candidate_index": candidate,
+            "attempts": attempts,
+            "retained_successes": retained_count,
+            "acquisitions": acquired_count,
+            "drops": drop_count,
+            "acquisition_rate": acquisition_rate,
+            "drop_rate": drop_rate,
+        }
+        objective = (
+            float(retained_count),
+            acquisition_rate,
+            float(acquired_count),
+            -drop_rate,
+            float(attempts > 0),
+            float(-candidate),
+        )
+        ranked.append((objective, candidate, result))
+    ranked.sort(reverse=True)
+    order = [candidate for _, candidate, _ in ranked]
+    trace: list[dict[str, int | float]] = []
+    for rank, (_, candidate, result) in enumerate(ranked):
+        trace.append(
+            {
+                "portfolio_rank": rank,
+                **result,
+            }
+        )
+    return order, trace
+
+
 def _analyze(args: argparse.Namespace) -> int:
     dataset_path = Path(args.dataset).expanduser().resolve()
     base_path = Path(args.base_checkpoint).expanduser().resolve()
@@ -188,21 +236,51 @@ def _analyze(args: argparse.Namespace) -> int:
         retained_rows.append(retained[ordered])
         acquired_rows.append(acquired[ordered])
         dropped_rows.append(dropped[ordered])
-    if len(complete_states) < args.minimum_complete_states:
+    if (
+        len(complete_states) < args.minimum_complete_states
+        and not args.allow_partial
+    ):
         raise ValueError(
             f"expected at least {args.minimum_complete_states} complete "
             f"retry states, found {len(complete_states)}"
         )
-    contexts = torch.stack(state_context)
-    retained_matrix = torch.stack(retained_rows)
-    acquired_matrix = torch.stack(acquired_rows)
-    dropped_matrix = torch.stack(dropped_rows)
-    order, trace = _greedy_coverage_order(
-        retained_matrix,
-        acquired_matrix,
-        dropped_matrix,
-    )
-    oracle = retained_matrix.any(dim=-1)
+    if complete_states:
+        contexts = torch.stack(state_context)
+        retained_matrix = torch.stack(retained_rows)
+        acquired_matrix = torch.stack(acquired_rows)
+        dropped_matrix = torch.stack(dropped_rows)
+        order, trace = _greedy_coverage_order(
+            retained_matrix,
+            acquired_matrix,
+            dropped_matrix,
+        )
+        oracle = retained_matrix.any(dim=-1)
+        selection_mode = "paired_maximum_coverage"
+        candidate_results = [
+            {
+                "candidate_index": candidate,
+                "attempts": len(complete_states),
+                "retained_successes": int(
+                    retained_matrix[:, candidate].sum()
+                ),
+                "acquisitions": int(
+                    acquired_matrix[:, candidate].sum()
+                ),
+                "drops": int(dropped_matrix[:, candidate].sum()),
+            }
+            for candidate in range(16)
+        ]
+    else:
+        contexts = context
+        order, trace = _rank_partial_attempts(
+            retained,
+            acquired,
+            dropped,
+            candidate_index,
+        )
+        oracle = retained
+        selection_mode = "partial_retry_outcome_ranking"
+        candidate_results = trace
     report: dict[str, object] = {
         "schema_version": "dranmar-receiver-retry-sweep-analysis-1.0",
         "source_revision": _source_revision(),
@@ -216,23 +294,12 @@ def _analyze(args: argparse.Namespace) -> int:
         "eligible_retry_activations": int(retry_mask.sum()),
         "complete_paired_states": len(complete_states),
         "complete_state_indices": complete_states,
+        "selection_mode": selection_mode,
         "oracle_retained_successes": int(oracle.sum()),
         "oracle_retained_rate": float(oracle.float().mean()),
         "greedy_order": order,
         "greedy_trace": trace,
-        "candidate_results": [
-            {
-                "candidate_index": candidate,
-                "retained_successes": int(
-                    retained_matrix[:, candidate].sum()
-                ),
-                "acquisitions": int(
-                    acquired_matrix[:, candidate].sum()
-                ),
-                "drops": int(dropped_matrix[:, candidate].sum()),
-            }
-            for candidate in range(16)
-        ],
+        "candidate_results": candidate_results,
         "routing_context": {
             "jaw_1_loss_states": int(
                 (contexts[:, 18] > 0.5).sum()
@@ -278,6 +345,8 @@ def _analyze(args: argparse.Namespace) -> int:
             "selection": {
                 "algorithm": (
                     "retry_only_greedy_retained_maximum_coverage"
+                    if complete_states
+                    else "retry_only_partial_outcome_ranking"
                 ),
                 "complete_paired_states": len(complete_states),
                 "oracle_retained_successes": int(oracle.sum()),
@@ -308,6 +377,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--output_report", required=True)
     parser.add_argument("--portfolio_output")
     parser.add_argument("--minimum_complete_states", type=int, default=1)
+    parser.add_argument("--allow_partial", action="store_true")
     return parser
 
 

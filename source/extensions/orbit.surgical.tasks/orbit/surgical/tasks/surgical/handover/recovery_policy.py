@@ -3255,10 +3255,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.giver_degradation_dwell + 1,
             torch.zeros_like(self.giver_degradation_dwell),
         )
-        # Reject one-frame giver contact flicker, but clear the receiver before
-        # a second unilateral frame becomes irreversible custody loss.
+        # A one-frame giver contact flicker occurs in otherwise successful
+        # transfers. Latch only persistent physical custody degradation.
         giver_custody_degrading = (
-            self.giver_degradation_dwell >= 2
+            self.giver_degradation_dwell >= 3
         )
         if self.enable_retries:
             failure = (
