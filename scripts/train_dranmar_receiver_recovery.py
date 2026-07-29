@@ -40,6 +40,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--weight_decay", type=float, default=1.0e-6)
     parser.add_argument("--validation_fraction", type=float, default=0.2)
     parser.add_argument("--first_retry_only", action="store_true")
+    parser.add_argument("--first_attempt_only", action="store_true")
     parser.add_argument("--seed", type=int, default=104729)
     return parser
 
@@ -50,6 +51,10 @@ def main(argv: list[str]) -> int:
         raise ValueError("epochs and batch size must be positive")
     if not 0.05 <= args.validation_fraction <= 0.5:
         raise ValueError("validation fraction must be in [0.05, 0.5]")
+    if args.first_retry_only and args.first_attempt_only:
+        raise ValueError(
+            "first-retry-only and first-attempt-only are exclusive"
+        )
 
     repo_root = Path(__file__).resolve().parents[1]
     sys.path.insert(
@@ -174,8 +179,14 @@ def main(argv: list[str]) -> int:
             group_prefix = f"dataset={payload_index}"
         for sample_index in range(context.shape[0]):
             if (
-                args.first_retry_only
-                and int(retry_count[sample_index].item()) != 1
+                (
+                    args.first_retry_only
+                    and int(retry_count[sample_index].item()) != 1
+                )
+                or (
+                    args.first_attempt_only
+                    and int(retry_count[sample_index].item()) != 0
+                )
             ):
                 continue
             key = (group_prefix, int(state_index[sample_index].item()))
@@ -345,6 +356,7 @@ def main(argv: list[str]) -> int:
             "retained_demonstrations": retained_demonstrations,
             "paired_failed_states": len(candidate_groups),
             "first_retry_only": args.first_retry_only,
+            "first_attempt_only": args.first_attempt_only,
             "training_demonstrations": int(training_context.shape[0]),
             "validation_demonstrations": int(validation_context.shape[0]),
             "final_training_loss": final_training_loss,

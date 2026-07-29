@@ -3641,7 +3641,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "candidate-value checkpoint"
         )
     if args.receiver_candidate_first_attempt and not (
-        args.receiver_candidate_value_checkpoint
+        args.receiver_recovery_checkpoint
+        or args.receiver_candidate_value_checkpoint
         or args.receiver_recovery_fixed_correction
         or args.receiver_recovery_random_corrections
         or args.receiver_recovery_sobol_candidate is not None
