@@ -8209,6 +8209,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         if receiver_sweep_replicas > 1
                         else "policy"
                     ),
+                    "retry_candidate_index": (
+                        args.receiver_retry_candidate_index
+                    ),
                     "local_position_radius_m": (
                         args.receiver_recovery_local_position_radius
                         if (

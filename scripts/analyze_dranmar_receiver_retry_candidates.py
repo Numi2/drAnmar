@@ -108,7 +108,17 @@ def _main(args: argparse.Namespace) -> int:
     for encoded_path in args.dataset:
         path = Path(encoded_path).expanduser().resolve()
         payload = torch.load(path, map_location="cpu", weights_only=False)
+        attempts = payload.get("attempts")
+        if not isinstance(attempts, dict):
+            raise ValueError(f"dataset has no attempt records: {path}")
         candidate = payload.get("retry_candidate_index")
+        if candidate is None:
+            retry_one = attempts["retry_count"].long() == 1
+            observed = torch.unique(
+                attempts["candidate_index"].long()[retry_one]
+            )
+            if observed.numel() == 1:
+                candidate = int(observed.item())
         if (
             payload.get("schema_version") != DATASET_SCHEMA
             or payload.get("search_mode") != SEARCH_MODE
@@ -126,9 +136,6 @@ def _main(args: argparse.Namespace) -> int:
             expected_seed = seed
         elif seed != expected_seed:
             raise ValueError("retry candidate datasets must share one seed")
-        attempts = payload.get("attempts")
-        if not isinstance(attempts, dict):
-            raise ValueError(f"dataset has no attempt records: {path}")
         retry = attempts["retry_count"].long()
         mask = (
             (retry == 1)
