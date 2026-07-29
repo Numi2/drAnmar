@@ -1654,7 +1654,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             5,
         )
         self.retry_clearance_retreat = bool(retry_clearance_retreat)
-        self.retry_clearance_retreat_steps = 10
+        self.retry_clearance_retreat_steps = 20
         self.retry_clearance_retreat_action_limit = 0.01
         self.receiver_retention_contact_centering = bool(
             receiver_retention_contact_centering
