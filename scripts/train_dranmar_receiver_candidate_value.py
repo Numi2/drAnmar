@@ -37,6 +37,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--weight_decay", type=float, default=1.0e-6)
     parser.add_argument("--validation_fraction", type=float, default=0.2)
     parser.add_argument("--validation_seed", type=int)
+    parser.add_argument("--candidate_seed", type=int, default=130363)
     parser.add_argument("--seed", type=int, default=104729)
     return parser
 
@@ -86,6 +87,8 @@ def main(argv: list[str]) -> int:
         and args.validation_seed not in DEVELOPMENT_SEEDS
     ):
         raise ValueError("validation seed must be a development seed")
+    if args.candidate_seed not in DEVELOPMENT_SEEDS:
+        raise ValueError("candidate seed must be a development seed")
 
     repo_root = Path(__file__).resolve().parents[1]
     sys.path.insert(
@@ -194,7 +197,10 @@ def main(argv: list[str]) -> int:
 
     candidates = torch.empty((65, 6), dtype=torch.float32)
     for candidate in range(65):
-        values = correction[candidate_index == candidate]
+        values = correction[
+            (candidate_index == candidate)
+            & (sample_seed == args.candidate_seed)
+        ]
         if values.shape[0] == 0:
             raise ValueError(f"candidate {candidate} has no samples")
         mean = values.mean(dim=0)
@@ -305,6 +311,7 @@ def main(argv: list[str]) -> int:
         "feature_mean": feature_mean,
         "feature_std": feature_std,
         "candidate_corrections": candidates,
+        "candidate_seed": args.candidate_seed,
         "base_checkpoint_sha256": next(iter(base_hashes)),
         "pickup_recovery_checkpoint_sha256": next(iter(pickup_hashes)),
         "position_cap_m": position_cap,
