@@ -5627,8 +5627,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if "Handover-" in args.task:
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+            needle_geometry_grasp_offset_m,
         )
 
+        receiver_grasp_offset_m = needle_geometry_grasp_offset_m(0.65)
         handover_observation = obs["policy"]
         first_handover_max_phase = torch.argmax(
             handover_observation[:, 77:82], dim=-1
@@ -5705,6 +5707,40 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 -1,
                 dtype=torch.int64,
                 device=env.unwrapped.device,
+            ),
+            "receiver_contacts_at_first_acquisition_n": torch.full(
+                (env.unwrapped.num_envs, 2),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "giver_contacts_at_first_receiver_acquisition_n": torch.full(
+                (env.unwrapped.num_envs, 2),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "receiver_grasp_error_at_first_acquisition_m": torch.full(
+                (env.unwrapped.num_envs, 3),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "receiver_jaw_aperture_at_first_acquisition_rad": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "object_linear_speed_at_first_receiver_acquisition_m_s": (
+                torch.full(
+                    (env.unwrapped.num_envs,),
+                    torch.nan,
+                    device=env.unwrapped.device,
+                )
+            ),
+            "object_angular_speed_at_first_receiver_acquisition_rad_s": (
+                torch.full(
+                    (env.unwrapped.num_envs,),
+                    torch.nan,
+                    device=env.unwrapped.device,
+                )
             ),
             "first_receiver_approach_frame": torch.full(
                 (env.unwrapped.num_envs,),
@@ -5848,6 +5884,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         handover_observation[:, 66:68],
                         handover_observation[:, 68:70],
                     )
+                    receiver_contacts = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 68:70],
+                        handover_observation[:, 66:68],
+                    )
                     giver_bilateral_contact = torch.all(
                         giver_contacts > 0.002,
                         dim=-1,
@@ -5867,6 +5908,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         handover_observation[:, 32:35],
                         handover_observation[:, 39:42],
                     )
+                    receiver_ee = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 39:42],
+                        handover_observation[:, 32:35],
+                    )
                     giver_orientation = torch.where(
                         giver_is_robot_1.unsqueeze(-1),
                         handover_observation[:, 35:39],
@@ -5876,6 +5922,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         giver_is_robot_1.unsqueeze(-1),
                         handover_observation[:, 0:8],
                         handover_observation[:, 16:24],
+                    )
+                    receiver_joint_position = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 16:24],
+                        handover_observation[:, 0:8],
+                    )
+                    object_in_receiver = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 53:56],
+                        handover_observation[:, 46:49],
                     )
                     clearance = (
                         object_in_giver[:, 2]
@@ -5965,6 +6021,43 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_handover_history[
                         "first_receiver_acquisition_frame"
                     ][first_receiver_acquisition] = frame_index
+                    receiver_grasp_position = object_in_receiver.clone()
+                    receiver_grasp_position[:, 0] += (
+                        receiver_grasp_offset_m[0]
+                    )
+                    receiver_grasp_position[:, 1] += (
+                        receiver_grasp_offset_m[1]
+                    )
+                    receiver_grasp_position[:, 2] += -0.0018
+                    first_handover_history[
+                        "receiver_contacts_at_first_acquisition_n"
+                    ][first_receiver_acquisition] = (
+                        receiver_contacts[first_receiver_acquisition] / 0.2
+                    )
+                    first_handover_history[
+                        "giver_contacts_at_first_receiver_acquisition_n"
+                    ][first_receiver_acquisition] = (
+                        giver_contacts[first_receiver_acquisition] / 0.2
+                    )
+                    first_handover_history[
+                        "receiver_grasp_error_at_first_acquisition_m"
+                    ][first_receiver_acquisition] = (
+                        receiver_grasp_position[first_receiver_acquisition]
+                        - receiver_ee[first_receiver_acquisition]
+                    )
+                    first_handover_history[
+                        "receiver_jaw_aperture_at_first_acquisition_rad"
+                    ][first_receiver_acquisition] = (
+                        1.0
+                        + receiver_joint_position[
+                            first_receiver_acquisition,
+                            7,
+                        ]
+                        - receiver_joint_position[
+                            first_receiver_acquisition,
+                            6,
+                        ]
+                    )
                     first_handover_history[
                         "minimum_giver_contact_force_at_first_lift_n"
                     ][first_lift] = (
@@ -6010,6 +6103,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ][first_lift] = object_orientation_in_giver[first_lift]
                     object_linear_velocity = handover_observation[:, 60:63]
                     object_angular_velocity = handover_observation[:, 63:66]
+                    first_handover_history[
+                        "object_linear_speed_at_first_receiver_acquisition_m_s"
+                    ][first_receiver_acquisition] = (
+                        torch.linalg.vector_norm(
+                            object_linear_velocity[first_receiver_acquisition],
+                            dim=-1,
+                        )
+                    )
+                    first_handover_history[
+                        "object_angular_speed_at_first_receiver_acquisition_rad_s"
+                    ][first_receiver_acquisition] = (
+                        torch.linalg.vector_norm(
+                            object_angular_velocity[first_receiver_acquisition],
+                            dim=-1,
+                        )
+                    )
                     first_handover_history[
                         "object_linear_speed_at_first_lift_m_s"
                     ][first_lift] = torch.linalg.vector_norm(
@@ -7320,6 +7429,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "first_receiver_acquisition_frame"
                 ][mask]
                 receiver_acquired = first_receiver_acquisition_frame >= 0
+                receiver_acquisition_contacts = first_handover_history[
+                    "receiver_contacts_at_first_acquisition_n"
+                ][mask][receiver_acquired]
+                giver_acquisition_contacts = first_handover_history[
+                    "giver_contacts_at_first_receiver_acquisition_n"
+                ][mask][receiver_acquired]
+                receiver_acquisition_grasp_error = first_handover_history[
+                    "receiver_grasp_error_at_first_acquisition_m"
+                ][mask][receiver_acquired]
+                receiver_acquisition_jaw_aperture = first_handover_history[
+                    "receiver_jaw_aperture_at_first_acquisition_rad"
+                ][mask][receiver_acquired]
+                receiver_acquisition_linear_speed = first_handover_history[
+                    "object_linear_speed_at_first_receiver_acquisition_m_s"
+                ][mask][receiver_acquired]
+                receiver_acquisition_angular_speed = first_handover_history[
+                    "object_angular_speed_at_first_receiver_acquisition_rad_s"
+                ][mask][receiver_acquired]
                 first_receiver_approach_frame = first_handover_history[
                     "first_receiver_approach_frame"
                 ][mask]
@@ -7495,6 +7622,62 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "approach_to_receiver_acquisition_steps": (
                         scalar_quantiles(
                             approach_to_receiver_acquisition_steps
+                        )
+                    ),
+                    "receiver_minimum_contact_force_at_acquisition_n": (
+                        scalar_quantiles(
+                            receiver_acquisition_contacts.amin(dim=-1)
+                        )
+                        if bool(receiver_acquired.any().item())
+                        else None
+                    ),
+                    "receiver_maximum_contact_force_at_acquisition_n": (
+                        scalar_quantiles(
+                            receiver_acquisition_contacts.amax(dim=-1)
+                        )
+                        if bool(receiver_acquired.any().item())
+                        else None
+                    ),
+                    "receiver_contact_force_imbalance_at_acquisition_n": (
+                        scalar_quantiles(
+                            torch.abs(
+                                receiver_acquisition_contacts[:, 1]
+                                - receiver_acquisition_contacts[:, 0]
+                            )
+                        )
+                        if bool(receiver_acquired.any().item())
+                        else None
+                    ),
+                    "giver_minimum_contact_force_at_receiver_acquisition_n": (
+                        scalar_quantiles(
+                            giver_acquisition_contacts.amin(dim=-1)
+                        )
+                        if bool(receiver_acquired.any().item())
+                        else None
+                    ),
+                    "receiver_grasp_error_norm_at_acquisition_m": (
+                        scalar_quantiles(
+                            torch.linalg.vector_norm(
+                                receiver_acquisition_grasp_error,
+                                dim=-1,
+                            )
+                        )
+                        if bool(receiver_acquired.any().item())
+                        else None
+                    ),
+                    "receiver_jaw_aperture_at_acquisition_rad": (
+                        scalar_quantiles(
+                            receiver_acquisition_jaw_aperture
+                        )
+                    ),
+                    "object_linear_speed_at_receiver_acquisition_m_s": (
+                        scalar_quantiles(
+                            receiver_acquisition_linear_speed
+                        )
+                    ),
+                    "object_angular_speed_at_receiver_acquisition_rad_s": (
+                        scalar_quantiles(
+                            receiver_acquisition_angular_speed
                         )
                     ),
                     "minimum_giver_contact_force_at_first_lift_n": (
