@@ -83,16 +83,21 @@ def _threshold_metrics(
 
 def _intervention_threshold_metrics(
     probabilities: torch.Tensor,
-    benefit: torch.Tensor,
+    outcome_delta: torch.Tensor,
 ) -> dict[str, dict[str, float | int | None]]:
     result = {}
+    benefit = outcome_delta > 0
+    harm = outcome_delta < 0
+    neutral = outcome_delta == 0
     for threshold in (0.5, 0.6, 0.7, 0.8, 0.9):
         selected = probabilities >= threshold
         benefit_selected = int((selected & benefit).sum().item())
-        harm_selected = int((selected & ~benefit).sum().item())
+        harm_selected = int((selected & harm).sum().item())
+        neutral_selected = int((selected & neutral).sum().item())
         result[f"{threshold:.1f}"] = {
             "benefit_selected": benefit_selected,
             "harm_selected": harm_selected,
+            "neutral_selected": neutral_selected,
             "net_success_delta": benefit_selected - harm_selected,
             "selection_precision": (
                 benefit_selected / (benefit_selected + harm_selected)
@@ -215,6 +220,7 @@ def main(argv: list[str]) -> int:
     feature_parts = []
     failure_parts = []
     seed_parts = []
+    intervention_delta_parts = []
     counterfactual_counts = []
     for payload_index, payload in enumerate(payloads):
         features = torch.cat(
@@ -274,8 +280,11 @@ def main(argv: list[str]) -> int:
                     ),
                 }
             )
-            features = features[changed]
-            target = benefit[changed]
+            target = benefit
+            intervention_delta_parts.append(
+                intervention_success.to(torch.int8)
+                - baseline_success.to(torch.int8)
+            )
         else:
             target = ~payload["eventual_acquisition"].bool()
         feature_parts.append(features)
@@ -290,6 +299,11 @@ def main(argv: list[str]) -> int:
     features = torch.cat(feature_parts)
     failure = torch.cat(failure_parts)
     sample_seed = torch.cat(seed_parts)
+    intervention_delta = (
+        torch.cat(intervention_delta_parts)
+        if counterfactual_mode
+        else None
+    )
 
     if args.validation_seed is not None:
         validation_mask = sample_seed == args.validation_seed
@@ -316,6 +330,16 @@ def main(argv: list[str]) -> int:
     training_failure = failure[training_mask].float()
     validation_features = normalized[validation_mask]
     validation_failure = failure[validation_mask]
+    training_intervention_delta = (
+        intervention_delta[training_mask]
+        if intervention_delta is not None
+        else None
+    )
+    validation_intervention_delta = (
+        intervention_delta[validation_mask]
+        if intervention_delta is not None
+        else None
+    )
 
     positive_count = training_failure.sum().clamp_min(1.0)
     negative_count = (
@@ -410,7 +434,11 @@ def main(argv: list[str]) -> int:
         ),
         "counterfactual_counts": counterfactual_counts,
         "training": {
-            "algorithm": "class_balanced_failure_classification",
+            "algorithm": (
+                "class_balanced_intervention_benefit_classification"
+                if counterfactual_mode
+                else "class_balanced_failure_classification"
+            ),
             "seed": args.seed,
             "validation_seed": args.validation_seed,
             "epochs": args.epochs,
@@ -424,7 +452,7 @@ def main(argv: list[str]) -> int:
             "training_threshold_metrics": (
                 _intervention_threshold_metrics(
                     training_probability,
-                    training_failure.bool(),
+                    training_intervention_delta,
                 )
                 if counterfactual_mode
                 else _threshold_metrics(
@@ -435,7 +463,7 @@ def main(argv: list[str]) -> int:
             "validation_threshold_metrics": (
                 _intervention_threshold_metrics(
                     validation_probability,
-                    validation_failure,
+                    validation_intervention_delta,
                 )
                 if counterfactual_mode
                 else _threshold_metrics(
