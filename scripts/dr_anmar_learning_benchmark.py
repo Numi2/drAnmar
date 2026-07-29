@@ -3771,6 +3771,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     env.unwrapped._dr_anmar_receiver_acquisition_requires_live_contact = (
         args.receiver_acquisition_requires_live_contact
     )
+    receiver_retry_command_term = None
+    receiver_retry_group_replicas = (
+        args.receiver_recovery_sweep_replicas
+    )
+    if args.receiver_retry_candidate_sweep:
+        receiver_retry_command_term = (
+            env.unwrapped.command_manager.get_term("receiver_pose")
+        )
+        command = receiver_retry_command_term.pose_command_b
+        if command.shape != (args.num_envs, 7):
+            env.close()
+            return _fail(
+                "receiver retry sweep cannot group the receiver command"
+            )
+        grouped_command = command.reshape(
+            -1,
+            receiver_retry_group_replicas,
+            7,
+        )
+        grouped_command[:] = grouped_command[:, :1].clone()
     if args.video:
         video_folder = Path(
             args.video_folder or Path(args.output_path).resolve() / "videos"
@@ -6676,6 +6696,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ):
                         first_lift_history[key] |= first_successes
                 first_unresolved &= ~first_dones
+                if receiver_retry_command_term is not None:
+                    active_command_groups = first_unresolved.reshape(
+                        -1,
+                        receiver_retry_group_replicas,
+                    ).all(dim=-1)
+                    if bool(active_command_groups.any()):
+                        grouped_command = (
+                            receiver_retry_command_term.pose_command_b.reshape(
+                                -1,
+                                receiver_retry_group_replicas,
+                                7,
+                            )
+                        )
+                        grouped_command[active_command_groups] = (
+                            grouped_command[
+                                active_command_groups,
+                                :1,
+                            ].clone()
+                        )
+                        active_command_environments = (
+                            active_command_groups.repeat_interleave(
+                                receiver_retry_group_replicas
+                            )
+                        )
+                        obs["policy"][
+                            active_command_environments,
+                            70:77,
+                        ] = receiver_retry_command_term.pose_command_b[
+                            active_command_environments
+                        ]
                 if lift_diagnostics is not None:
                     assert lift_mdp_common is not None
                     assert procedure_diagnostic_trace is not None
