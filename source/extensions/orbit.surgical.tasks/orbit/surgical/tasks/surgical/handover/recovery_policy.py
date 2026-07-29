@@ -1050,6 +1050,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         candidate_value_feature_mean: torch.Tensor | None = None,
         candidate_value_feature_std: torch.Tensor | None = None,
         candidate_corrections: torch.Tensor | None = None,
+        candidate_local_offsets: torch.Tensor | None = None,
         enable_retries: bool = True,
         stabilize_giver_during_acquisition: bool = False,
         giver_stabilization_start_step: int = 0,
@@ -1174,6 +1175,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 candidate_value_feature_mean is not None
                 or candidate_value_feature_std is not None
                 or candidate_corrections is not None
+                or candidate_local_offsets is not None
             ):
                 raise ValueError(
                     "receiver candidate tensors require a value model"
@@ -1181,6 +1183,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             candidate_value_feature_mean = torch.empty(0)
             candidate_value_feature_std = torch.empty(0)
             candidate_corrections = torch.empty((0, 6))
+            candidate_local_offsets = torch.empty((0, 6))
         else:
             if (
                 candidate_value_feature_mean is None
@@ -1195,6 +1198,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 raise ValueError(
                     "receiver candidate value checkpoint shape drifted"
                 )
+            if (
+                candidate_local_offsets is not None
+                and candidate_local_offsets.shape != (32, 6)
+            ):
+                raise ValueError(
+                    "receiver local candidate refinement requires 32 offsets"
+                )
+            if candidate_local_offsets is None:
+                candidate_local_offsets = torch.empty((0, 6))
             if bool(
                 torch.any(candidate_value_feature_std <= 0.0)
             ):
@@ -1215,6 +1227,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.register_buffer(
             "candidate_corrections",
             candidate_corrections.detach().clone(),
+        )
+        self.register_buffer(
+            "candidate_local_offsets",
+            candidate_local_offsets.detach().clone(),
         )
         self.register_buffer(
             "canonical_grasp_offset",
@@ -1639,6 +1655,73 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 proposed[activation] = candidates[best_index]
                 self.selected_candidate_index[active_indices] = best_index
                 self.selected_candidate_score[active_indices] = best_score
+                if self.candidate_local_offsets.shape[0] > 0:
+                    local_candidates = (
+                        candidates[best_index].unsqueeze(1)
+                        + self.candidate_local_offsets.to(
+                            device=raw.device,
+                            dtype=raw.dtype,
+                        ).unsqueeze(0)
+                    )
+                    local_candidates = torch.cat(
+                        (
+                            _project_vector(
+                                local_candidates[:, :, :3].reshape(-1, 3),
+                                self.position_cap_m,
+                            ).reshape(-1, 32, 3),
+                            _project_vector(
+                                local_candidates[:, :, 3:].reshape(-1, 3),
+                                self.orientation_cap_rad,
+                            ).reshape(-1, 32, 3),
+                        ),
+                        dim=-1,
+                    )
+                    normalized_local = torch.cat(
+                        (
+                            local_candidates[:, :, :3]
+                            / self.position_cap_m,
+                            local_candidates[:, :, 3:]
+                            / self.orientation_cap_rad,
+                        ),
+                        dim=-1,
+                    )
+                    local_features = torch.cat(
+                        (
+                            active_context.unsqueeze(1).expand(
+                                -1,
+                                32,
+                                -1,
+                            ),
+                            normalized_local,
+                        ),
+                        dim=-1,
+                    )
+                    normalized_local_features = (
+                        local_features
+                        - self.candidate_value_feature_mean.to(
+                            device=raw.device,
+                            dtype=raw.dtype,
+                        )
+                    ) / self.candidate_value_feature_std.to(
+                        device=raw.device,
+                        dtype=raw.dtype,
+                    )
+                    local_scores = self.candidate_value(
+                        normalized_local_features.reshape(-1, 35)
+                    ).reshape(active_context.shape[0], 32)
+                    local_best_score, local_best_index = local_scores.max(
+                        dim=-1
+                    )
+                    proposed[activation] = local_candidates[
+                        torch.arange(
+                            active_context.shape[0],
+                            device=raw.device,
+                        ),
+                        local_best_index,
+                    ]
+                    self.selected_candidate_score[active_indices] = (
+                        local_best_score
+                    )
             if self._fixed_correction_delta is not None:
                 fixed_delta = self._fixed_correction_delta.to(
                     device=raw.device,

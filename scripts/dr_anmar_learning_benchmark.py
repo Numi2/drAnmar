@@ -3608,6 +3608,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "grouped local receiver DAgger requires exactly 32 replicas"
         )
+    if (
+        args.receiver_candidate_local_refinement
+        and not args.receiver_candidate_value_checkpoint
+    ):
+        return _fail(
+            "receiver local candidate refinement requires a "
+            "candidate-value checkpoint"
+        )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
@@ -4166,6 +4174,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_candidate_value_mean = None
         receiver_candidate_value_std = None
         receiver_candidate_corrections = None
+        receiver_candidate_local_offsets = None
         if args.receiver_recovery_checkpoint:
             receiver_checkpoint = (
                 Path(args.receiver_recovery_checkpoint)
@@ -4530,6 +4539,31 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 device=env.unwrapped.device,
                 dtype=torch.float32,
             )
+            if args.receiver_candidate_local_refinement:
+                local_sobol = torch.quasirandom.SobolEngine(
+                    dimension=6,
+                    scramble=True,
+                    seed=args.seed + 19,
+                )
+                local_normalized = torch.cat(
+                    (
+                        torch.zeros(1, 6),
+                        2.0 * local_sobol.draw(31) - 1.0,
+                    ),
+                    dim=0,
+                ).to(env.unwrapped.device)
+                receiver_candidate_local_offsets = torch.cat(
+                    (
+                        local_normalized[:, :3]
+                        * args.receiver_recovery_local_position_radius,
+                        local_normalized[:, 3:]
+                        * math.radians(
+                            args
+                            .receiver_recovery_local_orientation_radius_deg
+                        ),
+                    ),
+                    dim=-1,
+                )
         receiver_base_policy = (
             pickup_recovery_policy
             if pickup_recovery_policy is not None
@@ -4558,6 +4592,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             candidate_value_feature_mean=receiver_candidate_value_mean,
             candidate_value_feature_std=receiver_candidate_value_std,
             candidate_corrections=receiver_candidate_corrections,
+            candidate_local_offsets=receiver_candidate_local_offsets,
             enable_retries=not args.receiver_disable_retries,
             stabilize_giver_during_acquisition=(
                 args.receiver_stabilize_giver_during_acquisition
@@ -7893,6 +7928,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                     ]
                                 ).tolist()
                             },
+                            "local_refinement": (
+                                args.receiver_candidate_local_refinement
+                            ),
+                            "local_position_radius_m": (
+                                args.receiver_recovery_local_position_radius
+                            ),
+                            "local_orientation_radius_deg": (
+                                args
+                                .receiver_recovery_local_orientation_radius_deg
+                            ),
                         }
                         if args.receiver_candidate_value_checkpoint
                         else None
@@ -8334,6 +8379,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--receiver_recovery_checkpoint")
     play.add_argument("--receiver_candidate_value_checkpoint")
+    play.add_argument(
+        "--receiver_candidate_local_refinement",
+        action="store_true",
+    )
     play.add_argument(
         "--receiver_disable_retries",
         action="store_true",
