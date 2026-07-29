@@ -4661,6 +4661,42 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 device=env.unwrapped.device,
                 dtype=torch.float32,
             )
+            receiver_candidate_corrections = candidate_payload[
+                "candidate_corrections"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            if args.receiver_candidate_local_refinement:
+                receiver_local_sobol_seed = (
+                    args.receiver_recovery_local_sobol_seed
+                    if args.receiver_recovery_local_sobol_seed is not None
+                    else args.seed + 19
+                )
+                local_sobol = torch.quasirandom.SobolEngine(
+                    dimension=6,
+                    scramble=True,
+                    seed=receiver_local_sobol_seed,
+                )
+                local_normalized = torch.cat(
+                    (
+                        torch.zeros(1, 6),
+                        2.0 * local_sobol.draw(31) - 1.0,
+                    ),
+                    dim=0,
+                ).to(env.unwrapped.device)
+                receiver_candidate_local_offsets = torch.cat(
+                    (
+                        local_normalized[:, :3]
+                        * args.receiver_recovery_local_position_radius,
+                        local_normalized[:, 3:]
+                        * math.radians(
+                            args
+                            .receiver_recovery_local_orientation_radius_deg
+                        ),
+                    ),
+                    dim=-1,
+                )
         if args.receiver_context_selector_checkpoint:
             selector_checkpoint = (
                 Path(args.receiver_context_selector_checkpoint)
@@ -4740,42 +4776,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             receiver_context_selector_source_revision = selector_payload[
                 "source_revision"
             ]
-            receiver_candidate_corrections = candidate_payload[
-                "candidate_corrections"
-            ].to(
-                device=env.unwrapped.device,
-                dtype=torch.float32,
-            )
-            if args.receiver_candidate_local_refinement:
-                receiver_local_sobol_seed = (
-                    args.receiver_recovery_local_sobol_seed
-                    if args.receiver_recovery_local_sobol_seed is not None
-                    else args.seed + 19
-                )
-                local_sobol = torch.quasirandom.SobolEngine(
-                    dimension=6,
-                    scramble=True,
-                    seed=receiver_local_sobol_seed,
-                )
-                local_normalized = torch.cat(
-                    (
-                        torch.zeros(1, 6),
-                        2.0 * local_sobol.draw(31) - 1.0,
-                    ),
-                    dim=0,
-                ).to(env.unwrapped.device)
-                receiver_candidate_local_offsets = torch.cat(
-                    (
-                        local_normalized[:, :3]
-                        * args.receiver_recovery_local_position_radius,
-                        local_normalized[:, 3:]
-                        * math.radians(
-                            args
-                            .receiver_recovery_local_orientation_radius_deg
-                        ),
-                    ),
-                    dim=-1,
-                )
         if args.receiver_attempt_checkpoint:
             attempt_checkpoint = (
                 Path(args.receiver_attempt_checkpoint)
