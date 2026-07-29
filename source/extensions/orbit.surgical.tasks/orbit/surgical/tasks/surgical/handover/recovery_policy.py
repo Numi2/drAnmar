@@ -1662,7 +1662,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_verification = bool(
             active_custody_verification
         )
-        self.active_custody_verification_steps = 2
         self.receiver_retention_contact_centering = bool(
             receiver_retention_contact_centering
         )
@@ -1689,9 +1688,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.orientation_action_limit = 0.6
         self.contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
-        self.normalized_active_custody_force_imbalance_limit = (
-            5.0 * self.normalized_contact_threshold
-        )
+        self.giver_degradation_steps = 3
+        self.giver_degradation_closing_steps = 2
+        self.giver_degradation_min_close_dwell = 3
         # A single qualified contact frame is not enough to restart motion.
         # Require three consecutive bilateral giver frames at the task's
         # physical 0.01 N qualification threshold. The screen showed that a
@@ -1792,6 +1791,18 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dtype=torch.long,
         )
         self.receiver_release_authorized = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.active_custody_probe_pending = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.active_custody_probe_attempted = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.active_custody_probe_survived = torch.empty(
             0,
             dtype=torch.bool,
         )
@@ -1999,6 +2010,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.retry_count
         )
         self.receiver_release_authorized = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.active_custody_probe_pending = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.active_custody_probe_attempted = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.active_custody_probe_survived = torch.zeros_like(
             self.first_attempt_failed
         )
         self.giver_release_completed = torch.zeros_like(
@@ -2917,50 +2937,65 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         # frames. Once the receiver closes, load transfer can legitimately
         # unload either giver jaw. Requiring giver bilateral contact throughout
         # receiver confirmation deadlocked every observed retry release.
-        active_custody_force_balanced = (
-            (
-                receiver_contacts[:, 1]
-                - receiver_contacts[:, 0]
-            ).abs()
-            <= self.normalized_active_custody_force_imbalance_limit
-        )
-        confirming_receiver_custody = basic_receiver_custody & (
-            active_custody_force_balanced
-            if self.active_custody_verification
-            else torch.ones_like(active_custody_force_balanced)
-        )
+        confirming_receiver_custody = basic_receiver_custody
         self.receiver_secure_live_dwell[:] = torch.where(
             confirming_receiver_custody,
             self.receiver_secure_live_dwell + 1,
             torch.zeros_like(self.receiver_secure_live_dwell),
         )
-        first_confirmation_steps = (
-            self.active_custody_verification_steps
-            if self.active_custody_verification
-            else self.receiver_custody_confirmation_steps
-        )
-        retry_confirmation_steps_value = (
-            self.active_custody_verification_steps
-            if self.active_custody_verification
-            else self.retry_custody_confirmation_steps
-        )
         retry_confirmation_steps = torch.where(
             self.retry_count > 0,
             torch.full_like(
                 self.retry_count,
-                retry_confirmation_steps_value,
+                self.retry_custody_confirmation_steps,
             ),
             torch.full_like(
                 self.retry_count,
-                first_confirmation_steps,
+                self.receiver_custody_confirmation_steps,
             ),
         )
-        release_authorized_now = (
+        passive_release_authorized = (
             confirming_receiver_custody
             & (
                 self.receiver_secure_live_dwell
                 >= retry_confirmation_steps
             )
+        )
+        probe_pending = self.active_custody_probe_pending.clone()
+        probe_survived = (
+            probe_pending
+            & (phase == 3)
+            & (self.retry_state == self.state_secure)
+            & bilateral_live
+            & ~self.giver_release_completed
+        )
+        probe_failed = (
+            probe_pending
+            & (
+                (phase != 3)
+                | (self.retry_state != self.state_secure)
+                | ~bilateral_live
+            )
+        )
+        active_custody_load_probe = (
+            self.active_custody_verification
+            & basic_receiver_custody
+            & ~probe_pending
+        )
+        self.active_custody_probe_pending |= (
+            active_custody_load_probe
+        )
+        self.active_custody_probe_pending[
+            probe_survived | probe_failed
+        ] = False
+        self.active_custody_probe_attempted |= (
+            active_custody_load_probe
+        )
+        self.active_custody_probe_survived |= probe_survived
+        release_authorized_now = (
+            probe_survived
+            if self.active_custody_verification
+            else passive_release_authorized
         )
         self.receiver_release_authorized |= release_authorized_now
         self.retry_release_authorized |= (
@@ -3286,10 +3321,27 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.giver_degradation_dwell + 1,
             torch.zeros_like(self.giver_degradation_dwell),
         )
-        # A one-frame giver contact flicker occurs in otherwise successful
-        # transfers. Latch only persistent physical custody degradation.
+        # Preserve the robust three-frame latch unless receiver closing has
+        # already begun disturbing giver custody. In that narrow condition,
+        # the earlier two-frame signal starts reset while the giver can still
+        # recover instead of waiting for a third degraded frame.
+        selective_closing_degradation = (
+            closing
+            & (
+                self.close_dwell
+                >= self.giver_degradation_min_close_dwell
+            )
+            & (
+                self.giver_degradation_dwell
+                >= self.giver_degradation_closing_steps
+            )
+        )
         giver_custody_degrading = (
-            self.giver_degradation_dwell >= 3
+            (
+                self.giver_degradation_dwell
+                >= self.giver_degradation_steps
+            )
+            | selective_closing_degradation
         )
         if self.enable_retries:
             failure = (
@@ -3353,6 +3405,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.clearance_retreat_dwell[failure] = 0
             self.receiver_secure_live_dwell[failure] = 0
             self.receiver_release_authorized[failure] = False
+            self.active_custody_probe_pending[failure] = False
 
         failed_grasp = self.retry_state == self.state_failed
         # A missed receiver grasp can unload one giver jaw before the needle
@@ -3521,12 +3574,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             receiver_is_robot_1,
             receiver_secure_settling | pre_release_custody_hold,
         )
-        active_custody_load_probe = (
-            self.active_custody_verification
-            & pre_release_custody_hold
-            & confirming_receiver_custody
-            & (self.receiver_secure_live_dwell == 1)
-        )
         result = self._replace_role_action(
             result,
             receiver_open,
@@ -3604,7 +3651,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         retention_contact_centering_active = (
             self.receiver_retention_contact_centering
             & (phase == 3)
-            & (self.retry_count == 0)
             & ~giver_any_contact
             & any_contact
         )
@@ -3663,6 +3709,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.selected_retry_portfolio_rank[mask] = -1
         self.receiver_secure_live_dwell[mask] = 0
         self.receiver_release_authorized[mask] = False
+        self.active_custody_probe_pending[mask] = False
+        self.active_custody_probe_attempted[mask] = False
+        self.active_custody_probe_survived[mask] = False
         self.giver_release_completed[mask] = False
         self.first_failure_giver_any[mask] = False
         self.first_failure_giver_bilateral[mask] = False

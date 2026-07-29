@@ -5462,6 +5462,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if receiver_recovery_policy is not None
         else None
     )
+    first_receiver_active_custody_probe_attempted = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_probe_survived = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
     first_receiver_retry_release_aborted = (
         torch.zeros_like(first_unresolved)
         if receiver_recovery_policy is not None
@@ -6874,6 +6884,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_receiver_retry_release_authorized is not None
                     )
                     assert (
+                        first_receiver_active_custody_probe_attempted
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_probe_survived
+                        is not None
+                    )
+                    assert (
                         first_receiver_retry_release_aborted is not None
                     )
                     assert (
@@ -6923,6 +6941,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_receiver_retry_release_authorized[first_dones] = (
                         receiver_recovery_policy
                         .retry_release_authorized[first_dones]
+                    )
+                    first_receiver_active_custody_probe_attempted[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_probe_attempted[first_dones]
+                    )
+                    first_receiver_active_custody_probe_survived[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_probe_survived[first_dones]
                     )
                     first_receiver_retry_release_aborted[first_dones] = (
                         receiver_recovery_policy
@@ -9426,14 +9456,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_recovery_policy
                         .active_custody_verification
                     ),
-                    "active_custody_verification_steps": (
+                    "active_custody_probe_frames": 1,
+                    "giver_degradation_steps": (
                         receiver_recovery_policy
-                        .active_custody_verification_steps
+                        .giver_degradation_steps
                     ),
-                    "active_custody_force_imbalance_limit_n": (
+                    "giver_degradation_closing_steps": (
                         receiver_recovery_policy
-                        .normalized_active_custody_force_imbalance_limit
-                        / 0.2
+                        .giver_degradation_closing_steps
+                    ),
+                    "giver_degradation_min_close_dwell": (
+                        receiver_recovery_policy
+                        .giver_degradation_min_close_dwell
                     ),
                     "retention_servo": (
                         receiver_recovery_policy
@@ -9670,6 +9704,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "retry_release_authorized_episodes": int(
                         first_receiver_retry_release_authorized.sum().item()
+                    ),
+                    "active_custody_probe_attempted_episodes": int(
+                        first_receiver_active_custody_probe_attempted
+                        .sum()
+                        .item()
+                    ),
+                    "active_custody_probe_survived_episodes": int(
+                        first_receiver_active_custody_probe_survived
+                        .sum()
+                        .item()
                     ),
                     "retry_release_aborted_episodes": int(
                         first_receiver_retry_release_aborted.sum().item()
