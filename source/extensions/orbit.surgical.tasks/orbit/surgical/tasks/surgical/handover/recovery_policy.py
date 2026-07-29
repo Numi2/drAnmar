@@ -1028,6 +1028,30 @@ class ReceiverCandidateValue(nn.Module):
         return self.network(features).squeeze(-1)
 
 
+class ReceiverContextCandidateSelector(nn.Module):
+    """Select one of the frozen 16 receiver corrections from context."""
+
+    input_dim = 29
+    candidate_count = 16
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(self.input_dim, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 128),
+            nn.LayerNorm(128),
+            nn.SiLU(),
+            nn.Linear(128, 64),
+            nn.SiLU(),
+            nn.Linear(64, self.candidate_count),
+        )
+
+    def forward(self, context: torch.Tensor) -> torch.Tensor:
+        return self.network(context)
+
+
 class ReceiverAttemptActorCritic(nn.Module):
     """One-decision residual actor-critic for receiver acquisition."""
 
@@ -1176,6 +1200,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         candidate_corrections: torch.Tensor | None = None,
         candidate_local_offsets: torch.Tensor | None = None,
         candidate_min_logit_advantage: float = 0.0,
+        candidate_selector: ReceiverContextCandidateSelector | None = None,
+        candidate_selector_feature_mean: torch.Tensor | None = None,
+        candidate_selector_feature_std: torch.Tensor | None = None,
         attempt_actor_critic: ReceiverAttemptActorCritic | None = None,
         attempt_feature_mean: torch.Tensor | None = None,
         attempt_feature_std: torch.Tensor | None = None,
@@ -1396,6 +1423,54 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.register_buffer(
             "candidate_local_offsets",
             candidate_local_offsets.detach().clone(),
+        )
+        self.candidate_selector = candidate_selector
+        if candidate_selector is None:
+            if (
+                candidate_selector_feature_mean is not None
+                or candidate_selector_feature_std is not None
+            ):
+                raise ValueError(
+                    "receiver selector statistics require a selector"
+                )
+            candidate_selector_feature_mean = torch.empty(0)
+            candidate_selector_feature_std = torch.empty(0)
+        else:
+            if (
+                candidate_value is None
+                or candidate_corrections.shape
+                != (ReceiverContextCandidateSelector.candidate_count, 6)
+            ):
+                raise ValueError(
+                    "receiver context selector requires the frozen common-16 "
+                    "candidate scorer"
+                )
+            if (
+                candidate_selector_feature_mean is None
+                or candidate_selector_feature_std is None
+                or candidate_selector_feature_mean.shape
+                != (ReceiverContextCandidateSelector.input_dim,)
+                or candidate_selector_feature_std.shape
+                != (ReceiverContextCandidateSelector.input_dim,)
+            ):
+                raise ValueError(
+                    "receiver selector feature statistics must have shape "
+                    "(29,)"
+                )
+            if bool(torch.any(candidate_selector_feature_std <= 0.0)):
+                raise ValueError(
+                    "receiver selector feature standard deviations must be "
+                    "positive"
+                )
+            for parameter in candidate_selector.parameters():
+                parameter.requires_grad_(False)
+        self.register_buffer(
+            "candidate_selector_feature_mean",
+            candidate_selector_feature_mean.detach().clone(),
+        )
+        self.register_buffer(
+            "candidate_selector_feature_std",
+            candidate_selector_feature_std.detach().clone(),
         )
         self.attempt_actor_critic = attempt_actor_critic
         if attempt_actor_critic is None:
@@ -1953,7 +2028,27 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 candidate_scores = self.candidate_value(
                     normalized_features.reshape(-1, 35)
                 ).reshape(active_context.shape[0], candidate_count)
-                best_score, best_index = candidate_scores.max(dim=-1)
+                if self.candidate_selector is None:
+                    best_score, best_index = candidate_scores.max(dim=-1)
+                else:
+                    normalized_context = (
+                        active_context
+                        - self.candidate_selector_feature_mean.to(
+                            device=raw.device,
+                            dtype=raw.dtype,
+                        )
+                    ) / self.candidate_selector_feature_std.to(
+                        device=raw.device,
+                        dtype=raw.dtype,
+                    )
+                    selector_logits = self.candidate_selector(
+                        normalized_context
+                    )
+                    best_index = selector_logits.argmax(dim=-1)
+                    best_score = candidate_scores.gather(
+                        1,
+                        best_index.unsqueeze(-1),
+                    ).squeeze(-1)
                 zero_index = candidates.square().sum(dim=-1).argmin()
                 zero_score = candidate_scores[:, zero_index]
                 active_indices = torch.nonzero(

@@ -3373,7 +3373,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if not checkpoint.is_file():
         return _fail(f"checkpoint not found: {checkpoint}")
 
-    env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    runtime_seed = args.seed + args.seed_stream_offset
+    env_cfg, agent_cfg = _load_configs(
+        args.task,
+        args.num_envs,
+        runtime_seed,
+    )
     if args.recovery_demo_rotation_deg:
         if args.seed in RECOVERY_QUALIFICATION_SEEDS:
             return _fail(
@@ -3564,6 +3569,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_retry_gate_checkpoint
         or args.receiver_stabilization_gate_checkpoint
         or args.receiver_candidate_value_checkpoint
+        or args.receiver_context_selector_checkpoint
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
@@ -3668,6 +3674,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "receiver local candidate refinement requires a "
             "candidate-value checkpoint"
+        )
+    if args.receiver_context_selector_checkpoint and not (
+        args.receiver_candidate_value_checkpoint
+        and args.receiver_candidate_first_attempt
+    ):
+        return _fail(
+            "receiver context selector requires the promoted first-attempt "
+            "candidate scorer"
         )
     if args.receiver_candidate_min_logit_advantage < 0.0:
         return _fail(
@@ -4247,6 +4261,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_retry_gate_checkpoint
         or args.receiver_stabilization_gate_checkpoint
         or args.receiver_candidate_value_checkpoint
+        or args.receiver_context_selector_checkpoint
         or args.receiver_attempt_checkpoint
         or args.receiver_stabilize_giver_during_acquisition
         or args.receiver_secure_settle_steps > 0
@@ -4261,6 +4276,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             HandoverReceiverRecoveryPolicy,
             ReceiverAttemptActorCritic,
             ReceiverCandidateValue,
+            ReceiverContextCandidateSelector,
             ReceiverRecoveryHead,
             ReceiverRetryGate,
         )
@@ -4279,6 +4295,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_candidate_value_std = None
         receiver_candidate_corrections = None
         receiver_candidate_local_offsets = None
+        receiver_context_selector = None
+        receiver_context_selector_mean = None
+        receiver_context_selector_std = None
+        receiver_context_selector_source_revision = None
         receiver_attempt_actor_critic = None
         receiver_attempt_feature_mean = None
         receiver_attempt_feature_std = None
@@ -4641,6 +4661,85 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 device=env.unwrapped.device,
                 dtype=torch.float32,
             )
+        if args.receiver_context_selector_checkpoint:
+            selector_checkpoint = (
+                Path(args.receiver_context_selector_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            if not selector_checkpoint.is_file():
+                env.close()
+                return _fail(
+                    "receiver context selector checkpoint not found: "
+                    f"{selector_checkpoint}"
+                )
+            selector_payload = torch.load(
+                selector_checkpoint,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            if (
+                not isinstance(selector_payload, dict)
+                or selector_payload.get("schema_version")
+                != "dranmar-receiver-context-selector-1.0"
+                or "receiver_context_selector" not in selector_payload
+                or "feature_mean" not in selector_payload
+                or "feature_std" not in selector_payload
+                or not isinstance(
+                    selector_payload.get("source_revision"),
+                    str,
+                )
+                or len(selector_payload["source_revision"]) != 40
+            ):
+                env.close()
+                return _fail(
+                    "unsupported receiver context selector checkpoint"
+                )
+            if (
+                selector_payload.get("base_checkpoint_sha256")
+                != _sha256(checkpoint)
+                or selector_payload.get(
+                    "receiver_candidate_checkpoint_sha256"
+                )
+                != _sha256(candidate_checkpoint)
+                or not torch.equal(
+                    selector_payload["candidate_corrections"].to(
+                        device=env.unwrapped.device,
+                        dtype=torch.float32,
+                    ),
+                    receiver_candidate_corrections,
+                )
+            ):
+                env.close()
+                return _fail(
+                    "receiver context selector does not match the frozen "
+                    "promoted composite"
+                )
+            receiver_context_selector = (
+                ReceiverContextCandidateSelector().to(
+                    env.unwrapped.device
+                )
+            )
+            receiver_context_selector.load_state_dict(
+                selector_payload["receiver_context_selector"],
+                strict=True,
+            )
+            receiver_context_selector.eval()
+            receiver_context_selector_mean = selector_payload[
+                "feature_mean"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_context_selector_std = selector_payload[
+                "feature_std"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_context_selector_source_revision = selector_payload[
+                "source_revision"
+            ]
             receiver_candidate_corrections = candidate_payload[
                 "candidate_corrections"
             ].to(
@@ -4822,6 +4921,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             candidate_local_offsets=receiver_candidate_local_offsets,
             candidate_min_logit_advantage=(
                 args.receiver_candidate_min_logit_advantage
+            ),
+            candidate_selector=receiver_context_selector,
+            candidate_selector_feature_mean=(
+                receiver_context_selector_mean
+            ),
+            candidate_selector_feature_std=(
+                receiver_context_selector_std
             ),
             attempt_actor_critic=receiver_attempt_actor_critic,
             attempt_feature_mean=receiver_attempt_feature_mean,
@@ -7425,6 +7531,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "task": args.task,
                     "seed": args.seed,
+                    "seed_stream_offset": args.seed_stream_offset,
                     "reset_rotation_randomization_deg": (
                         args.recovery_demo_rotation_deg
                     ),
@@ -7748,6 +7855,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "task": args.task,
                     "seed": args.seed,
+                    "seed_stream_offset": args.seed_stream_offset,
                     "reset_rotation_randomization_deg": (
                         args.recovery_demo_rotation_deg
                     ),
@@ -8040,6 +8148,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "kind": "held_out_play",
             "task": args.task,
             "seed": args.seed,
+            "seed_stream_offset": args.seed_stream_offset,
+            "runtime_seed": runtime_seed,
             "episode_length_s": float(env_cfg.episode_length_s),
             "receiver_acquisition_requires_live_contact": (
                 args.receiver_acquisition_requires_live_contact
@@ -8480,6 +8590,33 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         if args.receiver_candidate_value_checkpoint
                         else None
                     ),
+                    "context_selector": (
+                        {
+                            "checkpoint": {
+                                "path": str(
+                                    Path(
+                                        args
+                                        .receiver_context_selector_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                                "sha256": _sha256(
+                                    Path(
+                                        args
+                                        .receiver_context_selector_checkpoint
+                                    )
+                                    .expanduser()
+                                    .resolve()
+                                ),
+                            },
+                            "source_revision": (
+                                receiver_context_selector_source_revision
+                            ),
+                        }
+                        if args.receiver_context_selector_checkpoint
+                        else None
+                    ),
                     "attempt_ppo": (
                         {
                             "checkpoint": {
@@ -8884,6 +9021,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--num_envs", type=int, required=True)
     play.add_argument("--num_frames", type=int, required=True)
     play.add_argument("--seed", type=int, default=2361)
+    play.add_argument("--seed_stream_offset", type=int, default=0)
     play.add_argument("--output_path", required=True)
     play.add_argument("--video", action="store_true")
     play.add_argument("--video_length", type=int)
@@ -8988,6 +9126,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--receiver_recovery_checkpoint")
     play.add_argument("--receiver_candidate_value_checkpoint")
+    play.add_argument("--receiver_context_selector_checkpoint")
     play.add_argument("--receiver_attempt_checkpoint")
     play.add_argument(
         "--receiver_attempt_stochastic",
