@@ -3026,11 +3026,19 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 )
             )
         )
+        giver_custody_degrading = (
+            acquisition_active
+            & self.gate_evaluated
+            & ~bilateral_qualified
+            & giver_any_contact
+            & ~giver_bilateral_live
+        )
         if self.enable_retries:
             failure = (
                 failed_close
                 | stalled_acquisition
                 | lost_after_acquisition
+                | giver_custody_degrading
                 | gate_retry
             ) & (
                 self.retry_state != self.state_failed
@@ -3063,10 +3071,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.receiver_release_authorized[failure] = False
 
         failed_grasp = self.retry_state == self.state_failed
-        # Receiver reopening is safe only while the giver has current
-        # bilateral custody. Waiting for receiver history to empty deadlocks
-        # closed jaws, while opening without giver custody drops the needle.
-        ready_to_reopen = failed_grasp & giver_bilateral_live
+        # A missed receiver grasp can unload one giver jaw before the needle
+        # drops. Reopen immediately while commanding the giver closed, then
+        # wait for restored bilateral giver custody before the next approach.
+        ready_to_reopen = failed_grasp & giver_any_contact
         self.retry_state[ready_to_reopen] = self.state_reopening
         failed_grasp = self.retry_state == self.state_failed
         resetting = (
@@ -3091,6 +3099,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         activation = (
             (self.retry_state == self.state_open_settle)
             & (self.open_settle_dwell >= self.open_settle_steps)
+            & giver_bilateral_live
         )
         if bool(activation.any()):
             self.retry_count[activation] += 1
