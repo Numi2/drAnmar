@@ -206,6 +206,13 @@ def _load_dataset(path: Path) -> dict[str, object]:
     }
     if not isinstance(payload, dict) or not required.issubset(payload):
         raise ValueError(f"incomplete intervention dataset: {path}")
+    try:
+        action_semantics = {
+            int(key): str(value)
+            for key, value in dict(payload["intervention_action_semantics"]).items()
+        }
+    except (TypeError, ValueError):
+        raise ValueError(f"intervention action semantics drifted: {path}") from None
     if (
         payload["schema_version"] != DATASET_SCHEMA_VERSION
         or int(payload["seed"]) not in DEVELOPMENT_SEEDS
@@ -215,7 +222,7 @@ def _load_dataset(path: Path) -> dict[str, object]:
         or payload["probe_intervention"] != "giver_gripper_open_pulse"
         or payload["randomization"] != "seeded_hash_uniform_three_arm"
         or int(payload["intervention_frames"]) != 1
-        or dict(payload["intervention_action_semantics"]) != _ACTION_SEMANTICS
+        or action_semantics != _ACTION_SEMANTICS
     ):
         raise ValueError(f"incompatible intervention dataset: {path}")
 

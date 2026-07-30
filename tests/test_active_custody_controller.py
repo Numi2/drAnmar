@@ -68,7 +68,9 @@ def _payload() -> dict[str, object]:
         "randomization_seed": 6209471,
         "intervention_frames": 1,
         "intervention_action_limit": action_limit,
-        "intervention_action_semantics": MODULE._ACTION_SEMANTICS,
+        "intervention_action_semantics": {
+            str(key): value for key, value in MODULE._ACTION_SEMANTICS.items()
+        },
         "assigned_action_id": action_id,
         "assigned_action_probability": torch.full((count,), 1.0 / 3.0),
         "applied_receiver_action": action,
