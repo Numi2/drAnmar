@@ -4675,7 +4675,8 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
     eager-only data-collection wrapper changes only the receiver translation
     during the first acquisition attempt, after the native corrected-approach
     owner is active and before contact.  Environment index modulo the number
-    of candidate scales assigns simultaneous counterfactual replicas.
+    of candidate scales assigns lanes that are paired to the same environment
+    indices in a separate all-no-op common-random-number run.
     """
 
     def __init__(

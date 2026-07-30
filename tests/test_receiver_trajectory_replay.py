@@ -24,17 +24,29 @@ def _noop_dataset(path: Path) -> None:
     replicas = 4
     count = groups * replicas
     group_index = torch.arange(count) // replicas
-    context_by_group = torch.randn(groups, 98)
-    action_by_group = torch.randn(groups, 14).clamp(-1.0, 1.0)
-    correction_by_group = torch.randn(groups, 6) * 0.001
-    success_by_group = torch.arange(groups) % 2 == 0
-    phase_by_group = torch.where(
-        success_by_group,
-        torch.full((groups,), 4),
-        torch.full((groups,), 3),
+    context = (
+        torch.arange(count * 98, dtype=torch.float32)
+        .reshape(count, 98)
+        * 1.0e-5
     )
-    terminal_by_group = torch.stack(
-        (success_by_group, ~success_by_group),
+    action = torch.sin(
+        torch.arange(count * 14, dtype=torch.float32).reshape(
+            count,
+            14,
+        )
+    )
+    correction = (
+        torch.arange(count * 6, dtype=torch.float32).reshape(count, 6)
+        * 1.0e-6
+    )
+    success = torch.arange(count) % 3 == 0
+    phase = torch.where(
+        success,
+        torch.full((count,), 4),
+        torch.full((count,), 3),
+    )
+    terminal = torch.stack(
+        (success, ~success),
         dim=-1,
     )
     torch.save(
@@ -44,6 +56,7 @@ def _noop_dataset(path: Path) -> None:
             "task": "DrAnmar-Handover-Test-v0",
             "seed": 17,
             "seed_stream_offset": 0,
+            "runtime_seed": 17,
             "num_envs": count,
             "num_frames": 2000,
             "source_revision": "a" * 40,
@@ -51,8 +64,17 @@ def _noop_dataset(path: Path) -> None:
             "receiver_candidate_checkpoint_sha256": "c" * 64,
             "preprobe_risk_checkpoint_sha256": "d" * 64,
             "replay_contract": {
-                "method": "simultaneous_grouped_clones",
-                "group_replicas": replicas,
+                "method": (
+                    "same_environment_index_common_random_numbers"
+                ),
+                "pairing_key": [
+                    "source_revision",
+                    "task",
+                    "runtime_seed",
+                    "num_envs",
+                    "environment_index",
+                ],
+                "candidate_lanes": replicas,
                 "candidate_scales": [1.0] * replicas,
                 "modified_action_channels": (
                     "receiver_translation_xyz_only"
@@ -71,30 +93,18 @@ def _noop_dataset(path: Path) -> None:
             ),
             "activation_seen": torch.ones(count, dtype=torch.bool),
             "activation_frame": torch.full((count,), 100),
-            "activation_context": context_by_group.repeat_interleave(
-                replicas,
-                dim=0,
-            ),
-            "base_action_at_activation": (
-                action_by_group.repeat_interleave(replicas, dim=0)
-            ),
-            "scaled_action_at_activation": (
-                action_by_group.repeat_interleave(replicas, dim=0)
-            ),
+            "activation_context": context,
+            "base_action_at_activation": action,
+            "scaled_action_at_activation": action,
             "distance_at_activation_m": torch.full((count,), 0.0039),
             "active_frames": torch.full((count,), 3),
             "modified_frames": torch.zeros(count, dtype=torch.long),
             "minimum_multiplier": torch.ones(count),
-            "receiver_candidate_correction": (
-                correction_by_group.repeat_interleave(replicas, dim=0)
-            ),
-            "full_success": success_by_group.repeat_interleave(replicas),
-            "maximum_phase": phase_by_group.repeat_interleave(replicas),
+            "receiver_candidate_correction": correction,
+            "full_success": success,
+            "maximum_phase": phase,
             "termination_names": ["success", "time_out"],
-            "termination_flags": terminal_by_group.repeat_interleave(
-                replicas,
-                dim=0,
-            ),
+            "termination_flags": terminal,
             "receiver_safety_failure": torch.zeros(
                 count,
                 dtype=torch.bool,
@@ -113,32 +123,48 @@ def _noop_dataset(path: Path) -> None:
     )
 
 
-def test_noop_dataset_proves_grouped_replay_parity(
+def test_noop_pair_proves_same_environment_replay_parity(
     tmp_path: Path,
 ) -> None:
-    dataset = tmp_path / "noop.pt"
-    _noop_dataset(dataset)
+    control_path = tmp_path / "control.pt"
+    candidate_path = tmp_path / "candidate.pt"
+    _noop_dataset(control_path)
+    _noop_dataset(candidate_path)
+    control = MODULE._load_dataset(control_path)
+    candidate = MODULE._load_dataset(candidate_path)
 
-    _, summary = MODULE._evaluate_dataset(
-        dataset,
-        context_atol=1.0e-6,
-        action_atol=1.0e-7,
+    summary = MODULE._evaluate_pair(
+        control,
+        candidate,
+        context_atol=0.0,
+        action_atol=0.0,
     )
 
     assert summary["prebranch_parity"]["passed"]
-    assert summary["noop_outcome_parity"] is True
-    assert summary["active_groups"] == 8
+    assert summary["noop_lane_outcome_parity"] is True
+    assert summary["activated_environments"] == 32
 
 
-def test_context_drift_invalidates_replay(tmp_path: Path) -> None:
-    dataset = tmp_path / "drift.pt"
-    _noop_dataset(dataset)
-    payload = torch.load(dataset, map_location="cpu", weights_only=False)
+def test_cross_run_context_drift_invalidates_replay(
+    tmp_path: Path,
+) -> None:
+    control_path = tmp_path / "control.pt"
+    candidate_path = tmp_path / "drift.pt"
+    _noop_dataset(control_path)
+    _noop_dataset(candidate_path)
+    payload = torch.load(
+        candidate_path,
+        map_location="cpu",
+        weights_only=False,
+    )
     payload["activation_context"][1, 0] += 1.0e-4
-    torch.save(payload, dataset)
+    torch.save(payload, candidate_path)
+    control = MODULE._load_dataset(control_path)
+    candidate = MODULE._load_dataset(candidate_path)
 
-    _, summary = MODULE._evaluate_dataset(
-        dataset,
+    summary = MODULE._evaluate_pair(
+        control,
+        candidate,
         context_atol=1.0e-6,
         action_atol=1.0e-7,
     )
@@ -173,7 +199,10 @@ def test_launcher_exposes_source_locked_trajectory_replay() -> None:
     assert "_RECEIVER_OWNER_CORRECTED_APPROACH" in policy
     assert "minimum_jerk" in policy
     assert (
-        "dranmar-receiver-approach-trajectory-replay-1.0"
+        "dranmar-receiver-approach-trajectory-replay-1.1"
         in benchmark
     )
-    assert '"method": "simultaneous_grouped_clones"' in benchmark
+    assert (
+        '"same_environment_index_common_random_numbers"'
+        in benchmark
+    )

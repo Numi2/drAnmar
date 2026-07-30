@@ -9849,7 +9849,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             torch.save(
                 {
                     "schema_version": (
-                        "dranmar-receiver-approach-trajectory-replay-1.0"
+                        "dranmar-receiver-approach-trajectory-replay-1.1"
                     ),
                     "dataset_id": args.receiver_approach_trajectory_id,
                     "task": args.task,
@@ -9867,12 +9867,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         risk_checkpoint_path
                     ),
                     "replay_contract": {
-                        "method": "simultaneous_grouped_clones",
-                        "identical_before_activation": True,
+                        "method": (
+                            "same_environment_index_common_random_numbers"
+                        ),
+                        "pairing_key": [
+                            "source_revision",
+                            "task",
+                            "runtime_seed",
+                            "num_envs",
+                            "environment_index",
+                        ],
+                        "prebranch_identity_requires_paired_evaluation": (
+                            True
+                        ),
                         "serialized_physx_restore": False,
-                        "group_replicas": (
+                        "candidate_lanes": (
                             receiver_approach_trajectory_replicas
                         ),
+                        "grouped_initial_condition_allocation": True,
                         "candidate_scales": (
                             receiver_approach_trajectory_scales
                         ),

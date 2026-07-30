@@ -16,11 +16,11 @@ from isaaclab.utils import math as math_utils
 class reset_root_state_uniform_grouped(ManagerTermBase):
     """Reset replica groups to identical local object states.
 
-    A group represents one genuine failed-pickup state.  Its replicas remain
-    physically identical through the frozen first attempt and deterministic
-    open reset, then receive different Sobol recovery corrections.  This is
-    the vectorized equivalent of restoring one simulator state for every
-    oracle candidate.
+    A group starts from one sampled object state and allocates that state to
+    several candidate lanes.  Contact-rich GPU environments are not assumed
+    to remain trajectory-identical across spatial replicas.  Exact causal
+    replay must pair the same environment index across separate, identically
+    seeded runs and verify pre-intervention tensor equality.
 
     The implementation follows Isaac Lab's BSD-3-Clause
     ``reset_root_state_uniform`` state semantics while sampling once per
