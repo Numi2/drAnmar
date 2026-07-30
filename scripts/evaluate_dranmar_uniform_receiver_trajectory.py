@@ -37,6 +37,9 @@ from evaluate_dranmar_receiver_trajectory_replay import (
 REPORT_SCHEMA_VERSION = (
     "dranmar-uniform-receiver-trajectory-evaluation-1.0"
 )
+FLOAT32_ACTION_RECONSTRUCTION_ATOL = float(
+    torch.finfo(torch.float32).eps
+)
 CROSS_SEED_FIELDS = tuple(
     field for field in IDENTITY_FIELDS if field != "runtime_seed"
 )
@@ -263,6 +266,10 @@ def _evaluate_seed(
         candidate["scaled_action"][active],
         expected_candidate_action,
     )
+    candidate_action_atol = max(
+        action_atol,
+        FLOAT32_ACTION_RECONSTRUCTION_ATOL,
+    )
     control_quiescent = bool(
         torch.equal(
             control["modified_frames"],
@@ -290,7 +297,7 @@ def _evaluate_seed(
     intervention_integrity = (
         control_action_delta <= action_atol
         and noop_action_delta <= action_atol
-        and candidate_action_delta <= action_atol
+        and candidate_action_delta <= candidate_action_atol
         and control_quiescent
         and candidate_modified
     )
@@ -331,6 +338,7 @@ def _evaluate_seed(
             "control_scaled_action_delta": control_action_delta,
             "noop_scaled_action_delta": noop_action_delta,
             "candidate_expected_action_delta": candidate_action_delta,
+            "candidate_expected_action_atol": candidate_action_atol,
             "control_and_noop_modified_frames_zero": (
                 control_quiescent
             ),

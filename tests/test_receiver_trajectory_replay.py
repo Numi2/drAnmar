@@ -294,6 +294,12 @@ def test_uniform_triplet_requires_replication_before_learning(
     assert result["control_candidate_prebranch"]["passed"]
     assert result["noop_terminal_outcome_exact"]
     assert result["intervention_integrity"]["passed"]
+    assert (
+        result["intervention_integrity"][
+            "candidate_expected_action_atol"
+        ]
+        == UNIFORM_MODULE.FLOAT32_ACTION_RECONSTRUCTION_ATOL
+    )
     assert aggregate["paired_net_successes"] == 8
     assert (
         aggregate["one_sided_exact_sign_probability"] < 0.05
