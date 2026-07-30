@@ -646,6 +646,33 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_RECOVERY_GATE_DATASET}"
             )
         fi
+        handover_successor_args=()
+        if [[ -n "${DR_ANMAR_HANDOVER_SUCCESSOR_CHECKPOINT:-}" ]]; then
+            handover_successor_args+=(
+                --handover_successor_checkpoint
+                "${DR_ANMAR_HANDOVER_SUCCESSOR_CHECKPOINT}"
+            )
+        fi
+        handover_teacher_args=()
+        if [[ -n "${DR_ANMAR_HANDOVER_TEACHER_TRACE:-}" ]]; then
+            handover_teacher_args+=(
+                --stop_after_first_episode
+                --handover_teacher_trace
+                "${DR_ANMAR_HANDOVER_TEACHER_TRACE}"
+                --handover_teacher_pair_id
+                "${DR_ANMAR_HANDOVER_TEACHER_PAIR_ID:-}"
+                --handover_teacher_role
+                "${DR_ANMAR_HANDOVER_TEACHER_ROLE:-}"
+                --handover_teacher_kind
+                "${DR_ANMAR_HANDOVER_TEACHER_KIND:-}"
+            )
+            if [[ -n "${DR_ANMAR_HANDOVER_TEACHER_RECEIPT:-}" ]]; then
+                handover_teacher_args+=(
+                    --handover_teacher_receipt
+                    "${DR_ANMAR_HANDOVER_TEACHER_RECEIPT}"
+                )
+            fi
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
@@ -665,7 +692,9 @@ case "${command}" in
             "${giver_lift_contact_force_threshold_args[@]}" \
             "${giver_pre_lift_min_contact_jaws_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}" \
-            "${pickup_recovery_args[@]}"
+            "${pickup_recovery_args[@]}" \
+            "${handover_successor_args[@]}" \
+            "${handover_teacher_args[@]}"
         ;;
     record)
         require_runtime

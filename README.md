@@ -196,6 +196,7 @@ problems and are meant to compose, not replace one another:
 | One-decision receiver residual | Bounded motion correction | Not promoted. Its best held-out result was **+3 / 3,600** in aggregate while one seed regressed by 12; a fresh-stream update also lost to the incumbent on development seeds. |
 | Calibrated active-custody risk model | Failure probability | Preserved as the leading risk model. Across three left-out physics seeds, AUC was **0.704–0.776** and nested cross-fitted Brier score improved to **0.07455** from a **0.08063** base-rate reference. |
 | Counterfactual receiver trajectory | Bounded receiver XYZ scaling | Not promoted. Exact no-op replay passed, but uniform scale `0.6` reduced the activated cohort from **93 to 87** successes and added **4** receiver safety failures on the first prespecified seed. |
+| Phase-conditioned full-action successor | Complete 14-D dual-arm action | Candidate infrastructure is now on `main`; no policy is promoted yet. Training remains locked until at least eight accepted single-environment teacher rescues cover all five phases and four development seeds. |
 
 The actor still moves the robot. The risk model observes the one-frame
 active-custody transition and estimates whether retention is likely to fail; it
@@ -208,13 +209,23 @@ intervention. The only surviving speed candidate was negative, so no
 behavior-cloning or PPO update was started from it and the promoted actor
 remains unchanged.
 
-The next learning stage uses the risk model only to allocate independent
-single-environment collection. Better actions must come from constrained
-trajectory optimization or clinician teleoperation at the
-acquisition-to-retention boundary, then pass isolated no-op, safety, multi-seed,
-and held-out gates before training one compact phase-conditioned motion policy.
-The hand-authored recovery composition remains only as a regression baseline;
-it is not carried into the successor architecture.
+The next learning stage is executable through
+[`dr_anmar_handover_successor.py`](scripts/dr_anmar_handover_successor.py).
+The risk model only allocates independent single-environment collection.
+Better actions must come from constrained trajectory optimization or clinician
+teleoperation, then beat two bit-identical no-op controls without any safety
+event. Accepted complete episodes train one compact phase-conditioned network
+that emits the full 14-D action. Episode-level splitting prevents frame
+leakage, qualification seeds are forbidden from training, and every checkpoint
+is candidate-only until live seeded evaluation promotes it.
+
+```text
+lock optimizer proposal → record control/control/teacher → accept episode
+→ train full-action successor → compare against the frozen incumbent
+```
+
+The hand-authored recovery composition remains only as a sealed regression
+baseline; none of its recovery wrappers are present in the successor runtime.
 
 The full source-bound learning record, including per-seed calibration and
 checkpoint hashes, is in the
