@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-delay-interventions|receiver-custody-retry-interventions|receiver-custody-preprobe-interventions|receiver-custody-delay-gate|receiver-custody-preprobe-risk|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-attempt-risk-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-delay-interventions|receiver-custody-retry-interventions|receiver-custody-preprobe-interventions|receiver-custody-delay-gate|receiver-custody-preprobe-risk|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-risk-handover|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -25,6 +25,7 @@ usage() {
     echo "  train     [task] [num_envs] [iterations] [output]"
     echo "  receiver-attempt-bootstrap BASE CANDIDATE OUTPUT DATASET..."
     echo "  receiver-attempt-update CHECKPOINT OUTPUT ROLLOUT..."
+    echo "  receiver-attempt-risk-update CHECKPOINT RISK_CHECKPOINT OUTPUT ROLLOUT..."
     echo "  receiver-custody-audit OUTPUT PROBE_DATASET... (also writes OUTPUT stem .pt)"
     echo "  receiver-custody-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-custody-delay-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
@@ -40,6 +41,7 @@ usage() {
     echo "  receiver-retry-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-candidate INDEX DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-portfolio BASE CANDIDATE OUTPUT DATASET..."
+    echo "  attempt-risk-handover ATTEMPT_CHECKPOINT RISK_CHECKPOINT DATASET [num_envs] [frames] [output] [task] [seed_stream_offset]"
     echo "  attempt-handover ATTEMPT_CHECKPOINT [num_envs] [frames] [output] [task] [seed_stream_offset]"
     echo "  selector-handover SELECTOR_CHECKPOINT [num_envs] [frames] [output] [task]"
     echo "  portfolio-handover PORTFOLIO_CHECKPOINT [num_envs] [frames] [output] [task] [dataset]"
@@ -277,6 +279,28 @@ case "${command}" in
             "${REPO_ROOT}/scripts/train_dranmar_receiver_attempt_ppo.py" \
             update \
             --checkpoint "${attempt_checkpoint}" \
+            --output "${output}" \
+            "${rollout_args[@]}"
+        ;;
+    receiver-attempt-risk-update)
+        require_runtime
+        attempt_checkpoint="${2:-}"
+        risk_checkpoint="${3:-}"
+        output="${4:-}"
+        if [[ -z "${attempt_checkpoint}" || -z "${risk_checkpoint}" || -z "${output}" || "$#" -lt 5 ]]; then
+            usage
+            exit 2
+        fi
+        shift 4
+        rollout_args=()
+        for rollout in "$@"; do
+            rollout_args+=(--rollout "${rollout}")
+        done
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/train_dranmar_receiver_attempt_ppo.py" \
+            risk-update \
+            --checkpoint "${attempt_checkpoint}" \
+            --risk_checkpoint "${risk_checkpoint}" \
             --output "${output}" \
             "${rollout_args[@]}"
         ;;
@@ -566,6 +590,28 @@ case "${command}" in
             "${6:-${DR_ANMAR_LEARNING_OUTPUT}/receiver-custody-preprobe-interventions}" \
             "${7:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
         ;;
+    attempt-risk-handover)
+        attempt_checkpoint="${2:-}"
+        risk_checkpoint="${3:-}"
+        dataset="${4:-}"
+        if [[ -z "${attempt_checkpoint}" || -z "${risk_checkpoint}" || -z "${dataset}" ]]; then
+            usage
+            exit 2
+        fi
+        exec env \
+            DR_ANMAR_PROMOTED_ALLOW_ATTEMPT=1 \
+            DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT="${attempt_checkpoint}" \
+            DR_ANMAR_RECEIVER_ATTEMPT_STOCHASTIC=1 \
+            DR_ANMAR_RECEIVER_ATTEMPT_DATASET="${dataset}" \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT="${risk_checkpoint}" \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_MONITOR=1 \
+            DR_ANMAR_SEED_STREAM_OFFSET="${9:-0}" \
+            "${BASH_SOURCE[0]}" promoted-handover \
+            "${5:-1200}" \
+            "${6:-2000}" \
+            "${7:-${DR_ANMAR_LEARNING_OUTPUT}/attempt-risk-handover}" \
+            "${8:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        ;;
     attempt-handover)
         attempt_checkpoint="${2:-}"
         if [[ -z "${attempt_checkpoint}" ]]; then
@@ -642,6 +688,8 @@ case "${command}" in
         attempt_checkpoint_env=""
         attempt_stochastic_env=0
         attempt_dataset_env=""
+        preprobe_risk_checkpoint_env="${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT:-}"
+        preprobe_risk_monitor_env="${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_MONITOR:-0}"
         selector_checkpoint_env=""
         retry_portfolio_checkpoint_env=""
         custody_confirmation_steps_env=0
@@ -774,6 +822,8 @@ case "${command}" in
             DR_ANMAR_RECEIVER_ATTEMPT_DATASET="${attempt_dataset_env}" \
             DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M=0.001 \
             DR_ANMAR_RECEIVER_ATTEMPT_ORIENTATION_CAP_DEG=1.0 \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT="${preprobe_risk_checkpoint_env}" \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_MONITOR="${preprobe_risk_monitor_env}" \
             DR_ANMAR_RECEIVER_CONTEXT_SELECTOR_CHECKPOINT="${selector_checkpoint_env}" \
             DR_ANMAR_RECEIVER_RETRY_PORTFOLIO_CHECKPOINT="${retry_portfolio_checkpoint_env}" \
             DR_ANMAR_SEED_STREAM_OFFSET="${selector_seed_stream_offset_env}" \
@@ -1053,6 +1103,11 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_active_custody_preprobe_risk_checkpoint
                 "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_MONITOR:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_active_custody_preprobe_risk_monitor
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_SEED:-}" ]]; then

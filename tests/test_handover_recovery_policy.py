@@ -646,6 +646,42 @@ def test_preprobe_risk_trial_randomizes_before_giver_probe() -> None:
     )
 
 
+def test_preprobe_risk_monitor_observes_without_changing_actions() -> None:
+    plain = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        enable_retries=False,
+    )
+    monitored = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        enable_retries=False,
+        active_custody_preprobe_risk_monitor=True,
+        active_custody_preprobe_risk_feature_mean=torch.zeros(89),
+        active_custody_preprobe_risk_feature_std=torch.ones(89),
+        active_custody_preprobe_risk_weight=torch.zeros(89),
+        active_custody_preprobe_risk_bias=0.0,
+        active_custody_preprobe_risk_threshold=0.5,
+    )
+    observation = _observation(batch_size=4)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 80] = 1.0
+    raw[:, 66:68] = 0.01
+    raw[:, 68:70] = 0.01
+
+    for _ in range(4):
+        plain_action = plain(observation)
+        monitored_action = monitored(observation)
+        assert torch.equal(plain_action, monitored_action)
+
+    assert bool(monitored.active_custody_preprobe_risk_observed.all())
+    assert torch.allclose(
+        monitored.active_custody_preprobe_risk,
+        torch.full((4,), 0.5),
+    )
+    assert not bool(monitored.active_custody_probe_attempted.any())
+    assert not bool(monitored.active_custody_intervention_assigned.any())
+
+
 def test_retry_retreat_budget_is_cumulative_across_contact_flicker() -> None:
     policy = HandoverReceiverRecoveryPolicy(
         _FixedBasePolicy(),

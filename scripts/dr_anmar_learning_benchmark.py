@@ -3660,15 +3660,33 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "non-default active-custody intervention profile requires "
             "the intervention flag"
         )
-    if (
+    preprobe_retry_profile = (
         args.receiver_active_custody_intervention_profile
         == "preprobe_retry"
-    ) != bool(
+    )
+    preprobe_risk_checkpoint_requested = bool(
         args.receiver_active_custody_preprobe_risk_checkpoint
+    )
+    if preprobe_retry_profile and not preprobe_risk_checkpoint_requested:
+        return _fail(
+            "pre-probe retry profile requires a risk checkpoint"
+        )
+    if preprobe_risk_checkpoint_requested and not (
+        preprobe_retry_profile
+        or args.receiver_active_custody_preprobe_risk_monitor
     ):
         return _fail(
-            "pre-probe retry profile and risk checkpoint must be "
-            "enabled together"
+            "pre-probe risk checkpoint requires the monitor or retry profile"
+        )
+    if args.receiver_active_custody_preprobe_risk_monitor and (
+        not args.receiver_attempt_checkpoint
+        or not args.receiver_attempt_dataset
+        or args.receiver_active_custody_intervention
+        or args.receiver_active_custody_verification
+    ):
+        return _fail(
+            "pre-probe risk monitoring requires an attempt rollout dataset "
+            "and forbids custody probes or interventions"
         )
     if not 0 <= active_custody_intervention_seed < 2**31:
         return _fail(
@@ -5358,6 +5376,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             active_custody_intervention_profile=(
                 args.receiver_active_custody_intervention_profile
             ),
+            active_custody_preprobe_risk_monitor=(
+                args.receiver_active_custody_preprobe_risk_monitor
+            ),
             active_custody_preprobe_risk_feature_mean=(
                 receiver_preprobe_risk_feature_mean
             ),
@@ -5819,6 +5840,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             dtype=torch.float32,
             device=first_unresolved.device,
         )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_preprobe_risk_observed = (
+        torch.zeros_like(first_unresolved)
         if receiver_recovery_policy is not None
         else None
     )
@@ -7299,6 +7325,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         is not None
                     )
                     assert (
+                        first_receiver_active_custody_preprobe_risk_observed
+                        is not None
+                    )
+                    assert (
                         first_receiver_active_custody_intervention_centering_direction
                         is not None
                     )
@@ -7436,6 +7466,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ] = (
                         receiver_recovery_policy
                         .active_custody_preprobe_risk[first_dones]
+                    )
+                    first_receiver_active_custody_preprobe_risk_observed[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_preprobe_risk_observed[first_dones]
                     )
                     first_receiver_active_custody_intervention_centering_direction[
                         first_dones
@@ -9234,10 +9270,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 .expanduser()
                 .resolve()
             )
+            if args.receiver_active_custody_preprobe_risk_monitor:
+                assert (
+                    first_receiver_active_custody_preprobe_risk is not None
+                )
+                assert (
+                    first_receiver_active_custody_preprobe_risk_observed
+                    is not None
+                )
             torch.save(
                 {
                     "schema_version": (
-                        "dranmar-receiver-attempt-ppo-rollout-1.0"
+                        "dranmar-receiver-attempt-risk-ppo-rollout-1.0"
+                        if args
+                        .receiver_active_custody_preprobe_risk_monitor
+                        else "dranmar-receiver-attempt-ppo-rollout-1.0"
                     ),
                     "task": args.task,
                     "seed": args.seed,
@@ -9294,6 +9341,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "termination_flags": first_terminal_flags.cpu()[
                         attempt_environment
                     ],
+                    **(
+                        {
+                            "preprobe_risk_checkpoint_sha256": _sha256(
+                                Path(
+                                    args
+                                    .receiver_active_custody_preprobe_risk_checkpoint
+                                )
+                                .expanduser()
+                                .resolve()
+                            ),
+                            "preprobe_risk_observed": (
+                                first_receiver_active_custody_preprobe_risk_observed
+                                .cpu()[attempt_environment]
+                            ),
+                            "predicted_preprobe_risk": (
+                                first_receiver_active_custody_preprobe_risk
+                                .cpu()[attempt_environment]
+                            ),
+                        }
+                        if args
+                        .receiver_active_custody_preprobe_risk_monitor
+                        else {}
+                    ),
                 },
                 attempt_dataset_path,
             )
@@ -9305,6 +9375,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_outcome_success.cpu()[
                         attempt_environment
                     ].sum().item()
+                ),
+                "preprobe_risk_observed": (
+                    int(
+                        first_receiver_active_custody_preprobe_risk_observed
+                        .cpu()[attempt_environment]
+                        .sum()
+                        .item()
+                    )
+                    if args
+                    .receiver_active_custody_preprobe_risk_monitor
+                    else None
                 ),
             }
         receiver_active_custody_probe_dataset = None
@@ -10470,6 +10551,33 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 args
                                 .receiver_attempt_orientation_cap_deg
                             ),
+                            "preprobe_risk_monitor": (
+                                args
+                                .receiver_active_custody_preprobe_risk_monitor
+                            ),
+                            "preprobe_risk_checkpoint": (
+                                {
+                                    "path": str(
+                                        Path(
+                                            args
+                                            .receiver_active_custody_preprobe_risk_checkpoint
+                                        )
+                                        .expanduser()
+                                        .resolve()
+                                    ),
+                                    "sha256": _sha256(
+                                        Path(
+                                            args
+                                            .receiver_active_custody_preprobe_risk_checkpoint
+                                        )
+                                        .expanduser()
+                                        .resolve()
+                                    ),
+                                }
+                                if args
+                                .receiver_active_custody_preprobe_risk_monitor
+                                else None
+                            ),
                             "rollout_dataset": receiver_attempt_dataset,
                         }
                         if args.receiver_attempt_checkpoint
@@ -11176,6 +11284,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--receiver_active_custody_preprobe_risk_checkpoint"
+    )
+    play.add_argument(
+        "--receiver_active_custody_preprobe_risk_monitor",
+        action="store_true",
     )
     play.add_argument(
         "--receiver_active_custody_intervention_seed",

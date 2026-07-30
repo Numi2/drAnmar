@@ -22,6 +22,9 @@ import torch.nn.functional as functional
 DEVELOPMENT_SEEDS = {104729, 130363, 196613}
 SCHEMA_VERSION = "dranmar-receiver-attempt-ppo-1.0"
 ROLLOUT_SCHEMA_VERSION = "dranmar-receiver-attempt-ppo-rollout-1.0"
+RISK_ROLLOUT_SCHEMA_VERSION = (
+    "dranmar-receiver-attempt-risk-ppo-rollout-1.0"
+)
 _FULL_GIT_REVISION = re.compile(r"[0-9a-f]{40}")
 
 
@@ -300,6 +303,82 @@ def _bind_source(args: argparse.Namespace) -> int:
     return 0
 
 
+def _within_outcome_risk_auxiliary(
+    seed: torch.Tensor,
+    success: torch.Tensor,
+    observed: torch.Tensor,
+    predicted_risk: torch.Tensor,
+) -> tuple[torch.Tensor, dict[str, object]]:
+    """Center low-risk custody quality within seed and terminal outcome."""
+
+    if not (
+        seed.ndim
+        == success.ndim
+        == observed.ndim
+        == predicted_risk.ndim
+        == 1
+        and seed.shape
+        == success.shape
+        == observed.shape
+        == predicted_risk.shape
+    ):
+        raise ValueError("risk auxiliary tensors must be aligned vectors")
+    if not bool(torch.isfinite(predicted_risk).all()) or bool(
+        ((predicted_risk < 0.0) | (predicted_risk > 1.0)).any()
+    ):
+        raise ValueError("predicted pre-probe risk must be finite in [0, 1]")
+    success = success.bool()
+    observed = observed.bool()
+    quality = 1.0 - predicted_risk.float()
+    auxiliary = torch.zeros_like(quality)
+    cells: dict[str, object] = {}
+    for seed_value in sorted(int(value) for value in torch.unique(seed)):
+        seed_cells: dict[str, object] = {}
+        for outcome_value in (False, True):
+            selected = (
+                (seed == seed_value)
+                & (success == outcome_value)
+                & observed
+            )
+            count = int(selected.sum().item())
+            mean_quality = (
+                float(quality[selected].mean().item()) if count else None
+            )
+            quality_std = (
+                float(
+                    quality[selected].std(unbiased=False).item()
+                )
+                if count >= 2
+                else None
+            )
+            if count >= 2:
+                centered = quality[selected] - quality[selected].mean()
+                auxiliary[selected] = (
+                    centered
+                    / centered.std(unbiased=False).clamp_min(1.0e-6)
+                ).clamp(-1.0, 1.0)
+            seed_cells[str(int(outcome_value))] = {
+                "observed": count,
+                "mean_low_risk_quality": mean_quality,
+                "low_risk_quality_std": quality_std,
+            }
+        cells[str(seed_value)] = seed_cells
+    return auxiliary, {
+        "centering": (
+            "standardized_and_clipped_within_seed_and_terminal_outcome"
+        ),
+        "missing_preprobe_signal": "zero_auxiliary",
+        "observed": int(observed.sum().item()),
+        "cells": cells,
+        "maximum_absolute_auxiliary": float(
+            auxiliary.abs().max().item()
+        ),
+        "mean_absolute_auxiliary": float(
+            auxiliary.abs().mean().item()
+        ),
+    }
+
+
 def _bootstrap(args: argparse.Namespace) -> int:
     actor_critic_type, _ = _repo_models()
     random.seed(args.seed)
@@ -511,6 +590,15 @@ def _bootstrap(args: argparse.Namespace) -> int:
 
 def _update(args: argparse.Namespace) -> int:
     actor_critic_type, _ = _repo_models()
+    risk_auxiliary_enabled = args.command == "risk-update"
+    if risk_auxiliary_enabled and not (
+        0.0 < args.risk_auxiliary_weight <= 0.1
+        and args.minimum_risk_observations > 0
+    ):
+        raise ValueError(
+            "risk auxiliary weight must be in (0, 0.1] and minimum "
+            "observations must be positive"
+        )
     random.seed(args.seed)
     torch.manual_seed(args.seed)
     checkpoint_path = Path(args.checkpoint).expanduser().resolve()
@@ -523,6 +611,40 @@ def _update(args: argparse.Namespace) -> int:
         raise ValueError("unsupported receiver attempt PPO checkpoint")
     _verified_source_revision(payload.get("source_revision"))
     checkpoint_hash = _sha256(checkpoint_path)
+    risk_checkpoint_hash = None
+    risk_checkpoint_report = None
+    if risk_auxiliary_enabled:
+        risk_checkpoint_path = (
+            Path(args.risk_checkpoint).expanduser().resolve()
+        )
+        risk_payload = torch.load(
+            risk_checkpoint_path,
+            map_location="cpu",
+            weights_only=False,
+        )
+        if (
+            not isinstance(risk_payload, dict)
+            or risk_payload.get("schema_version")
+            != "dranmar-active-custody-preprobe-risk-model-1.0"
+            or risk_payload.get("base_checkpoint_sha256")
+            != payload["base_checkpoint_sha256"]
+            or risk_payload.get(
+                "receiver_candidate_checkpoint_sha256"
+            )
+            != payload["receiver_candidate_checkpoint_sha256"]
+            or not risk_payload.get("cross_fit_gate", {}).get(
+                "signal_gate_passed"
+            )
+            or risk_payload.get("motion_control_authorized") is not False
+        ):
+            raise ValueError("incompatible pre-probe risk checkpoint")
+        risk_checkpoint_hash = _sha256(risk_checkpoint_path)
+        risk_checkpoint_report = {
+            "path": str(risk_checkpoint_path),
+            "sha256": risk_checkpoint_hash,
+            "source_revision": risk_payload.get("source_revision"),
+            "use": "bounded_within_outcome_auxiliary_only",
+        }
     rollout_paths = [
         Path(value).expanduser().resolve() for value in args.rollout
     ]
@@ -531,11 +653,19 @@ def _update(args: argparse.Namespace) -> int:
     log_probability_parts = []
     old_value_parts = []
     reward_parts = []
+    seed_parts = []
+    risk_observed_parts = []
+    predicted_risk_parts = []
     rollout_reports = []
     for path in rollout_paths:
         rollout = torch.load(path, map_location="cpu", weights_only=False)
+        expected_rollout_schema = (
+            RISK_ROLLOUT_SCHEMA_VERSION
+            if risk_auxiliary_enabled
+            else ROLLOUT_SCHEMA_VERSION
+        )
         if (
-            rollout.get("schema_version") != ROLLOUT_SCHEMA_VERSION
+            rollout.get("schema_version") != expected_rollout_schema
             or rollout.get("receiver_attempt_checkpoint_sha256")
             != checkpoint_hash
             or rollout.get("base_checkpoint_sha256")
@@ -544,6 +674,11 @@ def _update(args: argparse.Namespace) -> int:
             != payload["receiver_candidate_checkpoint_sha256"]
             or int(rollout["seed"]) not in DEVELOPMENT_SEEDS
             or not bool(rollout["stochastic"])
+            or (
+                risk_auxiliary_enabled
+                and rollout.get("preprobe_risk_checkpoint_sha256")
+                != risk_checkpoint_hash
+            )
         ):
             raise ValueError(f"incompatible PPO rollout: {path}")
         for field in (
@@ -573,6 +708,27 @@ def _update(args: argparse.Namespace) -> int:
         )
         old_value_parts.append(rollout["old_value"].float())
         reward_parts.append(rollout["full_success"].float())
+        seed_parts.append(
+            torch.full(
+                (features.shape[0],),
+                int(rollout["seed"]),
+                dtype=torch.long,
+            )
+        )
+        risk_observed_count = None
+        if risk_auxiliary_enabled:
+            risk_observed = rollout["preprobe_risk_observed"].bool()
+            predicted_risk = rollout["predicted_preprobe_risk"].float()
+            if (
+                risk_observed.shape != (features.shape[0],)
+                or predicted_risk.shape != (features.shape[0],)
+            ):
+                raise ValueError(
+                    f"rollout pre-probe tensor shape drifted: {path}"
+                )
+            risk_observed_parts.append(risk_observed)
+            predicted_risk_parts.append(predicted_risk)
+            risk_observed_count = int(risk_observed.sum().item())
         rollout_reports.append(
             {
                 "path": str(path),
@@ -585,6 +741,7 @@ def _update(args: argparse.Namespace) -> int:
                 "successful": int(
                     rollout["full_success"].sum().item()
                 ),
+                "preprobe_risk_observed": risk_observed_count,
             }
         )
     features = torch.cat(features_parts)
@@ -592,10 +749,34 @@ def _update(args: argparse.Namespace) -> int:
     old_log_probability = torch.cat(log_probability_parts)
     old_value = torch.cat(old_value_parts)
     reward = torch.cat(reward_parts)
+    seed = torch.cat(seed_parts)
     if features.shape[0] < args.minimum_decisions:
         raise ValueError(
             f"PPO update requires at least {args.minimum_decisions} "
             f"decisions, found {features.shape[0]}"
+        )
+    risk_auxiliary = torch.zeros_like(reward)
+    risk_auxiliary_report = None
+    if risk_auxiliary_enabled:
+        observed = torch.cat(risk_observed_parts)
+        predicted_risk = torch.cat(predicted_risk_parts)
+        if set(int(value) for value in torch.unique(seed)) != DEVELOPMENT_SEEDS:
+            raise ValueError(
+                "risk-guided PPO update requires all development seeds"
+            )
+        if int(observed.sum().item()) < args.minimum_risk_observations:
+            raise ValueError(
+                "risk-guided PPO update requires at least "
+                f"{args.minimum_risk_observations} observed custody states, "
+                f"found {int(observed.sum().item())}"
+            )
+        risk_auxiliary, risk_auxiliary_report = (
+            _within_outcome_risk_auxiliary(
+                seed,
+                reward.bool(),
+                observed,
+                predicted_risk,
+            )
         )
     normalized = (
         features - payload["feature_mean"].float()
@@ -611,6 +792,11 @@ def _update(args: argparse.Namespace) -> int:
         weight_decay=1.0e-6,
     )
     advantage = reward - old_value
+    if risk_auxiliary_enabled:
+        advantage = (
+            advantage
+            + args.risk_auxiliary_weight * risk_auxiliary
+        )
     advantage = (
         advantage - advantage.mean()
     ) / advantage.std().clamp_min(1.0e-6)
@@ -695,12 +881,24 @@ def _update(args: argparse.Namespace) -> int:
             "target_kl": args.target_kl,
             "max_gradient_norm": args.max_gradient_norm,
             "seed": args.seed,
+            "risk_auxiliary_weight": (
+                args.risk_auxiliary_weight
+                if risk_auxiliary_enabled
+                else 0.0
+            ),
         },
         "epochs_completed": epochs_completed,
         "approximate_kl": approximate_kl,
         "policy_loss": policy_loss_value,
         "value_loss": value_loss_value,
         "entropy": entropy_value,
+        "objective": (
+            "terminal_success_plus_bounded_within_outcome_risk_auxiliary"
+            if risk_auxiliary_enabled
+            else "terminal_success"
+        ),
+        "risk_checkpoint": risk_checkpoint_report,
+        "risk_auxiliary": risk_auxiliary_report,
     }
     _write_checkpoint(
         payload,
@@ -777,6 +975,40 @@ def _parser() -> argparse.ArgumentParser:
     update.add_argument("--target_kl", type=float, default=0.015)
     update.add_argument("--max_gradient_norm", type=float, default=0.5)
     update.add_argument("--seed", type=int, default=104729)
+
+    risk_update = subparsers.add_parser("risk-update")
+    risk_update.add_argument("--checkpoint", required=True)
+    risk_update.add_argument("--risk_checkpoint", required=True)
+    risk_update.add_argument("--rollout", action="append", required=True)
+    risk_update.add_argument("--output", required=True)
+    risk_update.add_argument("--minimum_decisions", type=int, default=3000)
+    risk_update.add_argument(
+        "--minimum_risk_observations",
+        type=int,
+        default=1000,
+    )
+    risk_update.add_argument("--epochs", type=int, default=3)
+    risk_update.add_argument("--minibatch_size", type=int, default=512)
+    risk_update.add_argument("--learning_rate", type=float, default=2.0e-5)
+    risk_update.add_argument("--clip", type=float, default=0.05)
+    risk_update.add_argument("--value_coefficient", type=float, default=0.5)
+    risk_update.add_argument(
+        "--entropy_coefficient",
+        type=float,
+        default=0.0005,
+    )
+    risk_update.add_argument("--target_kl", type=float, default=0.003)
+    risk_update.add_argument(
+        "--max_gradient_norm",
+        type=float,
+        default=0.5,
+    )
+    risk_update.add_argument(
+        "--risk_auxiliary_weight",
+        type=float,
+        default=0.1,
+    )
+    risk_update.add_argument("--seed", type=int, default=104729)
     return parser
 
 
