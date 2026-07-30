@@ -228,6 +228,10 @@ case "${command}" in
         if [[ "${DR_ANMAR_HANDOVER_GIVER_ADAPTATION:-0}" == "1" ]]; then
             giver_adaptation_args=(--handover_giver_adaptation)
         fi
+        receiver_adaptation_args=()
+        if [[ "${DR_ANMAR_HANDOVER_RECEIVER_ADAPTATION:-0}" == "1" ]]; then
+            receiver_adaptation_args=(--handover_receiver_adaptation)
+        fi
         run_train_benchmark \
             "${2:-${DR_ANMAR_TASK}}" \
             "${3:-${DR_ANMAR_NUM_ENVS}}" \
@@ -238,7 +242,8 @@ case "${command}" in
             --success_window 10 \
             "${checkpoint_args[@]}" \
             "${learning_rate_args[@]}" \
-            "${giver_adaptation_args[@]}"
+            "${giver_adaptation_args[@]}" \
+            "${receiver_adaptation_args[@]}"
         ;;
     receiver-attempt-bootstrap)
         require_runtime

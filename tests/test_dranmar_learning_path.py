@@ -439,6 +439,12 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         ]
         is True
     )
+    assert (
+        manifest["stages"][5]["learning"][
+            "receiver_adaptation_freezes_shared_actor_and_giver_rows_and_resets_optimizer"
+        ]
+        is True
+    )
     assert manifest["stages"][5]["learning"]["residual_phases"] == [
         "giver_post_10mm_transport_translation_before_receiver_contact",
         "receiver_presentation_ready_approach_before_contact",
@@ -616,6 +622,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "def configure_giver_adaptation(self)" in handover_model_source
     assert "giver_row_mask[3:6] = 1.0" in handover_model_source
     assert "giver_row_mask[10:13] = 1.0" in handover_model_source
+    assert "def configure_receiver_adaptation(self)" in handover_model_source
+    assert "receiver_row_mask[0:3] = 1.0" in handover_model_source
+    assert "receiver_row_mask[7:10] = 1.0" in handover_model_source
     assert "giver_transport_active = giver_carry_mode & torch.where(" in handover_model_source
     assert "giver_lift_contact_qualified" in handover_model_source
     assert handover_model_source.count(
@@ -640,6 +649,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "DR_ANMAR_POLICY_LEARNING_RATE" in launcher_source
     assert "DR_ANMAR_POLICY_RESIDUAL_SCALE" in launcher_source
     assert "DR_ANMAR_HANDOVER_GIVER_ADAPTATION" in launcher_source
+    assert "DR_ANMAR_HANDOVER_RECEIVER_ADAPTATION" in launcher_source
     assert (
         "DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT"
         in launcher_source
@@ -724,7 +734,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert 'train.add_argument("--checkpoint")' in benchmark_source
     assert 'train.add_argument("--learning_rate", type=float)' in benchmark_source
     assert '"--handover_giver_adaptation"' in benchmark_source
+    assert '"--handover_receiver_adaptation"' in benchmark_source
     assert '"optimizer_state_reset": True' in benchmark_source
+    assert '"ppo_clip_param": 0.05' in benchmark_source
+    assert '"ppo_desired_kl": 0.002' in benchmark_source
     assert 'play.add_argument("--residual_scale", type=float)' in benchmark_source
     assert (
         'play.add_argument("--pickup_vertical_action_limit", type=float)'

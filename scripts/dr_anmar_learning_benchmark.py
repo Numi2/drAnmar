@@ -1486,6 +1486,27 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    handover_adaptation = (
+        args.handover_giver_adaptation
+        or args.handover_receiver_adaptation
+    )
+    if (
+        args.handover_giver_adaptation
+        and args.handover_receiver_adaptation
+    ):
+        return _fail(
+            "giver and receiver adaptation modes are mutually exclusive"
+        )
+    if handover_adaptation:
+        if "Handover-Needle-Dual-PSM-IK-Rel" not in args.task:
+            return _fail(
+                "handover adaptation requires the dual-PSM needle "
+                "handover task"
+            )
+        # A narrow trust region protects the source policy while one set of
+        # phase-gated output rows is adapted.
+        agent_cfg.algorithm.clip_param = 0.05
+        agent_cfg.algorithm.desired_kl = 0.002
     if args.learning_rate is not None:
         if args.learning_rate <= 0.0:
             return _fail("training learning rate must be positive")
@@ -1515,12 +1536,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 f"initial checkpoint not found: {initial_checkpoint}"
             )
         load_cfg = None
-        if args.handover_giver_adaptation:
-            if "Handover-Needle-Dual-PSM-IK-Rel" not in args.task:
-                env.close()
-                return _fail(
-                    "giver adaptation requires the dual-PSM needle handover task"
-                )
+        if handover_adaptation:
             load_cfg = {
                 "actor": True,
                 "critic": True,
@@ -1529,22 +1545,28 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "rnd": False,
             }
         runner.load(str(initial_checkpoint), load_cfg=load_cfg)
-        if args.handover_giver_adaptation:
+        if handover_adaptation:
             policy_model = runner.alg.get_policy()
+            adaptation_method = (
+                "configure_giver_adaptation"
+                if args.handover_giver_adaptation
+                else "configure_receiver_adaptation"
+            )
             if not hasattr(
-                policy_model, "configure_giver_adaptation"
+                policy_model, adaptation_method
             ):
                 env.close()
                 return _fail(
-                    "handover policy does not support giver adaptation"
+                    "handover policy does not support "
+                    f"{adaptation_method}"
                 )
-            policy_model.configure_giver_adaptation()
+            getattr(policy_model, adaptation_method)()
         if args.learning_rate is not None:
             for parameter_group in runner.alg.optimizer.param_groups:
                 parameter_group["lr"] = args.learning_rate
-    elif args.handover_giver_adaptation:
+    elif handover_adaptation:
         env.close()
-        return _fail("giver adaptation requires an initial checkpoint")
+        return _fail("handover adaptation requires an initial checkpoint")
     runner.logger.git_status_repos = []
 
     started = time.perf_counter()
@@ -1594,6 +1616,9 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "handover_giver_adaptation": bool(
                 args.handover_giver_adaptation
             ),
+            "handover_receiver_adaptation": bool(
+                args.handover_receiver_adaptation
+            ),
             "handover_giver_adaptation_contract": (
                 {
                     "optimizer_state_reset": True,
@@ -1601,6 +1626,21 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "trainable_output_rows": [3, 4, 5, 10, 11, 12],
                 }
                 if args.handover_giver_adaptation
+                else None
+            ),
+            "handover_receiver_adaptation_contract": (
+                {
+                    "optimizer_state_reset": True,
+                    "shared_actor_and_giver_rows_frozen": True,
+                    "trainable_output_rows": [0, 1, 2, 7, 8, 9],
+                    "active_motion": (
+                        "receiver_translation_during_presentation_ready_"
+                        "approach_before_first_native_contact_only"
+                    ),
+                    "ppo_clip_param": 0.05,
+                    "ppo_desired_kl": 0.002,
+                }
+                if args.handover_receiver_adaptation
                 else None
             ),
             "wall_time_s": duration,
@@ -11056,6 +11096,10 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--learning_rate", type=float)
     train.add_argument(
         "--handover_giver_adaptation",
+        action="store_true",
+    )
+    train.add_argument(
+        "--handover_receiver_adaptation",
         action="store_true",
     )
 

@@ -734,6 +734,32 @@ class HandoverResidualMLPModel(MLPModel):
             lambda gradient: gradient * giver_row_mask
         )
 
+    def configure_receiver_adaptation(self) -> None:
+        """Freeze the qualified base and train receiver-approach rows only."""
+        final_linear = next(
+            module
+            for module in reversed(self.mlp)
+            if isinstance(module, nn.Linear)
+        )
+        for parameter in self.mlp.parameters():
+            parameter.requires_grad_(False)
+        final_linear.weight.requires_grad_(True)
+        final_linear.bias.requires_grad_(True)
+        receiver_row_mask = torch.zeros(
+            final_linear.out_features,
+            dtype=final_linear.weight.dtype,
+            device=final_linear.weight.device,
+        )
+        receiver_row_mask[0:3] = 1.0
+        receiver_row_mask[7:10] = 1.0
+        final_linear.weight.register_hook(
+            lambda gradient: gradient
+            * receiver_row_mask.unsqueeze(-1)
+        )
+        final_linear.bias.register_hook(
+            lambda gradient: gradient * receiver_row_mask
+        )
+
     def forward(
         self,
         obs,

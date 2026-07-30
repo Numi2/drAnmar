@@ -232,6 +232,7 @@
         "residual_initial_std": 0.01,
         "giver_residual_channel_isolated_from_receiver_checkpoint": true,
         "giver_adaptation_freezes_receiver_and_resets_optimizer": true,
+        "receiver_adaptation_freezes_shared_actor_and_giver_rows_and_resets_optimizer": true,
         "analytic_pickup_vertical_action_limit": 0.01,
         "analytic_pickup_vertical_action_limit_source": "isaac_lab_seed17_and_2361_1200_environment_full_population_lift_transition_sweep",
         "analytic_giver_vertical_action_limit": 0.015,
