@@ -339,12 +339,20 @@ def test_active_custody_probe_pulses_once_per_acquisition_attempt() -> None:
     assert pulse_action[0, 6].item() == 1.0
     assert policy.active_custody_probe_pending.item()
     assert policy.active_custody_probe_attempted.item()
+    assert torch.equal(
+        policy.active_custody_probe_pre_observation,
+        raw,
+    )
 
+    raw[:, 46] = -0.123
     policy(observation)
     assert not policy.active_custody_probe_pending.item()
     assert policy.active_custody_probe_evaluated.item()
     assert policy.active_custody_probe_survived.item()
     assert policy.receiver_release_authorized.item()
+    assert policy.active_custody_probe_post_observation[0, 46].item() == (
+        raw[0, 46].item()
+    )
 
     post_probe_action = policy(observation)
     assert post_probe_action[0, 6].item() == -1.0

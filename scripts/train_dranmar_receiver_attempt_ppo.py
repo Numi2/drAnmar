@@ -9,6 +9,7 @@ import importlib.util
 import json
 import math
 import random
+import re
 import subprocess
 import sys
 import types
@@ -21,6 +22,7 @@ import torch.nn.functional as functional
 DEVELOPMENT_SEEDS = {104729, 130363, 196613}
 SCHEMA_VERSION = "dranmar-receiver-attempt-ppo-1.0"
 ROLLOUT_SCHEMA_VERSION = "dranmar-receiver-attempt-ppo-rollout-1.0"
+_FULL_GIT_REVISION = re.compile(r"[0-9a-f]{40}")
 
 
 def _sha256(path: Path) -> str:
@@ -41,6 +43,21 @@ def _source_revision() -> str:
         text=True,
     )
     return result.stdout.strip()
+
+
+def _verified_source_revision(value: object) -> str:
+    if not isinstance(value, str) or _FULL_GIT_REVISION.fullmatch(value) is None:
+        raise ValueError("source revision must be a full lowercase Git SHA")
+    repo_root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        ["git", "cat-file", "-e", f"{value}^{{commit}}"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise ValueError(f"source revision is not available: {value}")
+    return value
 
 
 def _repo_models() -> tuple[type[torch.nn.Module], type[torch.nn.Module]]:
@@ -245,6 +262,42 @@ def _write_checkpoint(
         json.dumps(report, indent=2, sort_keys=True) + "\n"
     )
     print(json.dumps(report, indent=2, sort_keys=True))
+
+
+def _bind_source(args: argparse.Namespace) -> int:
+    checkpoint_path = Path(args.checkpoint).expanduser().resolve()
+    output = Path(args.output).expanduser().resolve()
+    if checkpoint_path == output:
+        raise ValueError("source binding requires a new output checkpoint")
+    if output.exists() or output.with_suffix(".json").exists():
+        raise FileExistsError(f"source-bound output already exists: {output}")
+    payload = torch.load(
+        checkpoint_path,
+        map_location="cpu",
+        weights_only=False,
+    )
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != SCHEMA_VERSION
+        or "receiver_attempt_actor_critic" not in payload
+        or "feature_mean" not in payload
+        or "feature_std" not in payload
+    ):
+        raise ValueError("unsupported receiver attempt PPO checkpoint")
+    source_revision = _verified_source_revision(args.source_revision)
+    existing_revision = payload.get("source_revision")
+    if existing_revision is not None:
+        raise ValueError("checkpoint is already source-bound")
+    payload["source_revision"] = source_revision
+    payload["source_binding"] = {
+        "kind": "legacy_checkpoint_metadata_migration",
+        "source_revision": source_revision,
+        "original_checkpoint": str(checkpoint_path),
+        "original_sha256": _sha256(checkpoint_path),
+        "policy_weights_unchanged_during_binding": True,
+    }
+    _write_checkpoint(payload, output)
+    return 0
 
 
 def _bootstrap(args: argparse.Namespace) -> int:
@@ -468,6 +521,7 @@ def _update(args: argparse.Namespace) -> int:
     )
     if payload.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("unsupported receiver attempt PPO checkpoint")
+    _verified_source_revision(payload.get("source_revision"))
     checkpoint_hash = _sha256(checkpoint_path)
     rollout_paths = [
         Path(value).expanduser().resolve() for value in args.rollout
@@ -524,6 +578,9 @@ def _update(args: argparse.Namespace) -> int:
                 "path": str(path),
                 "sha256": _sha256(path),
                 "seed": int(rollout["seed"]),
+                "seed_stream_offset": int(
+                    rollout.get("seed_stream_offset", 0)
+                ),
                 "decisions": int(features.shape[0]),
                 "successful": int(
                     rollout["full_success"].sum().item()
@@ -627,6 +684,18 @@ def _update(args: argparse.Namespace) -> int:
         "decisions": int(features.shape[0]),
         "successful": int(reward.sum().item()),
         "success_rate": float(reward.mean().item()),
+        "hyperparameters": {
+            "minimum_decisions": args.minimum_decisions,
+            "epochs_requested": args.epochs,
+            "minibatch_size": args.minibatch_size,
+            "learning_rate": args.learning_rate,
+            "clip": args.clip,
+            "value_coefficient": args.value_coefficient,
+            "entropy_coefficient": args.entropy_coefficient,
+            "target_kl": args.target_kl,
+            "max_gradient_norm": args.max_gradient_norm,
+            "seed": args.seed,
+        },
         "epochs_completed": epochs_completed,
         "approximate_kl": approximate_kl,
         "policy_loss": policy_loss_value,
@@ -645,6 +714,11 @@ def _parser() -> argparse.ArgumentParser:
         description="Train the one-decision receiver attempt PPO residual"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+    bind_source = subparsers.add_parser("bind-source")
+    bind_source.add_argument("--checkpoint", required=True)
+    bind_source.add_argument("--source_revision", required=True)
+    bind_source.add_argument("--output", required=True)
+
     bootstrap = subparsers.add_parser("bootstrap")
     bootstrap.add_argument("--base_checkpoint", required=True)
     bootstrap.add_argument("--candidate_checkpoint", required=True)
@@ -708,6 +782,8 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str]) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "bind-source":
+        return _bind_source(args)
     if args.command == "bootstrap":
         return _bootstrap(args)
     return _update(args)

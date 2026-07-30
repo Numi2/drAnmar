@@ -3372,6 +3372,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     checkpoint = Path(args.checkpoint).expanduser().resolve()
     if not checkpoint.is_file():
         return _fail(f"checkpoint not found: {checkpoint}")
+    active_custody_probe_dataset_path = (
+        Path(args.receiver_active_custody_probe_dataset)
+        .expanduser()
+        .resolve()
+        if args.receiver_active_custody_probe_dataset
+        else None
+    )
+    if (
+        active_custody_probe_dataset_path is not None
+        and active_custody_probe_dataset_path.exists()
+    ):
+        return _fail(
+            "active-custody probe dataset already exists: "
+            f"{active_custody_probe_dataset_path}"
+        )
 
     runtime_seed = args.seed + args.seed_stream_offset
     env_cfg, agent_cfg = _load_configs(
@@ -3606,6 +3621,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     ):
         return _fail(
             "receiver retry candidate sweep and retry portfolio are exclusive"
+        )
+    if (
+        args.receiver_active_custody_probe_dataset
+        and not args.receiver_active_custody_verification
+    ):
+        return _fail(
+            "active-custody probe dataset requires active-custody "
+            "verification"
         )
     if (
         args.receiver_recovery
@@ -5506,6 +5529,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if receiver_recovery_policy is not None
         else None
     )
+    first_receiver_active_custody_probe_pre_observation = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 98),
+            dtype=torch.float32,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_probe_post_observation = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 98),
+            dtype=torch.float32,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
     first_receiver_retry_release_aborted = (
         torch.zeros_like(first_unresolved)
         if receiver_recovery_policy is not None
@@ -6938,6 +6979,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         is not None
                     )
                     assert (
+                        first_receiver_active_custody_probe_pre_observation
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_probe_post_observation
+                        is not None
+                    )
+                    assert (
                         first_receiver_retry_release_aborted is not None
                     )
                     assert (
@@ -7017,6 +7066,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ] = (
                         receiver_recovery_policy
                         .active_custody_probe_post_forces[first_dones]
+                    )
+                    first_receiver_active_custody_probe_pre_observation[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_probe_pre_observation[first_dones]
+                    )
+                    first_receiver_active_custody_probe_post_observation[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_probe_post_observation[first_dones]
                     )
                     first_receiver_retry_release_aborted[first_dones] = (
                         receiver_recovery_policy
@@ -8814,6 +8875,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "task": args.task,
                     "seed": args.seed,
+                    "seed_stream_offset": args.seed_stream_offset,
                     "num_envs": env.unwrapped.num_envs,
                     "num_frames": args.num_frames,
                     "base_checkpoint_sha256": _sha256(checkpoint),
@@ -8877,6 +8939,154 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_outcome_success.cpu()[
                         attempt_environment
                     ].sum().item()
+                ),
+            }
+        receiver_active_custody_probe_dataset = None
+        if args.receiver_active_custody_probe_dataset:
+            assert receiver_recovery_policy is not None
+            assert (
+                first_receiver_active_custody_probe_evaluated is not None
+            )
+            assert (
+                first_receiver_active_custody_probe_survived is not None
+            )
+            assert (
+                first_receiver_active_custody_probe_pre_forces is not None
+            )
+            assert (
+                first_receiver_active_custody_probe_post_forces is not None
+            )
+            assert (
+                first_receiver_active_custody_probe_pre_observation
+                is not None
+            )
+            assert (
+                first_receiver_active_custody_probe_post_observation
+                is not None
+            )
+            assert first_receiver_correction is not None
+            assert first_receiver_retry_count is not None
+            probe_mask = (
+                first_receiver_active_custody_probe_evaluated
+            )
+            if not bool(probe_mask.any()):
+                env.close()
+                return _fail(
+                    "active-custody probe dataset has no evaluated probes"
+                )
+            probe_dataset_path = active_custody_probe_dataset_path
+            assert probe_dataset_path is not None
+            if probe_dataset_path.exists():
+                env.close()
+                return _fail(
+                    "active-custody probe dataset already exists: "
+                    f"{probe_dataset_path}"
+                )
+            probe_dataset_path.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            environment_index = torch.arange(
+                env.unwrapped.num_envs,
+                dtype=torch.long,
+                device=env.unwrapped.device,
+            )
+            pre_force_normalized = (
+                first_receiver_active_custody_probe_pre_forces[
+                    probe_mask
+                ]
+            )
+            post_force_normalized = (
+                first_receiver_active_custody_probe_post_forces[
+                    probe_mask
+                ]
+            )
+            torch.save(
+                {
+                    "schema_version": (
+                        "dranmar-receiver-active-custody-probe-dataset-1.0"
+                    ),
+                    "task": args.task,
+                    "seed": args.seed,
+                    "seed_stream_offset": args.seed_stream_offset,
+                    "runtime_seed": runtime_seed,
+                    "num_envs": env.unwrapped.num_envs,
+                    "num_frames": args.num_frames,
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "receiver_candidate_checkpoint_sha256": (
+                        _sha256(
+                            Path(
+                                args.receiver_candidate_value_checkpoint
+                            )
+                            .expanduser()
+                            .resolve()
+                        )
+                        if args.receiver_candidate_value_checkpoint
+                        else None
+                    ),
+                    "observation_dimension": 98,
+                    "contact_force_scale_n": 0.2,
+                    "probe_frames": 1,
+                    "probe_intervention": (
+                        "giver_gripper_open_pulse"
+                    ),
+                    "environment_index": environment_index[
+                        probe_mask
+                    ].cpu(),
+                    "pre_observation": (
+                        first_receiver_active_custody_probe_pre_observation[
+                            probe_mask
+                        ].cpu()
+                    ),
+                    "post_observation": (
+                        first_receiver_active_custody_probe_post_observation[
+                            probe_mask
+                        ].cpu()
+                    ),
+                    "pre_receiver_force_normalized": (
+                        pre_force_normalized.cpu()
+                    ),
+                    "post_receiver_force_normalized": (
+                        post_force_normalized.cpu()
+                    ),
+                    "pre_receiver_force_n": (
+                        pre_force_normalized / 0.2
+                    ).cpu(),
+                    "post_receiver_force_n": (
+                        post_force_normalized / 0.2
+                    ).cpu(),
+                    "receiver_correction": first_receiver_correction[
+                        probe_mask
+                    ].cpu(),
+                    "retry_count": first_receiver_retry_count[
+                        probe_mask
+                    ].cpu(),
+                    "probe_survived": (
+                        first_receiver_active_custody_probe_survived[
+                            probe_mask
+                        ].cpu()
+                    ),
+                    "eventual_full_success": first_outcome_success[
+                        probe_mask
+                    ].cpu(),
+                    "termination_names": termination_names,
+                    "eventual_termination_flags": (
+                        first_terminal_flags[probe_mask].cpu()
+                    ),
+                },
+                probe_dataset_path,
+            )
+            receiver_active_custody_probe_dataset = {
+                "path": str(probe_dataset_path),
+                "sha256": _sha256(probe_dataset_path),
+                "samples": int(probe_mask.sum().item()),
+                "probe_survived": int(
+                    first_receiver_active_custody_probe_survived[
+                        probe_mask
+                    ].sum().item()
+                ),
+                "eventual_full_success": int(
+                    first_outcome_success[probe_mask].sum().item()
                 ),
             }
         receiver_probe_force_response = None
@@ -9910,6 +10120,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "active_custody_probe_force_response": (
                         receiver_probe_force_response
                     ),
+                    "active_custody_probe_dataset": (
+                        receiver_active_custody_probe_dataset
+                    ),
                     "retry_release_aborted_episodes": int(
                         first_receiver_retry_release_aborted.sum().item()
                     ),
@@ -10243,6 +10456,7 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_active_custody_verification",
         action="store_true",
     )
+    play.add_argument("--receiver_active_custody_probe_dataset")
     play.add_argument(
         "--receiver_retention_contact_centering",
         action="store_true",

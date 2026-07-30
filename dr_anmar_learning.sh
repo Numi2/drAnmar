@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -25,13 +25,14 @@ usage() {
     echo "  train     [task] [num_envs] [iterations] [output]"
     echo "  receiver-attempt-bootstrap BASE CANDIDATE OUTPUT DATASET..."
     echo "  receiver-attempt-update CHECKPOINT OUTPUT ROLLOUT..."
+    echo "  receiver-custody-audit OUTPUT PROBE_DATASET... (also writes OUTPUT stem .pt)"
     echo "  receiver-selector-bootstrap BASE CANDIDATE OUTPUT DATASET..."
     echo "  receiver-selector-update CHECKPOINT OUTPUT DATASET..."
     echo "  receiver-selector-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-candidate INDEX DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-portfolio BASE CANDIDATE OUTPUT DATASET..."
-    echo "  attempt-handover ATTEMPT_CHECKPOINT [num_envs] [frames] [output] [task]"
+    echo "  attempt-handover ATTEMPT_CHECKPOINT [num_envs] [frames] [output] [task] [seed_stream_offset]"
     echo "  selector-handover SELECTOR_CHECKPOINT [num_envs] [frames] [output] [task]"
     echo "  portfolio-handover PORTFOLIO_CHECKPOINT [num_envs] [frames] [output] [task] [dataset]"
     echo "  promoted-handover [num_envs] [frames] [output] [task]"
@@ -271,6 +272,23 @@ case "${command}" in
             --output "${output}" \
             "${rollout_args[@]}"
         ;;
+    receiver-custody-audit)
+        require_runtime
+        output="${2:-}"
+        if [[ -z "${output}" || "$#" -lt 5 ]]; then
+            usage
+            exit 2
+        fi
+        shift 2
+        dataset_args=()
+        for dataset in "$@"; do
+            dataset_args+=(--dataset "${dataset}")
+        done
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/analyze_dranmar_active_custody_probe.py" \
+            --output "${output}" \
+            "${dataset_args[@]}"
+        ;;
     receiver-selector-bootstrap)
         require_runtime
         base_checkpoint="${2:-}"
@@ -393,6 +411,7 @@ case "${command}" in
         exec env \
             DR_ANMAR_PROMOTED_ALLOW_ATTEMPT=1 \
             DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT="${attempt_checkpoint}" \
+            DR_ANMAR_SEED_STREAM_OFFSET="${7:-0}" \
             "${BASH_SOURCE[0]}" promoted-handover \
             "${3:-1200}" \
             "${4:-2000}" \
@@ -469,7 +488,7 @@ case "${command}" in
         selector_sweep_sobol_seed_env=""
         selector_sweep_id_env=""
         selector_sweep_dataset_env=""
-        selector_seed_stream_offset_env=""
+        selector_seed_stream_offset_env="${DR_ANMAR_SEED_STREAM_OFFSET:-0}"
         retry_candidate_sweep_env=0
         retry_candidate_index_env=""
         if [[ "${DR_ANMAR_PROMOTED_ALLOW_ATTEMPT:-0}" == "1" ]]; then
@@ -840,6 +859,12 @@ case "${command}" in
         if [[ "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_VERIFICATION:-0}" == "1" ]]; then
             pickup_recovery_args+=(
                 --receiver_active_custody_verification
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PROBE_DATASET:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_active_custody_probe_dataset
+                "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PROBE_DATASET}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then

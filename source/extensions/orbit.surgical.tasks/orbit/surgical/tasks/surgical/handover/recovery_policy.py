@@ -1842,6 +1842,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.active_custody_probe_pre_forces = torch.empty((0, 2))
         self.active_custody_probe_post_forces = torch.empty((0, 2))
+        self.active_custody_probe_pre_observation = torch.empty((0, 0))
+        self.active_custody_probe_post_observation = torch.empty((0, 0))
         self.last_giver_action_owner = torch.empty(
             0,
             dtype=torch.long,
@@ -2078,6 +2080,16 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.active_custody_probe_post_forces = torch.zeros(
             (batch_size, 2),
+            dtype=raw.dtype,
+            device=device,
+        )
+        self.active_custody_probe_pre_observation = torch.zeros(
+            (batch_size, raw.shape[-1]),
+            dtype=raw.dtype,
+            device=device,
+        )
+        self.active_custody_probe_post_observation = torch.zeros(
+            (batch_size, raw.shape[-1]),
             dtype=raw.dtype,
             device=device,
         )
@@ -3077,9 +3089,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_probe_pre_forces[
             active_custody_load_probe
         ] = receiver_contacts[active_custody_load_probe]
+        self.active_custody_probe_pre_observation[
+            active_custody_load_probe
+        ] = raw[active_custody_load_probe].detach()
         self.active_custody_probe_post_forces[
             probe_survived | probe_failed
         ] = receiver_contacts[probe_survived | probe_failed]
+        self.active_custody_probe_post_observation[
+            probe_survived | probe_failed
+        ] = raw[probe_survived | probe_failed].detach()
         self.active_custody_probe_pending |= (
             active_custody_load_probe
         )
@@ -3914,6 +3932,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_probe_survived[mask] = False
         self.active_custody_probe_pre_forces[mask] = 0.0
         self.active_custody_probe_post_forces[mask] = 0.0
+        self.active_custody_probe_pre_observation[mask] = 0.0
+        self.active_custody_probe_post_observation[mask] = 0.0
         self.last_giver_action_owner[mask] = 0
         self.last_receiver_action_owner[mask] = 0
         self.giver_release_completed[mask] = False
