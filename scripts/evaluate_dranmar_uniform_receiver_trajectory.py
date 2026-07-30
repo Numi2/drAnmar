@@ -35,7 +35,7 @@ from evaluate_dranmar_receiver_trajectory_replay import (
 
 
 REPORT_SCHEMA_VERSION = (
-    "dranmar-uniform-receiver-trajectory-evaluation-1.0"
+    "dranmar-uniform-receiver-trajectory-evaluation-1.1"
 )
 FLOAT32_ACTION_RECONSTRUCTION_ATOL = float(
     torch.finfo(torch.float32).eps
@@ -293,6 +293,10 @@ def _evaluate_seed(
             torch.any(candidate["minimum_multiplier"][active] < 1.0)
             .item()
         )
+        and torch.equal(
+            candidate["modified_frames"][~active],
+            torch.zeros_like(candidate["modified_frames"][~active]),
+        )
     )
     intervention_integrity = (
         control_action_delta <= action_atol
@@ -306,6 +310,12 @@ def _evaluate_seed(
         noop,
         torch.ones_like(active, dtype=torch.bool),
     )
+    inactive = ~active
+    inactive_outcome_parity = _same_outcomes(
+        control,
+        candidate,
+        inactive,
+    )
 
     control_success = control["success"][active]
     candidate_success = candidate["success"][active]
@@ -317,6 +327,12 @@ def _evaluate_seed(
     safety_delta = int(
         candidate_safety.sum().item() - control_safety.sum().item()
     )
+    inactive_control_success = control["success"][inactive]
+    inactive_candidate_success = candidate["success"][inactive]
+    whole_control_success = control["success"]
+    whole_candidate_success = candidate["success"]
+    whole_control_safety = control["safety"]
+    whole_candidate_safety = candidate["safety"]
     return {
         "runtime_seed": candidate["payload"]["runtime_seed"],
         "seed": candidate["payload"].get("seed"),
@@ -333,6 +349,32 @@ def _evaluate_seed(
         "control_noop_prebranch": control_noop_prebranch,
         "control_candidate_prebranch": control_candidate_prebranch,
         "noop_terminal_outcome_exact": noop_outcome_parity,
+        "inactive_candidate_outcome_exact": inactive_outcome_parity,
+        "inactive_diagnostics": {
+            "samples": int(inactive.sum().item()),
+            "control_successes": int(
+                inactive_control_success.sum().item()
+            ),
+            "candidate_successes": int(
+                inactive_candidate_success.sum().item()
+            ),
+            "wins": int(
+                (
+                    inactive_candidate_success
+                    & ~inactive_control_success
+                )
+                .sum()
+                .item()
+            ),
+            "losses": int(
+                (
+                    ~inactive_candidate_success
+                    & inactive_control_success
+                )
+                .sum()
+                .item()
+            ),
+        },
         "intervention_integrity": {
             "passed": intervention_integrity,
             "control_scaled_action_delta": control_action_delta,
@@ -360,6 +402,35 @@ def _evaluate_seed(
             candidate_safety.sum().item()
         ),
         "safety_delta": safety_delta,
+        "whole_batch_policy_deployment": {
+            "samples": int(whole_control_success.shape[0]),
+            "control_successes": int(
+                whole_control_success.sum().item()
+            ),
+            "candidate_successes": int(
+                whole_candidate_success.sum().item()
+            ),
+            "wins": int(
+                (
+                    whole_candidate_success
+                    & ~whole_control_success
+                )
+                .sum()
+                .item()
+            ),
+            "losses": int(
+                (
+                    ~whole_candidate_success
+                    & whole_control_success
+                )
+                .sum()
+                .item()
+            ),
+            "safety_delta": int(
+                whole_candidate_safety.sum().item()
+                - whole_control_safety.sum().item()
+            ),
+        },
         "risk_quartiles_exploratory": _risk_quartile_effects(
             control,
             candidate,
@@ -382,6 +453,10 @@ def _gate(
     )
     intervention_integrity = all(
         item["intervention_integrity"]["passed"]
+        for item in per_seed
+    )
+    postbranch_isolation = all(
+        item["inactive_candidate_outcome_exact"]
         for item in per_seed
     )
     wins = sum(item["wins"] for item in per_seed)
@@ -419,6 +494,9 @@ def _gate(
     elif not seed_consistent or not first_seed_promising:
         decision = "uniform_intervention_rejected"
         next_action = "do_not_train_from_this_intervention"
+    elif not postbranch_isolation:
+        decision = "postbranch_isolation_invalid"
+        next_action = "replicate_in_single_environment_processes"
     elif len(per_seed) < minimum_seeds:
         decision = "replication_required"
         next_action = "run_remaining_prespecified_runtime_seeds"
@@ -440,6 +518,7 @@ def _gate(
         "first_seed_strictly_positive": first_seed_promising,
         "replay_parity_passed": replay_parity,
         "intervention_integrity_passed": intervention_integrity,
+        "postbranch_isolation_passed": postbranch_isolation,
         "significance_threshold": significance_threshold,
         "next_action": next_action,
     }
@@ -596,7 +675,11 @@ def main() -> int:
     return (
         2
         if gate["decision"]
-        in {"replay_invalid", "intervention_delivery_invalid"}
+        in {
+            "replay_invalid",
+            "intervention_delivery_invalid",
+            "postbranch_isolation_invalid",
+        }
         else 0
     )
 

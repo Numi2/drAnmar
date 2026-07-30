@@ -293,6 +293,7 @@ def test_uniform_triplet_requires_replication_before_learning(
     assert result["control_noop_prebranch"]["passed"]
     assert result["control_candidate_prebranch"]["passed"]
     assert result["noop_terminal_outcome_exact"]
+    assert result["inactive_candidate_outcome_exact"]
     assert result["intervention_integrity"]["passed"]
     assert (
         result["intervention_integrity"][
@@ -306,6 +307,7 @@ def test_uniform_triplet_requires_replication_before_learning(
     )
     assert gate["decision"] == "replication_required"
     assert gate["passed"] is False
+    assert gate["postbranch_isolation_passed"]
 
 
 def test_uniform_triplet_rejects_nonpositive_first_seed(
@@ -333,6 +335,31 @@ def test_uniform_triplet_rejects_nonpositive_first_seed(
 
     assert result["paired_net_successes"] == 0
     assert gate["decision"] == "uniform_intervention_rejected"
+
+
+def test_uniform_gate_blocks_postbranch_cross_environment_drift() -> None:
+    result = {
+        "control_noop_prebranch": {"passed": True},
+        "control_candidate_prebranch": {"passed": True},
+        "noop_terminal_outcome_exact": True,
+        "inactive_candidate_outcome_exact": False,
+        "intervention_integrity": {"passed": True},
+        "wins": 10,
+        "losses": 2,
+        "samples": 32,
+        "paired_net_successes": 8,
+        "safety_delta": 0,
+    }
+
+    _, gate = UNIFORM_MODULE._gate(
+        [result],
+        minimum_seeds=1,
+        significance_threshold=0.05,
+    )
+
+    assert gate["decision"] == "postbranch_isolation_invalid"
+    assert gate["passed"] is False
+    assert gate["postbranch_isolation_passed"] is False
 
 
 def test_launcher_exposes_source_locked_trajectory_replay() -> None:
