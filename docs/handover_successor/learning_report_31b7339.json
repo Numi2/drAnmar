@@ -1,0 +1,258 @@
+{
+  "schema_version": "dranmar-handover-successor-learning-report-1.0",
+  "created_utc": "2026-07-30",
+  "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
+  "source_lock": {
+    "dranmar_revision": "31b7339762390d8c88ff13db0a2f56e06d407e7c",
+    "asset_revision": "ac20fb02ba2e8541a6243ec4884e51db35c0a202",
+    "base_checkpoint_sha256": "f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad"
+  },
+  "incumbent": {
+    "status": "owner_promoted_simulation_incumbent",
+    "development_successes": 1292,
+    "development_episodes": 1800,
+    "development_success_rate": 0.7177777777777777,
+    "qualification_claim": false,
+    "changed_by_this_stage": false
+  },
+  "architecture": {
+    "checkpoint_schema": "dranmar-handover-successor-policy-2.0",
+    "observation_dim": 98,
+    "action_dim": 14,
+    "kind": "shared_encoder_gru_with_five_hybrid_phase_heads",
+    "runtime_heuristic_stack": false,
+    "binary_gripper_indices": [
+      6,
+      13
+    ],
+    "continuous_action_modes": [
+      "negative_limit",
+      "precision",
+      "positive_limit"
+    ],
+    "saturation_logit_margin": 1.5,
+    "discrete_transition_weight": 2.0,
+    "terminal_phase_action": "zero"
+  },
+  "offline_baseline_demonstrations": [
+    {
+      "seed": 104729,
+      "frames": 746,
+      "dataset_sha256": "0de174c633d02dfff8c9ff444c3a211b9a582268c3a7f8270739b45b218e41b8"
+    },
+    {
+      "seed": 130363,
+      "frames": 913,
+      "dataset_sha256": "699ef71fab978f4726c8f86eeb8a16893db8314c4636a679494f80cc4f1b4fd4"
+    },
+    {
+      "seed": 524309,
+      "frames": 778,
+      "dataset_sha256": "097feb02bfb1c468d3c5087e607bad85b299c750644cfbb745856c2afe142da8"
+    },
+    {
+      "seed": 720887,
+      "frames": 747,
+      "dataset_sha256": "d222a9eb6758ccfd495a7cd0367416e00bd28fbe581baad9c40be8d7b838e4f5"
+    },
+    {
+      "seed": 851971,
+      "frames": 701,
+      "dataset_sha256": "e78220be4e932d4cfd7c5e7e84dedba53c02219234938ad0d091d55e09893d19"
+    },
+    {
+      "seed": 983039,
+      "frames": 662,
+      "dataset_sha256": "4c124fac2b473200213b4485170e08bf01162e0d90fe62d16f5d050fcfe355d2"
+    },
+    {
+      "seed": 1179649,
+      "frames": 774,
+      "dataset_sha256": "bd3b620b487cd6ebe2731403a0e3e15e6fdfc48131a4994c8b5dd6f33f9fcf4d"
+    },
+    {
+      "seed": 1245187,
+      "frames": 728,
+      "dataset_sha256": "b9b2b537ec481dc80b8ec5df803d19403d8d9aeae221274de8e12e5e81e49e0d"
+    }
+  ],
+  "candidates": [
+    {
+      "round": 0,
+      "checkpoint_sha256": "3ca1c965c3464beaad59b16e9a657025fb6e5c7f482cba286936d2f790eaf09f",
+      "baseline_pairs": 8,
+      "dagger_pairs": 0,
+      "train_frames": 4613,
+      "validation_frames": 1436,
+      "best_epoch": 47,
+      "validation_action_mae": 0.048027899116277695,
+      "deployment_status": "candidate_only"
+    },
+    {
+      "round": 1,
+      "checkpoint_sha256": "42ae75a44eccac906e6f12c2a56a161385e7a8614192040c32b61010065ec20d",
+      "baseline_pairs": 8,
+      "dagger_pairs": 4,
+      "train_frames": 8248,
+      "validation_frames": 1436,
+      "best_epoch": 66,
+      "validation_action_mae": 0.029280660673975945,
+      "network_only_gate": {
+        "seed": 104729,
+        "outcome": "protected_surface_force",
+        "maximum_phase": 0,
+        "success": false,
+        "evidence_sha256": "b7032ca5b93103b5bd9bd29e45e3bfbb7d00ec4bfdd51090aabfdee1cc6d05e4"
+      },
+      "deployment_status": "candidate_only"
+    },
+    {
+      "round": 2,
+      "checkpoint_sha256": "5d71b98622bd7865979d9dc2ab3b1c1d8d426eaadfc4e4b5783b7878886f4ccf",
+      "baseline_pairs": 8,
+      "dagger_pairs": 8,
+      "train_frames": 11331,
+      "validation_frames": 1436,
+      "best_epoch": 187,
+      "validation_action_mae": 0.02008788101375103,
+      "network_only_gate": {
+        "seed": 104729,
+        "outcome": "protected_surface_force",
+        "maximum_phase": 0,
+        "success": false,
+        "evidence_sha256": "f3508b404cfa8d562f1dfcdb8079950e4533ae8dec96855cdcb587dc8476fcb6"
+      },
+      "deployment_status": "candidate_only"
+    }
+  ],
+  "dagger_rounds": [
+    {
+      "round": 1,
+      "oracle_beta": 0.9,
+      "student_checkpoint_sha256": "3ca1c965c3464beaad59b16e9a657025fb6e5c7f482cba286936d2f790eaf09f",
+      "screen": [
+        {
+          "seed": 104729,
+          "outcome": "success",
+          "frames": 750,
+          "accepted_dataset_sha256": "287a86f8da33ecb3d422bd1281a0db2909f972ee4d7c6e6569b8b6eb12758481"
+        },
+        {
+          "seed": 130363,
+          "outcome": "success",
+          "frames": 1117,
+          "accepted_dataset_sha256": "a3bb834fe09196bbda8696e4106bab39212d3a2837b75951474760b5dfb8948b"
+        },
+        {
+          "seed": 524309,
+          "outcome": "receiver_retention_lost",
+          "frames": 805,
+          "accepted_dataset_sha256": null
+        },
+        {
+          "seed": 720887,
+          "outcome": "receiver_retention_lost",
+          "frames": 746,
+          "accepted_dataset_sha256": null
+        },
+        {
+          "seed": 851971,
+          "outcome": "receiver_retention_lost",
+          "frames": 709,
+          "accepted_dataset_sha256": null
+        },
+        {
+          "seed": 983039,
+          "outcome": "receiver_retention_lost",
+          "frames": 680,
+          "accepted_dataset_sha256": null
+        },
+        {
+          "seed": 1179649,
+          "outcome": "success",
+          "frames": 789,
+          "accepted_dataset_sha256": "cdd5e9ee23f2167a813cd17f76b0f7f2af24c9f8ee9f599a483876151d60f692"
+        },
+        {
+          "seed": 1245187,
+          "outcome": "success",
+          "frames": 979,
+          "accepted_dataset_sha256": "eacebb6392bea2f877dffb35893bddc27aa38212dd4babd465178b7240977231"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "oracle_beta": 0.9,
+      "student_checkpoint_sha256": "42ae75a44eccac906e6f12c2a56a161385e7a8614192040c32b61010065ec20d",
+      "screen": [
+        {
+          "seed": 104729,
+          "outcome": "receiver_retention_lost",
+          "frames": 755,
+          "accepted_dataset_sha256": null
+        },
+        {
+          "seed": 130363,
+          "outcome": "success",
+          "frames": 909,
+          "accepted_dataset_sha256": "8ba07aa08465ce40333b4a0a6f0e0e32880a38c3dd8aa4aa79d80890d3f716bb"
+        },
+        {
+          "seed": 524309,
+          "outcome": "receiver_retention_lost",
+          "frames": 765,
+          "accepted_dataset_sha256": null
+        },
+        {
+          "seed": 720887,
+          "outcome": "success",
+          "frames": 754,
+          "accepted_dataset_sha256": "f26666ba33d7a8e2ca49b7261d25c270a3a45592ab62b6219f47f8edd9291624"
+        },
+        {
+          "seed": 851971,
+          "outcome": "needle_dropped_after_pickup",
+          "frames": 939,
+          "accepted_dataset_sha256": null
+        },
+        {
+          "seed": 983039,
+          "outcome": "success",
+          "frames": 690,
+          "accepted_dataset_sha256": "f5fe4c0d7bbcb4ebc2db973b1f10cb52f326c8d269986262c5b91bbcf8eda16c"
+        },
+        {
+          "seed": 1179649,
+          "outcome": "receiver_retention_lost",
+          "frames": 769,
+          "accepted_dataset_sha256": null
+        },
+        {
+          "seed": 1245187,
+          "outcome": "success",
+          "frames": 730,
+          "accepted_dataset_sha256": "d75264ae5cca06976b319df9b53d54e632688e23db148adbaf2f49fa7eea58c7"
+        }
+      ]
+    }
+  ],
+  "promotion_gate": {
+    "passed": false,
+    "promoted_checkpoint_sha256": null,
+    "incumbent_replaced": false,
+    "reason": "The final network-only candidate failed the first closed-loop development replay with protected_surface_force before giver contact."
+  },
+  "next_stage": {
+    "decision": "stop incumbent-only DAgger",
+    "reason": "Additional frozen-incumbent labels reduced offline error but did not produce a safe autonomous phase-0 policy.",
+    "required_new_information": [
+      "independent safe expert trajectories in student-visited phase-0 states",
+      "independent safe retention rescues for the quarantined custody failures"
+    ],
+    "acceptable_sources": [
+      "constrained trajectory optimization with immutable receipts",
+      "clinician teleoperation with immutable receipts"
+    ]
+  }
+}

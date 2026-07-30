@@ -196,7 +196,7 @@ problems and are meant to compose, not replace one another:
 | One-decision receiver residual | Bounded motion correction | Not promoted. Its best held-out result was **+3 / 3,600** in aggregate while one seed regressed by 12; a fresh-stream update also lost to the incumbent on development seeds. |
 | Calibrated active-custody risk model | Failure probability | Preserved as the leading risk model. Across three left-out physics seeds, AUC was **0.704–0.776** and nested cross-fitted Brier score improved to **0.07455** from a **0.08063** base-rate reference. |
 | Counterfactual receiver trajectory | Bounded receiver XYZ scaling | Not promoted. Exact no-op replay passed, but uniform scale `0.6` reduced the activated cohort from **93 to 87** successes and added **4** receiver safety failures on the first prespecified seed. |
-| Recurrent hybrid full-action successor | Complete 14-D dual-arm action | Candidate only; not promoted. Eight bit-identical safe incumbent successes were admitted across eight development seeds and all four action-bearing phases. The first offline clone fit those demonstrations but failed its first closed-loop replay in phase 0 with `protected_surface_force`, exposing covariate shift and action-mode averaging. The successor now combines on-policy DAgger, GRU episode memory, hard binary gripper decisions, and learned negative-limit / precision / positive-limit motion modes. The terminal fifth phase emits no further action. |
+| [Recurrent hybrid full-action successor](docs/handover_successor/learning_report_31b7339.json) | Complete 14-D dual-arm action | Candidate only; not promoted. The final source-locked checkpoint learned from **8** exact incumbent episodes plus **8** exact safe DAgger episodes across two rounds. It combines GRU episode memory, binary gripper decisions, and learned negative-limit / precision / positive-limit motion modes, but its first network-only replay still ended in phase 0 with `protected_surface_force`. The 71.78% incumbent therefore remains unchanged. |
 
 The actor still moves the robot. The risk model observes the one-frame
 active-custody transition and estimates whether retention is likely to fail; it
@@ -215,12 +215,15 @@ Bit-identical safe successes from the frozen incumbent can be admitted as
 distillation demonstrations, which is how the hand-authored runtime is replaced
 by one network without treating failed incumbent actions as expertise. Offline
 action error is not a promotion metric: the first eight-episode clone failed
-closed loop despite low held-out error. The next pass therefore uses DAgger.
-The candidate visits states under a high-oracle action mixture, while the frozen
-promoted composite supplies labels for every visited state. A trajectory enters
-training only when two single-environment replays are bit-identical, end in
-success, contain no safety event, preserve source and checkpoint hashes, and
-cover all four action-bearing phases.
+closed loop despite low held-out error. Two prespecified DAgger rounds then used
+an oracle fraction of `0.9`. In each round, exactly four of eight screened seeds
+produced safe terminal successes and were admitted; all retention, drop, or
+force failures were quarantined. The candidate visits states under the
+oracle/student mixture, while the frozen promoted composite supplies labels for
+every visited state. A trajectory enters training only when two
+single-environment replays are bit-identical, end in success, contain no safety
+event, preserve source and checkpoint hashes, and cover all four
+action-bearing phases.
 
 The custody-risk model only allocates independent collection for failure states.
 Better-than-incumbent actions there must still come from constrained trajectory
@@ -238,6 +241,14 @@ Episode-level splitting prevents frame leakage, qualification seeds are
 forbidden from training, and every checkpoint is candidate-only until live
 seeded evaluation promotes it.
 
+Incumbent-only DAgger is now stopped. It reduced held-out action MAE but did not
+produce a safe autonomous phase-0 policy. The next useful information must be
+independent safe expert action in student-visited phase-0 states and in the
+quarantined retention failures, sourced from constrained trajectory
+optimization or clinician teleoperation with immutable receipts. More cloning
+of the incumbent would repeat its capability ceiling without resolving the
+closed-loop error.
+
 ```text
 record exact incumbent success twice → admit offline distillation demonstration
 → train candidate → record exact safe oracle-mixture replay twice
@@ -252,8 +263,10 @@ training only; none of its recovery wrappers are present in the successor
 runtime. It should be archived, not deleted, only after a learned checkpoint
 demonstrably replaces it.
 
-The full source-bound learning record, including per-seed calibration and
-checkpoint hashes, is in the
+The new source-bound successor record, including every screened seed, admitted
+dataset hash, candidate hash, and final failed gate, is the
+[recurrent successor learning report](docs/handover_successor/learning_report_31b7339.json).
+The earlier receiver-policy calibration record remains in the
 [receiver policy learning report on the experiment branch](https://github.com/Numi2/drAnmar/blob/experiment/handover-attempt-rl/docs/handover_recovery_80/attempt_policy_learning_report.json).
 
 ## Doctor Studio
