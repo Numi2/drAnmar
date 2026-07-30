@@ -445,6 +445,12 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         ]
         is True
     )
+    assert (
+        manifest["stages"][5]["learning"][
+            "handover_adaptation_freezes_actor_observation_normalizer"
+        ]
+        is True
+    )
     assert manifest["stages"][5]["learning"]["residual_phases"] == [
         "giver_post_10mm_transport_translation_before_receiver_contact",
         "receiver_presentation_ready_approach_before_contact",
@@ -625,6 +631,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "def configure_receiver_adaptation(self)" in handover_model_source
     assert "receiver_row_mask[0:3] = 1.0" in handover_model_source
     assert "receiver_row_mask[7:10] = 1.0" in handover_model_source
+    assert "def update_normalization(self, obs)" in handover_model_source
+    assert "if self.normalization_updates_enabled:" in handover_model_source
     assert "giver_transport_active = giver_carry_mode & torch.where(" in handover_model_source
     assert "giver_lift_contact_qualified" in handover_model_source
     assert handover_model_source.count(
@@ -738,6 +746,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"optimizer_state_reset": True' in benchmark_source
     assert '"ppo_clip_param": 0.05' in benchmark_source
     assert '"ppo_desired_kl": 0.002' in benchmark_source
+    assert "init_at_random_ep_len=not handover_adaptation" in benchmark_source
     assert 'play.add_argument("--residual_scale", type=float)' in benchmark_source
     assert (
         'play.add_argument("--pickup_vertical_action_limit", type=float)'

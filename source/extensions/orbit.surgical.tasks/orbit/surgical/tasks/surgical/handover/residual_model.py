@@ -691,6 +691,7 @@ class HandoverResidualMLPModel(MLPModel):
         super().__init__(*args, **kwargs)
         self.controller = HandoverAnalyticController()
         self.residual_scale = residual_scale
+        self.normalization_updates_enabled = True
         final_linear = next(
             module
             for module in reversed(self.mlp)
@@ -710,6 +711,7 @@ class HandoverResidualMLPModel(MLPModel):
 
     def configure_giver_adaptation(self) -> None:
         """Freeze the qualified receiver policy and train giver-only rows."""
+        self.normalization_updates_enabled = False
         final_linear = next(
             module
             for module in reversed(self.mlp)
@@ -736,6 +738,7 @@ class HandoverResidualMLPModel(MLPModel):
 
     def configure_receiver_adaptation(self) -> None:
         """Freeze the qualified base and train receiver-approach rows only."""
+        self.normalization_updates_enabled = False
         final_linear = next(
             module
             for module in reversed(self.mlp)
@@ -759,6 +762,11 @@ class HandoverResidualMLPModel(MLPModel):
         final_linear.bias.register_hook(
             lambda gradient: gradient * receiver_row_mask
         )
+
+    def update_normalization(self, obs) -> None:
+        """Keep source normalization immutable during narrow adaptation."""
+        if self.normalization_updates_enabled:
+            super().update_normalization(obs)
 
     def forward(
         self,

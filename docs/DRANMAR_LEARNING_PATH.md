@@ -241,12 +241,12 @@ drift or stale Adam momentum from silently modifying the retained receiver
 policy.
 
 Receiver adaptation uses the complementary constraint: it freezes the shared
-actor and all giver rows, resets inherited optimizer state, and trains only the
-six receiver XYZ output rows. Those rows can affect motion only during the
-presentation-ready receiver approach and are masked off on first native
-receiver contact. Adaptation uses a `0.05` PPO clip and `0.002` desired-KL
-target; grippers, wrists, release, pickup, and post-contact retention remain
-analytic.
+actor, its observation normalizer, and all giver rows; resets inherited
+optimizer state; and trains only the six receiver XYZ output rows. Those rows
+can affect motion only during the presentation-ready receiver approach and are
+masked off on first native receiver contact. Adaptation uses complete episodes
+from reset, a `0.05` PPO clip, and a `0.002` desired-KL target; grippers,
+wrists, release, pickup, and post-contact retention remain analytic.
 
 The giver may transport only while live native bilateral contact remains
 present. If a three-of-five pickup window advances the state but either jaw

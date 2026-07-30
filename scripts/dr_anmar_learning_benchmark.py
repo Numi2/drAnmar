@@ -1582,7 +1582,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         with early:
             runner.learn(
                 num_learning_iterations=agent_cfg.max_iterations,
-                init_at_random_ep_len=True,
+                init_at_random_ep_len=not handover_adaptation,
             )
         duration = time.perf_counter() - started
         checkpoint = run_dir / "model_final.pt"
@@ -1632,6 +1632,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 {
                     "optimizer_state_reset": True,
                     "shared_actor_and_giver_rows_frozen": True,
+                    "actor_observation_normalizer_frozen": True,
                     "trainable_output_rows": [0, 1, 2, 7, 8, 9],
                     "active_motion": (
                         "receiver_translation_during_presentation_ready_"
