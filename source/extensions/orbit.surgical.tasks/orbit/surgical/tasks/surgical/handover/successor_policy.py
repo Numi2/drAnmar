@@ -12,12 +12,24 @@ import torch
 from torch import nn
 
 
-SUCCESSOR_CHECKPOINT_SCHEMA = "dranmar-handover-successor-policy-1.0"
+SUCCESSOR_CHECKPOINT_SCHEMA = "dranmar-handover-successor-policy-2.0"
 HANDOVER_OBSERVATION_DIM = 98
 HANDOVER_ACTION_DIM = 14
 HANDOVER_PHASE_SLICE = slice(77, 82)
 HANDOVER_PHASE_COUNT = 5
 HANDOVER_GRIPPER_INDICES = (6, 13)
+HANDOVER_CONTINUOUS_INDICES = tuple(
+    index
+    for index in range(HANDOVER_ACTION_DIM)
+    if index not in HANDOVER_GRIPPER_INDICES
+)
+HANDOVER_SATURATION_CLASS_COUNT = 3
+HANDOVER_SATURATION_LOGIT_MARGIN = 1.5
+HANDOVER_HEAD_OUTPUT_DIM = (
+    HANDOVER_ACTION_DIM
+    + len(HANDOVER_CONTINUOUS_INDICES)
+    * HANDOVER_SATURATION_CLASS_COUNT
+)
 
 
 class PhaseConditionedHandoverPolicy(nn.Module):
@@ -29,6 +41,7 @@ class PhaseConditionedHandoverPolicy(nn.Module):
         observation_std: torch.Tensor,
         *,
         hidden_dims: Sequence[int] = (256, 256),
+        memory_dim: int = 128,
         head_dim: int = 128,
     ) -> None:
         super().__init__()
@@ -38,11 +51,15 @@ class PhaseConditionedHandoverPolicy(nn.Module):
             raise ValueError("handover observation std must have shape [98]")
         if not hidden_dims or any(int(width) <= 0 for width in hidden_dims):
             raise ValueError("successor hidden dimensions must be positive")
+        if memory_dim <= 0:
+            raise ValueError("successor memory dimension must be positive")
         if head_dim <= 0:
             raise ValueError("successor phase-head dimension must be positive")
 
         self.hidden_dims = tuple(int(width) for width in hidden_dims)
+        self.memory_dim = int(memory_dim)
         self.head_dim = int(head_dim)
+        self._runtime_hidden: torch.Tensor | None = None
         self.register_buffer(
             "observation_mean",
             observation_mean.detach().float().clone(),
@@ -64,17 +81,30 @@ class PhaseConditionedHandoverPolicy(nn.Module):
             )
             input_dim = width
         self.encoder = nn.Sequential(*layers)
+        self.memory = nn.GRU(
+            input_size=input_dim,
+            hidden_size=self.memory_dim,
+            batch_first=True,
+        )
         self.phase_heads = nn.ModuleList(
             nn.Sequential(
-                nn.Linear(input_dim, self.head_dim),
+                nn.Linear(self.memory_dim, self.head_dim),
                 nn.SiLU(),
-                nn.Linear(self.head_dim, HANDOVER_ACTION_DIM),
+                nn.Linear(self.head_dim, HANDOVER_HEAD_OUTPUT_DIM),
             )
             for _ in range(HANDOVER_PHASE_COUNT)
         )
         for head in self.phase_heads:
             nn.init.zeros_(head[-1].weight)
             nn.init.zeros_(head[-1].bias)
+            saturation_bias = head[-1].bias[
+                HANDOVER_ACTION_DIM:
+            ].view(
+                len(HANDOVER_CONTINUOUS_INDICES),
+                HANDOVER_SATURATION_CLASS_COUNT,
+            )
+            with torch.no_grad():
+                saturation_bias[:, 1] = 2.0
 
     @staticmethod
     def _policy_observation(
@@ -86,44 +116,165 @@ class PhaseConditionedHandoverPolicy(nn.Module):
             return observation["policy"]
         return observation
 
-    def _selected_raw_action(
+    def _normalize(
         self,
-        observation: torch.Tensor | Mapping[str, torch.Tensor],
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        raw = self._policy_observation(observation)
+        raw: torch.Tensor,
+    ) -> torch.Tensor:
+        return (
+            (raw - self.observation_mean) / self.observation_std
+        ).clamp(-10.0, 10.0)
+
+    def _outputs_from_latent(
+        self,
+        raw: torch.Tensor,
+        latent: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         if raw.ndim != 2 or raw.shape[-1] != HANDOVER_OBSERVATION_DIM:
             raise ValueError("successor expects observations with shape [N, 98]")
-        normalized = ((raw - self.observation_mean) / self.observation_std).clamp(
-            -10.0,
-            10.0,
-        )
-        latent = self.encoder(normalized)
-        all_actions = torch.stack(
+        all_outputs = torch.stack(
             [head(latent) for head in self.phase_heads],
             dim=1,
         )
         phase_index = torch.argmax(raw[:, HANDOVER_PHASE_SLICE], dim=-1)
         batch_index = torch.arange(raw.shape[0], device=raw.device)
-        return all_actions[batch_index, phase_index], phase_index
+        selected = all_outputs[batch_index, phase_index]
+        raw_action = selected[:, :HANDOVER_ACTION_DIM]
+        saturation_logits = selected[
+            :, HANDOVER_ACTION_DIM:
+        ].view(
+            raw.shape[0],
+            len(HANDOVER_CONTINUOUS_INDICES),
+            HANDOVER_SATURATION_CLASS_COUNT,
+        )
+        return raw_action, saturation_logits, phase_index
+
+    def _independent_outputs(
+        self,
+        raw: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        encoded = self.encoder(self._normalize(raw))
+        latent, _ = self.memory(encoded.unsqueeze(1))
+        return self._outputs_from_latent(raw, latent[:, 0])
+
+    def _runtime_outputs(
+        self,
+        raw: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        encoded = self.encoder(self._normalize(raw))
+        if (
+            self._runtime_hidden is None
+            or self._runtime_hidden.shape[1] != raw.shape[0]
+            or self._runtime_hidden.device != raw.device
+            or self._runtime_hidden.dtype != encoded.dtype
+        ):
+            self._runtime_hidden = torch.zeros(
+                1,
+                raw.shape[0],
+                self.memory_dim,
+                device=raw.device,
+                dtype=encoded.dtype,
+            )
+        latent, hidden = self.memory(
+            encoded.unsqueeze(1),
+            self._runtime_hidden,
+        )
+        self._runtime_hidden = hidden.detach()
+        return self._outputs_from_latent(raw, latent[:, 0])
 
     def training_outputs(
         self,
         observation: torch.Tensor | Mapping[str, torch.Tensor],
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Return soft actions and binary-gripper logits for hybrid BC."""
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return precision actions and discrete logits for hybrid BC."""
 
-        raw_action, _ = self._selected_raw_action(observation)
+        raw = self._policy_observation(observation)
+        raw_action, saturation_logits, _ = (
+            self._independent_outputs(raw)
+        )
         return (
             torch.tanh(raw_action),
             raw_action[:, HANDOVER_GRIPPER_INDICES],
+            saturation_logits,
         )
 
-    def forward(
+    def training_sequence_outputs(
         self,
-        observation: torch.Tensor | Mapping[str, torch.Tensor],
+        observation: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Run complete padded episodes from a zero recurrent state."""
+
+        if (
+            observation.ndim != 3
+            or observation.shape[-1] != HANDOVER_OBSERVATION_DIM
+        ):
+            raise ValueError(
+                "successor training sequences must have shape [B, T, 98]"
+            )
+        batch_size, sequence_length, _ = observation.shape
+        encoded = self.encoder(
+            self._normalize(observation).reshape(
+                batch_size * sequence_length,
+                HANDOVER_OBSERVATION_DIM,
+            )
+        ).reshape(batch_size, sequence_length, -1)
+        latent, _ = self.memory(encoded)
+        raw_action, saturation_logits, _ = self._outputs_from_latent(
+            observation.reshape(
+                batch_size * sequence_length,
+                HANDOVER_OBSERVATION_DIM,
+            ),
+            latent.reshape(
+                batch_size * sequence_length,
+                self.memory_dim,
+            ),
+        )
+        return (
+            torch.tanh(raw_action).reshape(
+                batch_size,
+                sequence_length,
+                HANDOVER_ACTION_DIM,
+            ),
+            raw_action[:, HANDOVER_GRIPPER_INDICES].reshape(
+                batch_size,
+                sequence_length,
+                len(HANDOVER_GRIPPER_INDICES),
+            ),
+            saturation_logits.reshape(
+                batch_size,
+                sequence_length,
+                len(HANDOVER_CONTINUOUS_INDICES),
+                HANDOVER_SATURATION_CLASS_COUNT,
+            ),
+        )
+
+    @staticmethod
+    def _hard_actions(
+        raw_action: torch.Tensor,
+        saturation_logits: torch.Tensor,
+        phase_index: torch.Tensor,
     ) -> torch.Tensor:
-        raw_action, phase_index = self._selected_raw_action(observation)
         action = torch.tanh(raw_action)
+        continuous_action = action[:, HANDOVER_CONTINUOUS_INDICES]
+        precision_logit = saturation_logits[:, :, 1]
+        negative_limit = (
+            saturation_logits[:, :, 0]
+            >= precision_logit + HANDOVER_SATURATION_LOGIT_MARGIN
+        )
+        positive_limit = (
+            saturation_logits[:, :, 2]
+            >= precision_logit + HANDOVER_SATURATION_LOGIT_MARGIN
+        )
+        continuous_action = torch.where(
+            negative_limit,
+            -torch.ones_like(continuous_action),
+            continuous_action,
+        )
+        continuous_action = torch.where(
+            positive_limit,
+            torch.ones_like(continuous_action),
+            continuous_action,
+        )
+        action[:, HANDOVER_CONTINUOUS_INDICES] = continuous_action
         action[:, HANDOVER_GRIPPER_INDICES] = torch.where(
             raw_action[:, HANDOVER_GRIPPER_INDICES] >= 0.0,
             torch.ones_like(raw_action[:, HANDOVER_GRIPPER_INDICES]),
@@ -135,8 +286,76 @@ class PhaseConditionedHandoverPolicy(nn.Module):
             action,
         )
 
+    def training_sequence_actions(
+        self,
+        observation: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return hard runtime actions for complete offline episodes."""
+
+        if (
+            observation.ndim != 3
+            or observation.shape[-1] != HANDOVER_OBSERVATION_DIM
+        ):
+            raise ValueError(
+                "successor training sequences must have shape [B, T, 98]"
+            )
+        batch_size, sequence_length, _ = observation.shape
+        encoded = self.encoder(
+            self._normalize(observation).reshape(
+                batch_size * sequence_length,
+                HANDOVER_OBSERVATION_DIM,
+            )
+        ).reshape(batch_size, sequence_length, -1)
+        latent, _ = self.memory(encoded)
+        raw_action, saturation_logits, phase_index = (
+            self._outputs_from_latent(
+                observation.reshape(
+                    batch_size * sequence_length,
+                    HANDOVER_OBSERVATION_DIM,
+                ),
+                latent.reshape(
+                    batch_size * sequence_length,
+                    self.memory_dim,
+                ),
+            )
+        )
+        return self._hard_actions(
+            raw_action,
+            saturation_logits,
+            phase_index,
+        ).reshape(
+            batch_size,
+            sequence_length,
+            HANDOVER_ACTION_DIM,
+        )
+
+    def forward(
+        self,
+        observation: torch.Tensor | Mapping[str, torch.Tensor],
+    ) -> torch.Tensor:
+        raw = self._policy_observation(observation)
+        raw_action, saturation_logits, phase_index = (
+            self._runtime_outputs(raw)
+        )
+        return self._hard_actions(
+            raw_action,
+            saturation_logits,
+            phase_index,
+        )
+
     def reset(self, dones: torch.Tensor | None = None) -> None:
-        """Match the stateless policy interface used by the Isaac rollout."""
+        """Clear recurrent state for completed Isaac environments."""
+
+        if dones is None:
+            self._runtime_hidden = None
+            return
+        if self._runtime_hidden is None:
+            return
+        done_mask = dones.bool().flatten()
+        if done_mask.numel() != self._runtime_hidden.shape[1]:
+            self._runtime_hidden = None
+            return
+        self._runtime_hidden[:, done_mask] = 0.0
 
 
 def load_handover_successor_checkpoint(
@@ -172,10 +391,29 @@ def load_handover_successor_checkpoint(
         HANDOVER_GRIPPER_INDICES
     ):
         raise ValueError("successor checkpoint gripper contract drifted")
+    if architecture.get("continuous_action_indices") != list(
+        HANDOVER_CONTINUOUS_INDICES
+    ):
+        raise ValueError("successor checkpoint continuous-action contract drifted")
+    if (
+        architecture.get("saturation_classes")
+        != ["negative_limit", "precision", "positive_limit"]
+    ):
+        raise ValueError("successor checkpoint saturation contract drifted")
+    if (
+        float(architecture.get("saturation_logit_margin", -1.0))
+        != HANDOVER_SATURATION_LOGIT_MARGIN
+    ):
+        raise ValueError(
+            "successor checkpoint saturation margin drifted"
+        )
+    if architecture.get("recurrent_state") != "gru_reset_per_episode":
+        raise ValueError("successor checkpoint recurrent contract drifted")
     model = PhaseConditionedHandoverPolicy(
         payload["observation_mean"],
         payload["observation_std"],
         hidden_dims=architecture["hidden_dims"],
+        memory_dim=int(architecture["memory_dim"]),
         head_dim=int(architecture["head_dim"]),
     ).to(device)
     model.load_state_dict(payload["model"], strict=True)

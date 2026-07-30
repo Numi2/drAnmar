@@ -925,18 +925,23 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     policy_module = importlib.util.module_from_spec(specification)
     specification.loader.exec_module(policy_module)
     HANDOVER_ACTION_DIM = policy_module.HANDOVER_ACTION_DIM
+    HANDOVER_CONTINUOUS_INDICES = (
+        policy_module.HANDOVER_CONTINUOUS_INDICES
+    )
     HANDOVER_GRIPPER_INDICES = policy_module.HANDOVER_GRIPPER_INDICES
     HANDOVER_OBSERVATION_DIM = policy_module.HANDOVER_OBSERVATION_DIM
     HANDOVER_PHASE_SLICE = policy_module.HANDOVER_PHASE_SLICE
+    HANDOVER_SATURATION_CLASS_COUNT = (
+        policy_module.HANDOVER_SATURATION_CLASS_COUNT
+    )
+    HANDOVER_SATURATION_LOGIT_MARGIN = (
+        policy_module.HANDOVER_SATURATION_LOGIT_MARGIN
+    )
     SUCCESSOR_CHECKPOINT_SCHEMA = policy_module.SUCCESSOR_CHECKPOINT_SCHEMA
     PhaseConditionedHandoverPolicy = (
         policy_module.PhaseConditionedHandoverPolicy
     )
-    continuous_action_indices = [
-        index
-        for index in range(ACTION_DIM)
-        if index not in HANDOVER_GRIPPER_INDICES
-    ]
+    continuous_action_indices = list(HANDOVER_CONTINUOUS_INDICES)
 
     if HANDOVER_OBSERVATION_DIM != OBSERVATION_DIM or HANDOVER_ACTION_DIM != ACTION_DIM:
         raise ValueError("trainer and successor policy contracts disagree")
@@ -945,14 +950,21 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         PHASE_SLICE.stop,
     ):
         raise ValueError("trainer and successor phase contracts disagree")
-    if args.epochs <= 0 or args.batch_size <= 0:
-        raise ValueError("epochs and batch size must be positive")
+    if HANDOVER_SATURATION_CLASS_COUNT != 3:
+        raise ValueError("trainer and successor saturation contracts disagree")
+    if (
+        args.epochs <= 0
+        or args.episode_batch_size <= 0
+    ):
+        raise ValueError("epochs and episode batch size must be positive")
     if not 0.1 <= args.validation_fraction <= 0.4:
         raise ValueError("validation fraction must be in [0.1, 0.4]")
     if args.learning_rate <= 0.0 or args.weight_decay < 0.0:
         raise ValueError("optimizer parameters are invalid")
     if args.patience <= 0:
         raise ValueError("early-stopping patience must be positive")
+    if args.memory_dim <= 0:
+        raise ValueError("memory dimension must be positive")
 
     paths = [Path(value).expanduser().resolve() for value in args.dataset]
     datasets = [_load_accepted_dataset(path) for path in paths]
@@ -1009,23 +1021,47 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     if len(train_payloads) < 2 or len(validation_payloads) < 2:
         raise ValueError("episode-level split is too small")
 
+    train_episode_observations = [
+        payload["episode"]["observations"].float()
+        for payload in train_payloads
+    ]
+    train_episode_actions = [
+        payload["episode"]["actions"].float()
+        for payload in train_payloads
+    ]
+    train_episode_phases = [
+        payload["episode"]["phases"].long()
+        for payload in train_payloads
+    ]
+    validation_episode_observations = [
+        payload["episode"]["observations"].float()
+        for payload in validation_payloads
+    ]
+    validation_episode_actions = [
+        payload["episode"]["actions"].float()
+        for payload in validation_payloads
+    ]
+    validation_episode_phases = [
+        payload["episode"]["phases"].long()
+        for payload in validation_payloads
+    ]
     train_observations = torch.cat(
-        [payload["episode"]["observations"].float() for payload in train_payloads]
+        train_episode_observations
     )
     train_actions = torch.cat(
-        [payload["episode"]["actions"].float() for payload in train_payloads]
+        train_episode_actions
     )
     train_phases = torch.cat(
-        [payload["episode"]["phases"].long() for payload in train_payloads]
+        train_episode_phases
     )
     validation_observations = torch.cat(
-        [payload["episode"]["observations"].float() for payload in validation_payloads]
+        validation_episode_observations
     )
     validation_actions = torch.cat(
-        [payload["episode"]["actions"].float() for payload in validation_payloads]
+        validation_episode_actions
     )
     validation_phases = torch.cat(
-        [payload["episode"]["phases"].long() for payload in validation_payloads]
+        validation_episode_phases
     )
     phase_counts = torch.bincount(train_phases, minlength=5)
     missing_action_phases = torch.nonzero(
@@ -1040,11 +1076,55 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
 
     observation_mean = train_observations.mean(dim=0)
     observation_std = train_observations.std(dim=0, unbiased=False).clamp_min(1.0e-6)
-    action_loss_scale = torch.quantile(
-        train_actions.abs(),
-        0.90,
-        dim=0,
-    ).clamp_min(0.01)
+    train_continuous_actions = train_actions[
+        :, HANDOVER_CONTINUOUS_INDICES
+    ]
+    train_saturation_class = torch.ones(
+        train_continuous_actions.shape,
+        dtype=torch.long,
+    )
+    train_saturation_class[
+        train_continuous_actions <= -0.999
+    ] = 0
+    train_saturation_class[
+        train_continuous_actions >= 0.999
+    ] = 2
+    action_loss_scale = torch.ones(ACTION_DIM)
+    for offset, action_index in enumerate(
+        HANDOVER_CONTINUOUS_INDICES
+    ):
+        precision_values = train_actions[
+            train_saturation_class[:, offset] == 1,
+            action_index,
+        ].abs()
+        if precision_values.numel():
+            action_loss_scale[action_index] = torch.quantile(
+                precision_values,
+                0.90,
+            ).clamp_min(0.01)
+    saturation_class_counts = torch.zeros(
+        5,
+        len(HANDOVER_CONTINUOUS_INDICES),
+        HANDOVER_SATURATION_CLASS_COUNT,
+        dtype=torch.long,
+    )
+    for phase in range(5):
+        phase_mask = train_phases == phase
+        for action_offset in range(
+            len(HANDOVER_CONTINUOUS_INDICES)
+        ):
+            saturation_class_counts[phase, action_offset] = (
+                torch.bincount(
+                    train_saturation_class[
+                        phase_mask,
+                        action_offset,
+                    ],
+                    minlength=HANDOVER_SATURATION_CLASS_COUNT,
+                )
+            )
+    saturation_class_weight = (
+        saturation_class_counts > 0
+    ).float()
     gripper_class_counts = torch.zeros(5, 2, 2, dtype=torch.long)
     train_gripper_class = (
         train_actions[:, HANDOVER_GRIPPER_INDICES] > 0.0
@@ -1072,8 +1152,46 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     validation_gripper_class = (
         validation_actions[:, HANDOVER_GRIPPER_INDICES] > 0.0
     ).long()
+    validation_continuous_actions = validation_actions[
+        :, HANDOVER_CONTINUOUS_INDICES
+    ]
+    validation_saturation_class = torch.ones(
+        validation_continuous_actions.shape,
+        dtype=torch.long,
+    )
+    validation_saturation_class[
+        validation_continuous_actions <= -0.999
+    ] = 0
+    validation_saturation_class[
+        validation_continuous_actions >= 0.999
+    ] = 2
     for phase in range(4):
         phase_mask = validation_phases == phase
+        for action_offset in range(
+            len(HANDOVER_CONTINUOUS_INDICES)
+        ):
+            validation_classes = torch.bincount(
+                validation_saturation_class[
+                    phase_mask,
+                    action_offset,
+                ],
+                minlength=HANDOVER_SATURATION_CLASS_COUNT,
+            )
+            if bool(
+                (
+                    (validation_classes > 0)
+                    & (
+                        saturation_class_counts[
+                            phase,
+                            action_offset,
+                        ]
+                        == 0
+                    )
+                ).any()
+            ):
+                raise ValueError(
+                    "training split lacks a validation saturation class"
+                )
         for gripper in range(2):
             validation_classes = torch.bincount(
                 validation_gripper_class[phase_mask, gripper],
@@ -1103,6 +1221,7 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         observation_mean,
         observation_std,
         hidden_dims=hidden_dims,
+        memory_dim=args.memory_dim,
         head_dim=args.head_dim,
     ).to(device)
     optimizer = torch.optim.AdamW(
@@ -1114,10 +1233,36 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     train_observations = train_observations.to(device)
     train_actions = train_actions.to(device)
     train_phases = train_phases.to(device)
+    train_episode_observations = [
+        value.to(device) for value in train_episode_observations
+    ]
+    train_episode_actions = [
+        value.to(device) for value in train_episode_actions
+    ]
+    train_episode_phases = [
+        value.to(device) for value in train_episode_phases
+    ]
     validation_observations = validation_observations.to(device)
     validation_actions = validation_actions.to(device)
     validation_phases = validation_phases.to(device)
+    validation_episode_observations = [
+        value.to(device)
+        for value in validation_episode_observations
+    ]
+    validation_episode_actions = [
+        value.to(device) for value in validation_episode_actions
+    ]
+    validation_episode_phases = [
+        value.to(device) for value in validation_episode_phases
+    ]
     action_loss_scale_device = action_loss_scale.to(device)
+    saturation_class_weight_device = (
+        saturation_class_weight.to(device)
+    )
+    continuous_index = torch.arange(
+        len(HANDOVER_CONTINUOUS_INDICES),
+        device=device,
+    )
     gripper_class_weight_device = gripper_class_weight.to(device)
     gripper_index = torch.arange(2, device=device)
     phase_counts_device = phase_counts.to(device=device, dtype=torch.float32)
@@ -1130,6 +1275,180 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             * phase_counts_device[active_phase]
         )
     )
+    discrete_transition_weight = 2.0
+
+    def padded_episode_batch(
+        observations: list[torch.Tensor],
+        actions: list[torch.Tensor],
+        phases: list[torch.Tensor],
+        indices: list[int],
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
+        selected_observations = [
+            observations[index] for index in indices
+        ]
+        selected_actions = [actions[index] for index in indices]
+        selected_phases = [phases[index] for index in indices]
+        lengths = torch.tensor(
+            [value.shape[0] for value in selected_observations],
+            device=device,
+        )
+        padded_observations = torch.nn.utils.rnn.pad_sequence(
+            selected_observations,
+            batch_first=True,
+        )
+        padded_actions = torch.nn.utils.rnn.pad_sequence(
+            selected_actions,
+            batch_first=True,
+        )
+        padded_phases = torch.nn.utils.rnn.pad_sequence(
+            selected_phases,
+            batch_first=True,
+            padding_value=4,
+        )
+        valid = (
+            torch.arange(
+                padded_observations.shape[1],
+                device=device,
+            ).unsqueeze(0)
+            < lengths.unsqueeze(1)
+        )
+        return (
+            padded_observations,
+            padded_actions,
+            padded_phases,
+            valid,
+        )
+
+    def hybrid_per_frame_loss(
+        predicted: torch.Tensor,
+        gripper_logits: torch.Tensor,
+        saturation_logits: torch.Tensor,
+        target: torch.Tensor,
+        phases: torch.Tensor,
+        gripper_transition_weights: torch.Tensor,
+        saturation_transition_weights: torch.Tensor,
+    ) -> torch.Tensor:
+        continuous_target = target[
+            :, continuous_action_indices
+        ]
+        saturation_target = torch.ones(
+            continuous_target.shape,
+            dtype=torch.long,
+            device=device,
+        )
+        saturation_target[continuous_target <= -0.999] = 0
+        saturation_target[continuous_target >= 0.999] = 2
+        precision_mask = (saturation_target == 1).float()
+        continuous_per_action = (
+            (
+                predicted[:, continuous_action_indices]
+                - continuous_target
+            )
+            / action_loss_scale_device[continuous_action_indices]
+        ).square()
+        masked_continuous_loss = (
+            continuous_per_action * precision_mask
+        )
+        continuous_loss = (
+            masked_continuous_loss.sum(dim=-1)
+            / precision_mask.sum(dim=-1).clamp_min(1.0)
+            + 0.25 * masked_continuous_loss.amax(dim=-1)
+        )
+        saturation_per_action = functional.cross_entropy(
+            saturation_logits.flatten(0, 1),
+            saturation_target.flatten(),
+            reduction="none",
+        ).view(target.shape[0], -1)
+        saturation_sample_weight = (
+            saturation_class_weight_device[
+                phases.unsqueeze(-1),
+                continuous_index,
+                saturation_target,
+            ]
+        )
+        saturation_loss = (
+            saturation_per_action
+            * saturation_sample_weight
+            * saturation_transition_weights
+        ).mean(dim=-1)
+        gripper_targets = (
+            target[:, HANDOVER_GRIPPER_INDICES] > 0.0
+        ).float()
+        gripper_per_action = (
+            functional.binary_cross_entropy_with_logits(
+                gripper_logits,
+                gripper_targets,
+                reduction="none",
+            )
+        )
+        gripper_sample_weight = gripper_class_weight_device[
+            phases.unsqueeze(-1),
+            gripper_index,
+            gripper_targets.long(),
+        ]
+        gripper_loss = (
+            gripper_per_action
+            * gripper_sample_weight
+            * gripper_transition_weights
+        ).mean(dim=-1)
+        return continuous_loss + saturation_loss + gripper_loss
+
+    def discrete_transition_weights(
+        action_sequences: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        continuous_actions = action_sequences[
+            :, :, continuous_action_indices
+        ]
+        saturation_target = torch.ones(
+            continuous_actions.shape,
+            dtype=torch.long,
+            device=device,
+        )
+        saturation_target[continuous_actions <= -0.999] = 0
+        saturation_target[continuous_actions >= 0.999] = 2
+        saturation_transition = torch.zeros_like(
+            saturation_target,
+            dtype=torch.bool,
+        )
+        saturation_transition[:, 1:] = (
+            saturation_target[:, 1:]
+            != saturation_target[:, :-1]
+        )
+        gripper_target = (
+            action_sequences[:, :, HANDOVER_GRIPPER_INDICES] > 0.0
+        )
+        gripper_transition = torch.zeros_like(
+            gripper_target,
+            dtype=torch.bool,
+        )
+        gripper_transition[:, 1:] = (
+            gripper_target[:, 1:]
+            != gripper_target[:, :-1]
+        )
+        return (
+            torch.where(
+                gripper_transition,
+                discrete_transition_weight,
+                1.0,
+            ),
+            torch.where(
+                saturation_transition,
+                discrete_transition_weight,
+                1.0,
+            ),
+        )
+
+    validation_sequence_batch = padded_episode_batch(
+        validation_episode_observations,
+        validation_episode_actions,
+        validation_episode_phases,
+        list(range(len(validation_episode_observations))),
+    )
     best_validation_loss = float("inf")
     best_epoch = -1
     best_state: dict[str, torch.Tensor] | None = None
@@ -1138,116 +1457,139 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
 
     for epoch in range(args.epochs):
         model.train()
-        permutation = torch.randperm(train_observations.shape[0], device=device)
+        episode_order = torch.randperm(
+            len(train_episode_observations)
+        ).tolist()
         loss_sum = 0.0
         sample_count = 0
-        for start in range(0, permutation.numel(), args.batch_size):
-            indices = permutation[start : start + args.batch_size]
-            predicted, gripper_logits = model.training_outputs(
-                train_observations[indices]
-            )
-            continuous_per_action = functional.smooth_l1_loss(
-                (
-                    predicted[:, continuous_action_indices]
-                    / action_loss_scale_device[continuous_action_indices]
-                ),
-                (
-                    train_actions[indices][:, continuous_action_indices]
-                    / action_loss_scale_device[continuous_action_indices]
-                ),
-                reduction="none",
-                beta=0.1,
-            )
-            continuous_loss = (
-                continuous_per_action.mean(dim=-1)
-                + 0.25 * continuous_per_action.amax(dim=-1)
-            )
-            gripper_targets = (
-                train_actions[indices][:, HANDOVER_GRIPPER_INDICES] > 0.0
-            ).float()
-            gripper_per_action = functional.binary_cross_entropy_with_logits(
-                gripper_logits,
-                gripper_targets,
-                reduction="none",
-            )
-            gripper_sample_weight = gripper_class_weight_device[
-                train_phases[indices].unsqueeze(-1),
-                gripper_index,
-                gripper_targets.long(),
+        for start in range(
+            0,
+            len(episode_order),
+            args.episode_batch_size,
+        ):
+            episode_indices = episode_order[
+                start : start + args.episode_batch_size
             ]
-            gripper_loss = (
-                gripper_per_action * gripper_sample_weight
-            ).mean(dim=-1)
-            per_frame = continuous_loss + gripper_loss
-            loss = (
-                per_frame * phase_weight[train_phases[indices]]
-            ).mean()
+            (
+                observation_sequences,
+                action_sequences,
+                phase_sequences,
+                valid_sequences,
+            ) = padded_episode_batch(
+                train_episode_observations,
+                train_episode_actions,
+                train_episode_phases,
+                episode_indices,
+            )
+            (
+                predicted_sequences,
+                gripper_logit_sequences,
+                saturation_logit_sequences,
+            ) = model.training_sequence_outputs(
+                observation_sequences
+            )
+            predicted = predicted_sequences[valid_sequences]
+            gripper_logits = gripper_logit_sequences[
+                valid_sequences
+            ]
+            saturation_logits = saturation_logit_sequences[
+                valid_sequences
+            ]
+            target = action_sequences[valid_sequences]
+            phases = phase_sequences[valid_sequences]
+            (
+                gripper_transition_sequences,
+                saturation_transition_sequences,
+            ) = discrete_transition_weights(action_sequences)
+            per_frame = hybrid_per_frame_loss(
+                predicted,
+                gripper_logits,
+                saturation_logits,
+                target,
+                phases,
+                gripper_transition_sequences[valid_sequences],
+                saturation_transition_sequences[valid_sequences],
+            )
+            loss = (per_frame * phase_weight[phases]).mean()
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
-            loss_sum += float(loss.item()) * indices.numel()
-            sample_count += indices.numel()
+            loss_sum += float(loss.item()) * target.shape[0]
+            sample_count += target.shape[0]
 
         model.eval()
         with torch.inference_mode():
             (
-                validation_prediction_soft,
-                validation_gripper_logits,
-            ) = model.training_outputs(validation_observations)
-            validation_continuous_per_action = functional.smooth_l1_loss(
-                (
-                    validation_prediction_soft[:, continuous_action_indices]
-                    / action_loss_scale_device[continuous_action_indices]
-                ),
-                (
-                    validation_actions[:, continuous_action_indices]
-                    / action_loss_scale_device[continuous_action_indices]
-                ),
-                reduction="none",
-                beta=0.1,
+                validation_observation_sequences,
+                validation_action_sequences,
+                validation_phase_sequences,
+                validation_valid_sequences,
+            ) = validation_sequence_batch
+            (
+                validation_prediction_soft_sequences,
+                validation_gripper_logit_sequences,
+                validation_saturation_logit_sequences,
+            ) = model.training_sequence_outputs(
+                validation_observation_sequences
             )
-            validation_continuous_loss = (
-                validation_continuous_per_action.mean(dim=-1)
-                + 0.25
-                * validation_continuous_per_action.amax(dim=-1)
-            )
-            validation_gripper_targets = (
-                validation_actions[:, HANDOVER_GRIPPER_INDICES] > 0.0
-            ).float()
-            validation_gripper_per_action = (
-                functional.binary_cross_entropy_with_logits(
-                    validation_gripper_logits,
-                    validation_gripper_targets,
-                    reduction="none",
-                )
-            )
-            validation_gripper_sample_weight = (
-                gripper_class_weight_device[
-                    validation_phases.unsqueeze(-1),
-                    gripper_index,
-                    validation_gripper_targets.long(),
+            validation_prediction_soft = (
+                validation_prediction_soft_sequences[
+                    validation_valid_sequences
                 ]
             )
-            validation_gripper_loss = (
-                validation_gripper_per_action
-                * validation_gripper_sample_weight
-            ).mean(dim=-1)
-            validation_per_frame = (
-                validation_continuous_loss
-                + validation_gripper_loss
+            validation_gripper_logits = (
+                validation_gripper_logit_sequences[
+                    validation_valid_sequences
+                ]
+            )
+            validation_saturation_logits = (
+                validation_saturation_logit_sequences[
+                    validation_valid_sequences
+                ]
+            )
+            validation_target = validation_action_sequences[
+                validation_valid_sequences
+            ]
+            validation_phase = validation_phase_sequences[
+                validation_valid_sequences
+            ]
+            (
+                validation_gripper_transition_sequences,
+                validation_saturation_transition_sequences,
+            ) = discrete_transition_weights(
+                validation_action_sequences
+            )
+            validation_per_frame = hybrid_per_frame_loss(
+                validation_prediction_soft,
+                validation_gripper_logits,
+                validation_saturation_logits,
+                validation_target,
+                validation_phase,
+                validation_gripper_transition_sequences[
+                    validation_valid_sequences
+                ],
+                validation_saturation_transition_sequences[
+                    validation_valid_sequences
+                ],
             )
             validation_loss = float(
                 (
                     validation_per_frame
-                    * phase_weight[validation_phases]
+                    * phase_weight[validation_phase]
                 )
                 .mean()
                 .item()
             )
-            validation_prediction = model(validation_observations)
+            validation_prediction = (
+                model.training_sequence_actions(
+                    validation_observation_sequences
+                )[validation_valid_sequences]
+            )
             validation_mae = float(
-                (validation_prediction - validation_actions).abs().mean().item()
+                (
+                    validation_prediction - validation_target
+                ).abs().mean().item()
             )
         train_loss = loss_sum / sample_count
         history.append(
@@ -1276,25 +1618,39 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     model.load_state_dict(best_state, strict=True)
     model.eval()
     with torch.inference_mode():
-        final_prediction = model(validation_observations)
+        (
+            final_validation_observations,
+            final_validation_actions,
+            final_validation_phases,
+            final_validation_valid,
+        ) = validation_sequence_batch
+        final_prediction = model.training_sequence_actions(
+            final_validation_observations
+        )[final_validation_valid]
+        final_target = final_validation_actions[
+            final_validation_valid
+        ]
+        final_phase = final_validation_phases[
+            final_validation_valid
+        ]
         final_validation_mae = float(
-            (final_prediction - validation_actions).abs().mean().item()
+            (final_prediction - final_target).abs().mean().item()
         )
         final_max_abs_error = float(
-            (final_prediction - validation_actions).abs().max().item()
+            (final_prediction - final_target).abs().max().item()
         )
         final_phase_mae = {
             str(phase): (
                 float(
                     (
-                        final_prediction[validation_phases == phase]
-                        - validation_actions[validation_phases == phase]
+                        final_prediction[final_phase == phase]
+                        - final_target[final_phase == phase]
                     )
                     .abs()
                     .mean()
                     .item()
                 )
-                if bool((validation_phases == phase).any())
+                if bool((final_phase == phase).any())
                 else None
             )
             for phase in range(5)
@@ -1324,11 +1680,26 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         "action_dim": ACTION_DIM,
         "phase_slice": [PHASE_SLICE.start, PHASE_SLICE.stop],
         "architecture": {
-            "kind": "shared_encoder_with_five_phase_heads",
+            "kind": (
+                "shared_encoder_gru_with_five_hybrid_phase_heads"
+            ),
             "hidden_dims": list(hidden_dims),
+            "memory_dim": int(args.memory_dim),
             "head_dim": int(args.head_dim),
             "full_action_policy": True,
             "binary_gripper_indices": list(HANDOVER_GRIPPER_INDICES),
+            "continuous_action_indices": list(
+                HANDOVER_CONTINUOUS_INDICES
+            ),
+            "saturation_classes": [
+                "negative_limit",
+                "precision",
+                "positive_limit",
+            ],
+            "saturation_logit_margin": (
+                HANDOVER_SATURATION_LOGIT_MARGIN
+            ),
+            "recurrent_state": "gru_reset_per_episode",
             "runtime_heuristic_stack": False,
             "terminal_phase_action": "zero_initialized_no_training_required",
         },
@@ -1345,15 +1716,22 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             "seed": int(args.seed),
             "best_epoch": best_epoch,
             "epochs_run": len(history),
-            "batch_size": int(args.batch_size),
+            "episode_batch_size": int(args.episode_batch_size),
             "learning_rate": float(args.learning_rate),
             "weight_decay": float(args.weight_decay),
             "loss": (
-                "phase_balanced_tail_aware_continuous_smooth_l1_"
-                "plus_phase_class_balanced_binary_gripper_bce"
+                "recurrent_phase_balanced_tail_aware_precision_mse_plus_"
+                "conservative_saturation_cross_entropy_plus_"
+                "phase_class_balanced_binary_gripper_bce"
             ),
             "phase_counts": phase_counts.tolist(),
+            "saturation_class_counts": (
+                saturation_class_counts.tolist()
+            ),
             "gripper_class_counts": gripper_class_counts.tolist(),
+            "discrete_transition_weight": (
+                discrete_transition_weight
+            ),
             "train_frames": int(train_observations.shape[0]),
             "validation_frames": int(validation_observations.shape[0]),
             "train_pair_ids": [payload["pair_id"] for payload in train_payloads],
@@ -1462,11 +1840,12 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--dataset", action="append", required=True)
     train.add_argument("--output", required=True)
     train.add_argument("--epochs", type=int, default=300)
-    train.add_argument("--batch_size", type=int, default=512)
+    train.add_argument("--episode_batch_size", type=int, default=4)
     train.add_argument("--learning_rate", type=float, default=3.0e-4)
     train.add_argument("--weight_decay", type=float, default=1.0e-5)
     train.add_argument("--validation_fraction", type=float, default=0.2)
     train.add_argument("--hidden_dims", default="256,256")
+    train.add_argument("--memory_dim", type=int, default=128)
     train.add_argument("--head_dim", type=int, default=128)
     train.add_argument("--patience", type=int, default=30)
     train.add_argument("--seed", type=int, default=104729)

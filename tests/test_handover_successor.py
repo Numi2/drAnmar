@@ -336,6 +336,58 @@ def test_dagger_admission_rejects_nonexact_or_unbound_mixtures(
         )
 
 
+def test_successor_uses_hard_saturation_modes() -> None:
+    model = SUCCESSOR_POLICY.PhaseConditionedHandoverPolicy(
+        torch.zeros(98),
+        torch.ones(98),
+        hidden_dims=(16,),
+        head_dim=8,
+    )
+    output_layer = model.phase_heads[0][-1]
+    with torch.no_grad():
+        saturation_bias = output_layer.bias[
+            SUCCESSOR_POLICY.HANDOVER_ACTION_DIM:
+        ].view(
+            len(SUCCESSOR_POLICY.HANDOVER_CONTINUOUS_INDICES),
+            SUCCESSOR_POLICY.HANDOVER_SATURATION_CLASS_COUNT,
+        )
+        saturation_bias[0] = torch.tensor([-5.0, -5.0, 5.0])
+        saturation_bias[1] = torch.tensor([5.0, -5.0, -5.0])
+    observation = torch.zeros(1, 98)
+    observation[:, 77] = 1.0
+    action = model(observation)
+    assert action[0, 0].item() == 1.0
+    assert action[0, 1].item() == -1.0
+
+
+def test_successor_runtime_memory_matches_offline_sequence() -> None:
+    torch.manual_seed(7)
+    model = SUCCESSOR_POLICY.PhaseConditionedHandoverPolicy(
+        torch.zeros(98),
+        torch.ones(98),
+        hidden_dims=(16,),
+        memory_dim=8,
+        head_dim=8,
+    )
+    sequence = torch.randn(1, 6, 98)
+    sequence[:, :, 77:82] = 0.0
+    sequence[:, :, 77] = 1.0
+    with torch.inference_mode():
+        offline = model.training_sequence_actions(sequence)
+        model.reset()
+        runtime = torch.stack(
+            [model(sequence[:, frame]) for frame in range(6)],
+            dim=1,
+        )
+        model.reset(torch.ones(1, dtype=torch.bool))
+        replay = torch.stack(
+            [model(sequence[:, frame]) for frame in range(6)],
+            dim=1,
+        )
+    assert torch.allclose(runtime, offline)
+    assert torch.allclose(replay, offline)
+
+
 def test_isolated_teacher_acceptance_requires_exact_replay_and_safe_win(
     tmp_path: Path,
 ) -> None:
@@ -529,11 +581,12 @@ def test_full_action_successor_trains_with_episode_level_split(
             dataset=dataset_paths,
             output=str(output),
             epochs=2,
-            batch_size=16,
+            episode_batch_size=4,
             learning_rate=3.0e-4,
             weight_decay=1.0e-5,
             validation_fraction=0.25,
             hidden_dims="32,32",
+            memory_dim=16,
             head_dim=16,
             patience=2,
             seed=104729,
@@ -544,6 +597,12 @@ def test_full_action_successor_trains_with_episode_level_split(
     payload = torch.load(output, map_location="cpu", weights_only=False)
     assert payload["architecture"]["full_action_policy"] is True
     assert payload["architecture"]["runtime_heuristic_stack"] is False
+    assert payload["architecture"]["recurrent_state"] == (
+        "gru_reset_per_episode"
+    )
+    assert payload["architecture"]["saturation_logit_margin"] == (
+        SUCCESSOR_POLICY.HANDOVER_SATURATION_LOGIT_MARGIN
+    )
     assert payload["capability_scope"] == (
         "incumbent_on_policy_distillation_plus_teacher_rescues"
     )

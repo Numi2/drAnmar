@@ -196,7 +196,7 @@ problems and are meant to compose, not replace one another:
 | One-decision receiver residual | Bounded motion correction | Not promoted. Its best held-out result was **+3 / 3,600** in aggregate while one seed regressed by 12; a fresh-stream update also lost to the incumbent on development seeds. |
 | Calibrated active-custody risk model | Failure probability | Preserved as the leading risk model. Across three left-out physics seeds, AUC was **0.704–0.776** and nested cross-fitted Brier score improved to **0.07455** from a **0.08063** base-rate reference. |
 | Counterfactual receiver trajectory | Bounded receiver XYZ scaling | Not promoted. Exact no-op replay passed, but uniform scale `0.6` reduced the activated cohort from **93 to 87** successes and added **4** receiver safety failures on the first prespecified seed. |
-| Phase-conditioned full-action successor | Complete 14-D dual-arm action | Candidate only; not promoted. Eight bit-identical safe incumbent successes were admitted across eight development seeds and all four action-bearing phases. The first offline clone fit those demonstrations but failed its first closed-loop replay in phase 0 with `protected_surface_force`, exposing covariate shift rather than just calibration error. The successor now uses hard binary gripper decisions and on-policy DAgger collection; the terminal fifth phase emits no further action. |
+| Recurrent hybrid full-action successor | Complete 14-D dual-arm action | Candidate only; not promoted. Eight bit-identical safe incumbent successes were admitted across eight development seeds and all four action-bearing phases. The first offline clone fit those demonstrations but failed its first closed-loop replay in phase 0 with `protected_surface_force`, exposing covariate shift and action-mode averaging. The successor now combines on-policy DAgger, GRU episode memory, hard binary gripper decisions, and learned negative-limit / precision / positive-limit motion modes. The terminal fifth phase emits no further action. |
 
 The actor still moves the robot. The risk model observes the one-frame
 active-custody transition and estimates whether retention is likely to fail; it
@@ -227,9 +227,15 @@ Better-than-incumbent actions there must still come from constrained trajectory
 optimization or clinician teleoperation, then beat two bit-identical no-op
 controls without any safety event. Accepted offline successes, accepted DAgger
 episodes, and independently verified rescues train one compact
-phase-conditioned network that emits the full 14-D action with binary gripper
-decisions. Episode-level splitting prevents frame leakage, qualification seeds
-are forbidden from training, and every checkpoint is candidate-only until live
+phase-conditioned recurrent network that emits the full 14-D action. Episode
+order is preserved during training because grasp and release boundaries depend
+on history that is not fully represented by one observation. Grippers are
+binary decisions; each motion channel separately classifies negative
+saturation, precision control, or positive saturation before emitting its
+continuous precision value. This prevents regression from averaging a
+safety-critical limit command with the following fine-control command.
+Episode-level splitting prevents frame leakage, qualification seeds are
+forbidden from training, and every checkpoint is candidate-only until live
 seeded evaluation promotes it.
 
 ```text
