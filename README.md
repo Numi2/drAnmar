@@ -212,7 +212,9 @@ The next learning stage uses the risk model only to allocate independent
 single-environment collection. Better actions must come from constrained
 trajectory optimization or clinician teleoperation at the
 acquisition-to-retention boundary, then pass isolated no-op, safety, multi-seed,
-and held-out gates before training a residual motion policy.
+and held-out gates before training one compact phase-conditioned motion policy.
+The hand-authored recovery composition remains only as a regression baseline;
+it is not carried into the successor architecture.
 
 The full source-bound learning record, including per-seed calibration and
 checkpoint hashes, is in the
