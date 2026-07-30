@@ -1183,6 +1183,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
     _PRIORITY_CORRECTED_APPROACH = 50
     _PRIORITY_RETRY_FORCE_CENTERING = 55
     _PRIORITY_CUSTODY_HOLD = 60
+    _PRIORITY_ACTIVE_CUSTODY_INTERVENTION = 65
     _PRIORITY_FAILED_OPEN = 70
     _PRIORITY_RESET_OPEN = 80
     _PRIORITY_RESET_RETREAT = 90
@@ -1198,6 +1199,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
     _RECEIVER_OWNER_FORCE_CENTERING = 6
     _RECEIVER_OWNER_RETENTION_SERVO = 7
     _RECEIVER_OWNER_RETENTION_CENTERING = 8
+    _RECEIVER_OWNER_ACTIVE_CUSTODY_INTERVENTION = 9
 
     def __init__(
         self,
@@ -1245,6 +1247,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         selective_early_retry_latch: bool = False,
         retry_force_centering: bool = False,
         active_custody_verification: bool = False,
+        active_custody_intervention: bool = False,
+        active_custody_intervention_seed: int = 0,
+        active_custody_intervention_action_limit: float = 0.0025,
         receiver_retention_contact_centering: bool = False,
         receiver_retention_servo: bool = False,
         receiver_retention_servo_gain: float = 50.0,
@@ -1296,6 +1301,23 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if giver_stabilization_start_step < 0:
             raise ValueError(
                 "giver stabilization start step must be non-negative"
+            )
+        if active_custody_intervention and not active_custody_verification:
+            raise ValueError(
+                "active-custody intervention requires verification"
+            )
+        if not 0 <= active_custody_intervention_seed < 2**31:
+            raise ValueError(
+                "active-custody intervention seed must be in [0, 2^31)"
+            )
+        if not (
+            0.0
+            < active_custody_intervention_action_limit
+            <= 0.0025
+        ):
+            raise ValueError(
+                "active-custody intervention action limit must be in "
+                "(0, 0.0025]"
             )
         if receiver_retention_servo_gain <= 0.0:
             raise ValueError(
@@ -1688,6 +1710,15 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_verification = bool(
             active_custody_verification
         )
+        self.active_custody_intervention = bool(
+            active_custody_intervention
+        )
+        self.active_custody_intervention_seed = int(
+            active_custody_intervention_seed
+        )
+        self.active_custody_intervention_action_limit = float(
+            active_custody_intervention_action_limit
+        )
         self.receiver_retention_contact_centering = bool(
             receiver_retention_contact_centering
         )
@@ -1844,6 +1875,23 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_probe_post_forces = torch.empty((0, 2))
         self.active_custody_probe_pre_observation = torch.empty((0, 0))
         self.active_custody_probe_post_observation = torch.empty((0, 0))
+        self.active_custody_intervention_round = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.active_custody_intervention_assigned = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
+        self.active_custody_intervention_action_id = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.active_custody_intervention_probability = torch.empty(0)
+        self.active_custody_intervention_action = torch.empty((0, 7))
+        self.active_custody_intervention_centering_direction = torch.empty(
+            0
+        )
         self.last_giver_action_owner = torch.empty(
             0,
             dtype=torch.long,
@@ -2090,6 +2138,33 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.active_custody_probe_post_observation = torch.zeros(
             (batch_size, raw.shape[-1]),
+            dtype=raw.dtype,
+            device=device,
+        )
+        self.active_custody_intervention_round = torch.zeros_like(
+            self.retry_count
+        )
+        self.active_custody_intervention_assigned = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.active_custody_intervention_action_id = torch.full(
+            (batch_size,),
+            -2,
+            dtype=torch.long,
+            device=device,
+        )
+        self.active_custody_intervention_probability = torch.zeros(
+            batch_size,
+            dtype=raw.dtype,
+            device=device,
+        )
+        self.active_custody_intervention_action = torch.zeros(
+            (batch_size, 7),
+            dtype=raw.dtype,
+            device=device,
+        )
+        self.active_custody_intervention_centering_direction = torch.zeros(
+            batch_size,
             dtype=raw.dtype,
             device=device,
         )
@@ -2921,6 +2996,28 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         return action, priority, owner
 
+    def _randomized_active_custody_action_id(self) -> torch.Tensor:
+        """Return a reproducible uniform {-1, 0, 1} assignment per episode."""
+        environment_index = torch.arange(
+            self._batch_size,
+            dtype=torch.long,
+            device=self.retry_count.device,
+        )
+        mixed = (
+            (environment_index + 1) * 1_103_515_245
+            + (
+                self.active_custody_intervention_seed
+                + self.active_custody_intervention_round
+                + 1
+            )
+            * 2_654_435_761
+        )
+        mixed = torch.bitwise_xor(
+            mixed,
+            torch.bitwise_right_shift(mixed, 16),
+        )
+        return torch.remainder(mixed, 3) - 1
+
     def forward(
         self,
         obs: dict[str, torch.Tensor],
@@ -2943,6 +3040,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             raw[:, 66:68],
             raw[:, 68:70],
             receiver_is_robot_1,
+        )
+        receiver_force_imbalance = (
+            receiver_contacts[:, 1] - receiver_contacts[:, 0]
         )
         giver_contacts = self._select_role(
             raw[:, 66:68],
@@ -3114,6 +3214,33 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             probe_survived | probe_failed
         )
         self.active_custody_probe_survived |= probe_survived
+        active_custody_intervention_now = (
+            self.active_custody_intervention
+            & probe_survived
+            & ~self.active_custody_intervention_assigned
+        )
+        randomized_intervention_id = (
+            self._randomized_active_custody_action_id()
+        )
+        centering_direction = torch.where(
+            receiver_force_imbalance >= 0.0,
+            torch.ones_like(receiver_force_imbalance),
+            -torch.ones_like(receiver_force_imbalance),
+        )
+        self.active_custody_intervention_assigned |= (
+            active_custody_intervention_now
+        )
+        self.active_custody_intervention_action_id[
+            active_custody_intervention_now
+        ] = randomized_intervention_id[
+            active_custody_intervention_now
+        ]
+        self.active_custody_intervention_probability[
+            active_custody_intervention_now
+        ] = 1.0 / 3.0
+        self.active_custody_intervention_centering_direction[
+            active_custody_intervention_now
+        ] = centering_direction[active_custody_intervention_now]
         release_authorized_now = (
             probe_survived
             if self.active_custody_verification
@@ -3750,6 +3877,32 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 claim_owner=self._RECEIVER_OWNER_CUSTODY_HOLD,
             )
         )
+        active_custody_intervention_action = receiver_hold_closed.clone()
+        active_custody_intervention_action[:, 2] = (
+            randomized_intervention_id.to(receiver_hold_closed.dtype)
+            * centering_direction
+            * self.active_custody_intervention_action_limit
+        )
+        self.active_custody_intervention_action[
+            active_custody_intervention_now
+        ] = active_custody_intervention_action[
+            active_custody_intervention_now
+        ].detach()
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                active_custody_intervention_action,
+                active_custody_intervention_now,
+                claim_priority=(
+                    self._PRIORITY_ACTIVE_CUSTODY_INTERVENTION
+                ),
+                claim_owner=(
+                    self._RECEIVER_OWNER_ACTIVE_CUSTODY_INTERVENTION
+                ),
+            )
+        )
         giver_load_probe = torch.zeros_like(giver_hold)
         giver_load_probe[:, 6] = 1.0
         giver_action, giver_action_priority, giver_action_owner = (
@@ -3788,9 +3941,6 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 claim_priority=self._PRIORITY_CORRECTED_APPROACH,
                 claim_owner=self._RECEIVER_OWNER_CORRECTED_APPROACH,
             )
-        )
-        receiver_force_imbalance = (
-            receiver_contacts[:, 1] - receiver_contacts[:, 0]
         )
         retry_force_centering_active = (
             self.retry_force_centering
@@ -3934,6 +4084,12 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_probe_post_forces[mask] = 0.0
         self.active_custody_probe_pre_observation[mask] = 0.0
         self.active_custody_probe_post_observation[mask] = 0.0
+        self.active_custody_intervention_round[mask] += 1
+        self.active_custody_intervention_assigned[mask] = False
+        self.active_custody_intervention_action_id[mask] = -2
+        self.active_custody_intervention_probability[mask] = 0.0
+        self.active_custody_intervention_action[mask] = 0.0
+        self.active_custody_intervention_centering_direction[mask] = 0.0
         self.last_giver_action_owner[mask] = 0
         self.last_receiver_action_owner[mask] = 0
         self.giver_release_completed[mask] = False

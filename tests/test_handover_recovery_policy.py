@@ -358,6 +358,60 @@ def test_active_custody_probe_pulses_once_per_acquisition_attempt() -> None:
     assert post_probe_action[0, 6].item() == -1.0
 
 
+def test_active_custody_intervention_is_seeded_uniform_and_bounded() -> None:
+    seed = 4_104_736
+    policy = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        active_custody_verification=True,
+        active_custody_intervention=True,
+        active_custody_intervention_seed=seed,
+    )
+    observation = _observation(batch_size=9)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 80] = 1.0
+    raw[:, 66:68] = 0.01
+    raw[:, 68:70] = torch.tensor(
+        [[0.005, 0.01], [0.01, 0.005], [0.005, 0.01]]
+    ).repeat(3, 1)
+
+    for _ in range(3):
+        policy(observation)
+    expected_id = policy._randomized_active_custody_action_id()
+    expected_direction = torch.sign(
+        raw[:, 69] - raw[:, 68]
+    )
+
+    action = policy(observation)
+
+    assert set(expected_id.tolist()) == {-1, 0, 1}
+    assert torch.equal(
+        policy.active_custody_intervention_action_id,
+        expected_id,
+    )
+    assert bool(policy.active_custody_intervention_assigned.all())
+    assert torch.allclose(
+        policy.active_custody_intervention_probability,
+        torch.full((9,), 1.0 / 3.0),
+    )
+    assert torch.allclose(
+        action[:, 9],
+        expected_id.float()
+        * expected_direction
+        * policy.active_custody_intervention_action_limit,
+    )
+    assert torch.equal(
+        policy.active_custody_intervention_action,
+        action[:, 7:14],
+    )
+    assert bool(
+        (
+            policy.last_receiver_action_owner
+            == policy._RECEIVER_OWNER_ACTIVE_CUSTODY_INTERVENTION
+        ).all()
+    )
+
+
 def test_retry_retreat_budget_is_cumulative_across_contact_flicker() -> None:
     policy = HandoverReceiverRecoveryPolicy(
         _FixedBasePolicy(),

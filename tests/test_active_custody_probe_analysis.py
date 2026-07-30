@@ -101,7 +101,16 @@ def test_platt_calibration_is_monotonic_and_rank_preserving() -> None:
 
 def test_launcher_exposes_temporal_probe_signal_audit() -> None:
     launcher = LAUNCHER.read_text()
+    benchmark = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "dr_anmar_learning_benchmark.py"
+    ).read_text()
 
     assert "receiver-custody-audit)" in launcher
+    assert "receiver-custody-interventions)" in launcher
     assert "analyze_dranmar_active_custody_probe.py" in launcher
     assert "--receiver_active_custody_probe_dataset" in launcher
+    assert "--receiver_active_custody_intervention" in launcher
+    assert '"intervention-dataset-1.0"' in benchmark
+    assert '"assigned_action_probability"' in benchmark

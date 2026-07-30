@@ -3389,6 +3389,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
 
     runtime_seed = args.seed + args.seed_stream_offset
+    active_custody_intervention_seed = (
+        args.receiver_active_custody_intervention_seed
+        if args.receiver_active_custody_intervention_seed is not None
+        else runtime_seed + 104_729
+    )
     env_cfg, agent_cfg = _load_configs(
         args.task,
         args.num_envs,
@@ -3631,6 +3636,35 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "verification"
         )
     if (
+        args.receiver_active_custody_intervention
+        and not args.receiver_active_custody_verification
+    ):
+        return _fail(
+            "active-custody intervention requires active-custody "
+            "verification"
+        )
+    if (
+        args.receiver_active_custody_intervention
+        and not args.receiver_active_custody_probe_dataset
+    ):
+        return _fail(
+            "active-custody intervention requires an immutable dataset "
+            "output"
+        )
+    if not 0 <= active_custody_intervention_seed < 2**31:
+        return _fail(
+            "active-custody intervention seed must be in [0, 2^31)"
+        )
+    if not (
+        0.0
+        < args.receiver_active_custody_intervention_action_limit
+        <= 0.0025
+    ):
+        return _fail(
+            "active-custody intervention action limit must be in "
+            "(0, 0.0025]"
+        )
+    if (
         args.receiver_recovery
         or args.receiver_recovery_checkpoint
         or args.receiver_retry_gate_checkpoint
@@ -3647,6 +3681,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_selective_early_retry_latch
         or args.receiver_retry_force_centering
         or args.receiver_active_custody_verification
+        or args.receiver_active_custody_intervention
         or args.receiver_retention_contact_centering
         or args.receiver_retention_servo
     ) and not (
@@ -3718,6 +3753,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(
             "receiver retention contact centering and retention servo "
             "are exclusive"
+        )
+    if args.receiver_active_custody_intervention and (
+        args.receiver_retention_contact_centering
+        or args.receiver_retention_servo
+    ):
+        return _fail(
+            "randomized active-custody intervention must be isolated from "
+            "retention centering and retention servo"
         )
     if args.receiver_retention_servo_gain <= 0.0:
         return _fail(
@@ -5170,6 +5213,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             active_custody_verification=(
                 args.receiver_active_custody_verification
             ),
+            active_custody_intervention=(
+                args.receiver_active_custody_intervention
+            ),
+            active_custody_intervention_seed=(
+                active_custody_intervention_seed
+            ),
+            active_custody_intervention_action_limit=(
+                args.receiver_active_custody_intervention_action_limit
+            ),
             receiver_retention_contact_centering=(
                 args.receiver_retention_contact_centering
             ),
@@ -5541,6 +5593,48 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     first_receiver_active_custody_probe_post_observation = (
         torch.zeros(
             (env.unwrapped.num_envs, 98),
+            dtype=torch.float32,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_intervention_assigned = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_intervention_action_id = (
+        torch.full(
+            (env.unwrapped.num_envs,),
+            -2,
+            dtype=torch.long,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_intervention_probability = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.float32,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_intervention_action = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 7),
+            dtype=torch.float32,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_intervention_centering_direction = (
+        torch.zeros(
+            env.unwrapped.num_envs,
             dtype=torch.float32,
             device=first_unresolved.device,
         )
@@ -6987,6 +7081,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         is not None
                     )
                     assert (
+                        first_receiver_active_custody_intervention_assigned
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_intervention_action_id
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_intervention_probability
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_intervention_action
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_intervention_centering_direction
+                        is not None
+                    )
+                    assert (
                         first_receiver_retry_release_aborted is not None
                     )
                     assert (
@@ -7078,6 +7192,38 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ] = (
                         receiver_recovery_policy
                         .active_custody_probe_post_observation[first_dones]
+                    )
+                    first_receiver_active_custody_intervention_assigned[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_intervention_assigned[first_dones]
+                    )
+                    first_receiver_active_custody_intervention_action_id[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_intervention_action_id[first_dones]
+                    )
+                    first_receiver_active_custody_intervention_probability[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_intervention_probability[first_dones]
+                    )
+                    first_receiver_active_custody_intervention_action[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_intervention_action[first_dones]
+                    )
+                    first_receiver_active_custody_intervention_centering_direction[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_intervention_centering_direction[
+                            first_dones
+                        ]
                     )
                     first_receiver_retry_release_aborted[first_dones] = (
                         receiver_recovery_policy
@@ -8964,15 +9110,37 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 first_receiver_active_custody_probe_post_observation
                 is not None
             )
+            assert (
+                first_receiver_active_custody_intervention_assigned
+                is not None
+            )
+            assert (
+                first_receiver_active_custody_intervention_action_id
+                is not None
+            )
+            assert (
+                first_receiver_active_custody_intervention_probability
+                is not None
+            )
+            assert (
+                first_receiver_active_custody_intervention_action
+                is not None
+            )
+            assert (
+                first_receiver_active_custody_intervention_centering_direction
+                is not None
+            )
             assert first_receiver_correction is not None
             assert first_receiver_retry_count is not None
             probe_mask = (
-                first_receiver_active_custody_probe_evaluated
+                first_receiver_active_custody_intervention_assigned
+                if args.receiver_active_custody_intervention
+                else first_receiver_active_custody_probe_evaluated
             )
             if not bool(probe_mask.any()):
                 env.close()
                 return _fail(
-                    "active-custody probe dataset has no evaluated probes"
+                    "active-custody dataset has no eligible probes"
                 )
             probe_dataset_path = active_custody_probe_dataset_path
             assert probe_dataset_path is not None
@@ -9001,10 +9169,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     probe_mask
                 ]
             )
-            torch.save(
-                {
+            probe_payload = {
                     "schema_version": (
-                        "dranmar-receiver-active-custody-probe-dataset-1.0"
+                        "dranmar-receiver-active-custody-"
+                        "intervention-dataset-1.0"
+                        if args.receiver_active_custody_intervention
+                        else (
+                            "dranmar-receiver-active-custody-"
+                            "probe-dataset-1.0"
+                        )
                     ),
                     "task": args.task,
                     "seed": args.seed,
@@ -9073,12 +9246,53 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "eventual_termination_flags": (
                         first_terminal_flags[probe_mask].cpu()
                     ),
-                },
-                probe_dataset_path,
-            )
+                }
+            if args.receiver_active_custody_intervention:
+                probe_payload.update(
+                    {
+                        "randomization": (
+                            "seeded_hash_uniform_three_arm"
+                        ),
+                        "randomization_seed": (
+                            active_custody_intervention_seed
+                        ),
+                        "intervention_frames": 1,
+                        "intervention_action_limit": (
+                            args
+                            .receiver_active_custody_intervention_action_limit
+                        ),
+                        "intervention_action_semantics": {
+                            "-1": "opposite_force_centering_pulse",
+                            "0": "exact_no_op_hold_closed",
+                            "1": "force_centering_pulse",
+                        },
+                        "assigned_action_id": (
+                            first_receiver_active_custody_intervention_action_id[
+                                probe_mask
+                            ].cpu()
+                        ),
+                        "assigned_action_probability": (
+                            first_receiver_active_custody_intervention_probability[
+                                probe_mask
+                            ].cpu()
+                        ),
+                        "applied_receiver_action": (
+                            first_receiver_active_custody_intervention_action[
+                                probe_mask
+                            ].cpu()
+                        ),
+                        "force_centering_direction": (
+                            first_receiver_active_custody_intervention_centering_direction[
+                                probe_mask
+                            ].cpu()
+                        ),
+                    }
+                )
+            torch.save(probe_payload, probe_dataset_path)
             receiver_active_custody_probe_dataset = {
                 "path": str(probe_dataset_path),
                 "sha256": _sha256(probe_dataset_path),
+                "schema_version": probe_payload["schema_version"],
                 "samples": int(probe_mask.sum().item()),
                 "probe_survived": int(
                     first_receiver_active_custody_probe_survived[
@@ -9089,6 +9303,35 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_outcome_success[probe_mask].sum().item()
                 ),
             }
+            if args.receiver_active_custody_intervention:
+                action_id = (
+                    first_receiver_active_custody_intervention_action_id
+                )
+                receiver_active_custody_probe_dataset[
+                    "randomization_seed"
+                ] = active_custody_intervention_seed
+                receiver_active_custody_probe_dataset[
+                    "action_counts"
+                ] = {
+                    str(value): int(
+                        (probe_mask & (action_id == value)).sum().item()
+                    )
+                    for value in (-1, 0, 1)
+                }
+                receiver_active_custody_probe_dataset[
+                    "success_by_action"
+                ] = {
+                    str(value): int(
+                        (
+                            probe_mask
+                            & (action_id == value)
+                            & first_outcome_success
+                        )
+                        .sum()
+                        .item()
+                    )
+                    for value in (-1, 0, 1)
+                }
         receiver_probe_force_response = None
         if (
             first_receiver_active_custody_probe_evaluated is not None
@@ -9850,6 +10093,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .active_custody_verification
                     ),
                     "active_custody_probe_frames": 1,
+                    "active_custody_intervention": (
+                        receiver_recovery_policy
+                        .active_custody_intervention
+                    ),
+                    "active_custody_intervention_seed": (
+                        active_custody_intervention_seed
+                    ),
+                    "active_custody_intervention_action_limit": (
+                        receiver_recovery_policy
+                        .active_custody_intervention_action_limit
+                    ),
                     "giver_degradation_steps": (
                         receiver_recovery_policy
                         .giver_degradation_steps
@@ -10457,6 +10711,19 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
     )
     play.add_argument("--receiver_active_custody_probe_dataset")
+    play.add_argument(
+        "--receiver_active_custody_intervention",
+        action="store_true",
+    )
+    play.add_argument(
+        "--receiver_active_custody_intervention_seed",
+        type=int,
+    )
+    play.add_argument(
+        "--receiver_active_custody_intervention_action_limit",
+        type=float,
+        default=0.0025,
+    )
     play.add_argument(
         "--receiver_retention_contact_centering",
         action="store_true",

@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-custody-interventions|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -26,6 +26,7 @@ usage() {
     echo "  receiver-attempt-bootstrap BASE CANDIDATE OUTPUT DATASET..."
     echo "  receiver-attempt-update CHECKPOINT OUTPUT ROLLOUT..."
     echo "  receiver-custody-audit OUTPUT PROBE_DATASET... (also writes OUTPUT stem .pt)"
+    echo "  receiver-custody-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-selector-bootstrap BASE CANDIDATE OUTPUT DATASET..."
     echo "  receiver-selector-update CHECKPOINT OUTPUT DATASET..."
     echo "  receiver-selector-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
@@ -401,6 +402,23 @@ case "${command}" in
             "${5:-2000}" \
             "${6:-${DR_ANMAR_LEARNING_OUTPUT}/receiver-retry-candidate-${candidate_index}}" \
             "${7:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        ;;
+    receiver-custody-interventions)
+        dataset="${2:-}"
+        if [[ -z "${dataset}" ]]; then
+            usage
+            exit 2
+        fi
+        exec env \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_VERIFICATION=1 \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION=1 \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PROBE_DATASET="${dataset}" \
+            DR_ANMAR_SEED_STREAM_OFFSET="${7:-0}" \
+            "${BASH_SOURCE[0]}" promoted-handover \
+            "${3:-1200}" \
+            "${4:-2000}" \
+            "${5:-${DR_ANMAR_LEARNING_OUTPUT}/receiver-custody-interventions}" \
+            "${6:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
         ;;
     attempt-handover)
         attempt_checkpoint="${2:-}"
@@ -865,6 +883,23 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_active_custody_probe_dataset
                 "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PROBE_DATASET}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_active_custody_intervention
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_SEED:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_active_custody_intervention_seed
+                "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_SEED}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_ACTION_LIMIT:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_active_custody_intervention_action_limit
+                "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_ACTION_LIMIT}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
