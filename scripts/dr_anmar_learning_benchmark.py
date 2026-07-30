@@ -9230,15 +9230,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             probe_payload = {
                     "schema_version": (
                         (
-                            "dranmar-receiver-active-custody-"
-                            "release-delay-dataset-1.0"
+                            (
+                                "dranmar-receiver-active-custody-"
+                                "preemptive-retry-dataset-1.0"
+                            )
                             if (
                                 args.receiver_active_custody_intervention_profile
-                                == "release_delay"
+                                == "preemptive_retry"
                             )
                             else (
-                                "dranmar-receiver-active-custody-"
-                                "intervention-dataset-1.0"
+                                (
+                                    "dranmar-receiver-active-custody-"
+                                    "release-delay-dataset-1.0"
+                                )
+                                if (
+                                    args.receiver_active_custody_intervention_profile
+                                    == "release_delay"
+                                )
+                                else (
+                                    "dranmar-receiver-active-custody-"
+                                    "intervention-dataset-1.0"
+                                )
                             )
                         )
                         if args.receiver_active_custody_intervention
@@ -9363,6 +9375,49 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             ),
                         }
                     )
+                elif (
+                    args.receiver_active_custody_intervention_profile
+                    == "preemptive_retry"
+                ):
+                    probe_payload.update(
+                        {
+                            "randomization": (
+                                "seeded_hash_uniform_two_arm"
+                            ),
+                            "randomization_seed": (
+                                active_custody_intervention_seed
+                            ),
+                            "intervention_profile": (
+                                "post_probe_preemptive_retry"
+                            ),
+                            "assigned_retry_decision": (
+                                first_receiver_active_custody_intervention_action_id[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "assigned_action_probability": (
+                                first_receiver_active_custody_intervention_probability[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "retry_decision_semantics": {
+                                "0": "immediate_release_after_probe",
+                                "1": (
+                                    "existing_bounded_retry_state_machine"
+                                ),
+                            },
+                            "applied_receiver_action": (
+                                first_receiver_active_custody_intervention_action[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "applied_giver_action": (
+                                first_receiver_active_custody_intervention_giver_action[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                        }
+                    )
                 else:
                     probe_payload.update(
                         {
@@ -9429,7 +9484,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         args.receiver_active_custody_intervention_profile
                         == "release_delay"
                     )
-                    else (-1, 0, 1)
+                    else (
+                        (0, 1)
+                        if (
+                            args.receiver_active_custody_intervention_profile
+                            == "preemptive_retry"
+                        )
+                        else (-1, 0, 1)
+                    )
                 )
                 receiver_active_custody_probe_dataset[
                     "randomization_seed"
@@ -10841,7 +10903,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--receiver_active_custody_intervention_profile",
-        choices=("symmetric_pulse", "release_delay"),
+        choices=(
+            "symmetric_pulse",
+            "release_delay",
+            "preemptive_retry",
+        ),
         default="symmetric_pulse",
     )
     play.add_argument(

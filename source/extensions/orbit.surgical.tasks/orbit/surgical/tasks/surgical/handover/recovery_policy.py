@@ -1311,10 +1311,18 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if active_custody_intervention_profile not in {
             "symmetric_pulse",
             "release_delay",
+            "preemptive_retry",
         }:
             raise ValueError(
                 "active-custody intervention profile must be "
-                "symmetric_pulse or release_delay"
+                "symmetric_pulse, release_delay, or preemptive_retry"
+            )
+        if (
+            active_custody_intervention_profile == "preemptive_retry"
+            and not enable_retries
+        ):
+            raise ValueError(
+                "preemptive-retry intervention requires retries"
             )
         if not 0 <= active_custody_intervention_seed < 2**31:
             raise ValueError(
@@ -3049,6 +3057,30 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         return torch.remainder(mixed, 3) - 1
 
+    def _randomized_active_custody_binary_action_id(
+        self,
+    ) -> torch.Tensor:
+        """Return a reproducible uniform {0, 1} assignment per episode."""
+        environment_index = torch.arange(
+            self._batch_size,
+            dtype=torch.long,
+            device=self.retry_count.device,
+        )
+        mixed = (
+            (environment_index + 1) * 1_103_515_245
+            + (
+                self.active_custody_intervention_seed
+                + self.active_custody_intervention_round
+                + 1
+            )
+            * 2_654_435_761
+        )
+        mixed = torch.bitwise_xor(
+            mixed,
+            torch.bitwise_right_shift(mixed, 16),
+        )
+        return torch.remainder(mixed, 2)
+
     def forward(
         self,
         obs: dict[str, torch.Tensor],
@@ -3253,12 +3285,26 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         randomized_intervention_id = (
             self._randomized_active_custody_action_id()
         )
+        symmetric_pulse_profile = (
+            self.active_custody_intervention
+            and self.active_custody_intervention_profile
+            == "symmetric_pulse"
+        )
         release_delay_profile = (
             self.active_custody_intervention
             and self.active_custody_intervention_profile
             == "release_delay"
         )
-        if release_delay_profile:
+        preemptive_retry_profile = (
+            self.active_custody_intervention
+            and self.active_custody_intervention_profile
+            == "preemptive_retry"
+        )
+        if preemptive_retry_profile:
+            randomized_intervention_id = (
+                self._randomized_active_custody_binary_action_id()
+            )
+        elif release_delay_profile:
             randomized_intervention_id = torch.where(
                 randomized_intervention_id < 0,
                 torch.zeros_like(randomized_intervention_id),
@@ -3283,14 +3329,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         ]
         self.active_custody_intervention_probability[
             active_custody_intervention_now
-        ] = 1.0 / 3.0
+        ] = 0.5 if preemptive_retry_profile else 1.0 / 3.0
         if release_delay_profile:
             self.active_custody_intervention_delay_remaining[
                 active_custody_intervention_now
             ] = randomized_intervention_id[
                 active_custody_intervention_now
             ]
-        else:
+        elif symmetric_pulse_profile:
             self.active_custody_intervention_centering_direction[
                 active_custody_intervention_now
             ] = centering_direction[active_custody_intervention_now]
@@ -3328,10 +3374,21 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     probe_survived
                     & (randomized_intervention_id == 0)
                 ) | release_delay_completed_now
+            elif preemptive_retry_profile:
+                release_authorized_now = (
+                    probe_survived
+                    & (randomized_intervention_id == 0)
+                )
             else:
                 release_authorized_now = probe_survived
         else:
             release_authorized_now = passive_release_authorized
+        preemptive_retry_now = (
+            active_custody_intervention_now
+            & (randomized_intervention_id == 1)
+            if preemptive_retry_profile
+            else torch.zeros_like(active_custody_intervention_now)
+        )
         self.receiver_release_authorized |= release_authorized_now
         self.retry_release_authorized |= (
             release_authorized_now & retry_transfer
@@ -3689,6 +3746,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 | giver_custody_degrading
                 | probe_failed
                 | gate_retry
+                | preemptive_retry_now
             ) & (
                 self.retry_state != self.state_failed
             ) & (
@@ -3964,13 +4022,19 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             )
         )
         active_custody_intervention_action = receiver_hold_closed.clone()
-        if not release_delay_profile:
+        if symmetric_pulse_profile:
             active_custody_intervention_action[:, 2] = (
                 randomized_intervention_id.to(
                     receiver_hold_closed.dtype
                 )
                 * centering_direction
                 * self.active_custody_intervention_action_limit
+            )
+        elif preemptive_retry_profile:
+            active_custody_intervention_action = torch.where(
+                (randomized_intervention_id == 1).unsqueeze(-1),
+                receiver_open,
+                torch.zeros_like(receiver_open),
             )
         self.active_custody_intervention_action[
             active_custody_intervention_now
@@ -4017,7 +4081,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         symmetric_intervention_now = (
             active_custody_intervention_now
-            if not release_delay_profile
+            if symmetric_pulse_profile
             else torch.zeros_like(active_custody_intervention_now)
         )
         receiver_action, receiver_action_priority, receiver_action_owner = (
