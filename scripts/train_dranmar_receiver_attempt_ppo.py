@@ -594,10 +594,12 @@ def _update(args: argparse.Namespace) -> int:
     if risk_auxiliary_enabled and not (
         0.0 < args.risk_auxiliary_weight <= 0.1
         and args.minimum_risk_observations > 0
+        and 1.0 <= args.unsafe_termination_penalty <= 2.0
     ):
         raise ValueError(
             "risk auxiliary weight must be in (0, 0.1] and minimum "
-            "observations must be positive"
+            "observations must be positive; unsafe termination penalty "
+            "must be in [1, 2]"
         )
     random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -632,6 +634,8 @@ def _update(args: argparse.Namespace) -> int:
                 "receiver_candidate_checkpoint_sha256"
             )
             != payload["receiver_candidate_checkpoint_sha256"]
+            or risk_payload.get("control_scope")
+            != "pre_probe_risk_stratification_only"
             or not risk_payload.get("cross_fit_gate", {}).get(
                 "signal_gate_passed"
             )
@@ -656,6 +660,7 @@ def _update(args: argparse.Namespace) -> int:
     seed_parts = []
     risk_observed_parts = []
     predicted_risk_parts = []
+    unsafe_termination_parts = []
     rollout_reports = []
     for path in rollout_paths:
         rollout = torch.load(path, map_location="cpu", weights_only=False)
@@ -719,16 +724,38 @@ def _update(args: argparse.Namespace) -> int:
         if risk_auxiliary_enabled:
             risk_observed = rollout["preprobe_risk_observed"].bool()
             predicted_risk = rollout["predicted_preprobe_risk"].float()
+            termination_names = list(rollout["termination_names"])
+            termination_flags = rollout["termination_flags"].bool()
             if (
                 risk_observed.shape != (features.shape[0],)
                 or predicted_risk.shape != (features.shape[0],)
+                or termination_flags.shape
+                != (features.shape[0], len(termination_names))
+                or "excessive_object_force" not in termination_names
+                or "protected_surface_force" not in termination_names
             ):
                 raise ValueError(
-                    f"rollout pre-probe tensor shape drifted: {path}"
+                    f"rollout risk or safety tensor contract drifted: {path}"
                 )
+            unsafe_termination = (
+                termination_flags[
+                    :,
+                    termination_names.index("excessive_object_force"),
+                ]
+                | termination_flags[
+                    :,
+                    termination_names.index("protected_surface_force"),
+                ]
+            )
             risk_observed_parts.append(risk_observed)
             predicted_risk_parts.append(predicted_risk)
+            unsafe_termination_parts.append(unsafe_termination)
             risk_observed_count = int(risk_observed.sum().item())
+            unsafe_termination_count = int(
+                unsafe_termination.sum().item()
+            )
+        else:
+            unsafe_termination_count = None
         rollout_reports.append(
             {
                 "path": str(path),
@@ -742,6 +769,7 @@ def _update(args: argparse.Namespace) -> int:
                     rollout["full_success"].sum().item()
                 ),
                 "preprobe_risk_observed": risk_observed_count,
+                "unsafe_terminations": unsafe_termination_count,
             }
         )
     features = torch.cat(features_parts)
@@ -756,10 +784,12 @@ def _update(args: argparse.Namespace) -> int:
             f"decisions, found {features.shape[0]}"
         )
     risk_auxiliary = torch.zeros_like(reward)
+    unsafe_termination = torch.zeros_like(reward, dtype=torch.bool)
     risk_auxiliary_report = None
     if risk_auxiliary_enabled:
         observed = torch.cat(risk_observed_parts)
         predicted_risk = torch.cat(predicted_risk_parts)
+        unsafe_termination = torch.cat(unsafe_termination_parts)
         if set(int(value) for value in torch.unique(seed)) != DEVELOPMENT_SEEDS:
             raise ValueError(
                 "risk-guided PPO update requires all development seeds"
@@ -778,6 +808,14 @@ def _update(args: argparse.Namespace) -> int:
                 predicted_risk,
             )
         )
+        risk_auxiliary[unsafe_termination] = 0.0
+        assert risk_auxiliary_report is not None
+        risk_auxiliary_report["unsafe_terminations"] = int(
+            unsafe_termination.sum().item()
+        )
+        risk_auxiliary_report[
+            "unsafe_termination_auxiliary"
+        ] = "zero"
     normalized = (
         features - payload["feature_mean"].float()
     ) / payload["feature_std"].float()
@@ -796,6 +834,8 @@ def _update(args: argparse.Namespace) -> int:
         advantage = (
             advantage
             + args.risk_auxiliary_weight * risk_auxiliary
+            - args.unsafe_termination_penalty
+            * unsafe_termination.float()
         )
     advantage = (
         advantage - advantage.mean()
@@ -886,6 +926,11 @@ def _update(args: argparse.Namespace) -> int:
                 if risk_auxiliary_enabled
                 else 0.0
             ),
+            "unsafe_termination_penalty": (
+                args.unsafe_termination_penalty
+                if risk_auxiliary_enabled
+                else 0.0
+            ),
         },
         "epochs_completed": epochs_completed,
         "approximate_kl": approximate_kl,
@@ -893,9 +938,13 @@ def _update(args: argparse.Namespace) -> int:
         "value_loss": value_loss_value,
         "entropy": entropy_value,
         "objective": (
-            "terminal_success_plus_bounded_within_outcome_risk_auxiliary"
+            "terminal_success_minus_unsafe_termination_penalty_plus_"
+            "bounded_within_outcome_risk_auxiliary"
             if risk_auxiliary_enabled
             else "terminal_success"
+        ),
+        "unsafe_terminations": int(
+            unsafe_termination.sum().item()
         ),
         "risk_checkpoint": risk_checkpoint_report,
         "risk_auxiliary": risk_auxiliary_report,
@@ -1007,6 +1056,11 @@ def _parser() -> argparse.ArgumentParser:
         "--risk_auxiliary_weight",
         type=float,
         default=0.1,
+    )
+    risk_update.add_argument(
+        "--unsafe_termination_penalty",
+        type=float,
+        default=1.0,
     )
     risk_update.add_argument("--seed", type=int, default=104729)
     return parser

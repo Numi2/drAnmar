@@ -216,6 +216,7 @@ def test_risk_update_consumes_all_seed_monitored_rollouts(
             "source_revision": MODULE._source_revision(),
             "base_checkpoint_sha256": "a" * 64,
             "receiver_candidate_checkpoint_sha256": "b" * 64,
+            "control_scope": "pre_probe_risk_stratification_only",
             "cross_fit_gate": {"signal_gate_passed": True},
             "motion_control_authorized": False,
         },
@@ -263,6 +264,19 @@ def test_risk_update_consumes_all_seed_monitored_rollouts(
                 "predicted_preprobe_risk": torch.tensor(
                     (0.8, 0.2, 0.7, 0.1)
                 ),
+                "termination_names": (
+                    "success",
+                    "excessive_object_force",
+                    "protected_surface_force",
+                ),
+                "termination_flags": torch.tensor(
+                    (
+                        (False, False, False),
+                        (False, False, True),
+                        (True, False, False),
+                        (True, False, False),
+                    )
+                ),
             },
             rollout_path,
         )
@@ -292,9 +306,11 @@ def test_risk_update_consumes_all_seed_monitored_rollouts(
     updated = torch.load(output, map_location="cpu", weights_only=False)
     last_update = updated["training"]["last_update"]
     assert last_update["objective"] == (
-        "terminal_success_plus_bounded_within_outcome_risk_auxiliary"
+        "terminal_success_minus_unsafe_termination_penalty_plus_"
+        "bounded_within_outcome_risk_auxiliary"
     )
     assert last_update["risk_auxiliary"]["observed"] == 12
+    assert last_update["unsafe_terminations"] == 3
     assert last_update["risk_checkpoint"]["sha256"] == MODULE._sha256(
         risk_checkpoint
     )
