@@ -343,6 +343,12 @@ def _load_handover_teacher_receipt(
         "path": str(path),
         "sha256": _sha256(path),
         "schema_version": receipt["schema_version"],
+        "stratum": receipt.get("optimizer", {}).get("stratum"),
+        "optimization_start_frame": (
+            receipt.get("optimizer", {}).get(
+                "optimization_start_frame"
+            )
+        ),
         "selected_parameters": (
             receipt.get("optimizer", {}).get("selected_parameters")
         ),
@@ -357,6 +363,8 @@ def _load_handover_teacher_action_schedule(
     pair_id: str,
     maximum_frame: int,
 ) -> dict[str, Any]:
+    import torch
+
     schedule = json.loads(path.read_text())
     if (
         schedule.get("schema_version")
@@ -388,8 +396,13 @@ def _load_handover_teacher_action_schedule(
     normalized_segments = []
     previous_stop = -1
     for segment in segments:
-        if not isinstance(segment, dict) or segment.get("mode") != "replace":
-            raise ValueError("teacher action schedule only supports replacement")
+        if (
+            not isinstance(segment, dict)
+            or segment.get("mode") not in {"replace", "add_clamped"}
+        ):
+            raise ValueError(
+                "teacher action schedule mode must be replace or add_clamped"
+            )
         start = int(segment.get("start_frame_inclusive", -1))
         stop = int(segment.get("stop_frame_exclusive", -1))
         indices = segment.get("action_indices")
@@ -418,11 +431,74 @@ def _load_handover_teacher_action_schedule(
                 "stop_frame_exclusive": stop,
                 "action_indices": [int(index) for index in indices],
                 "values": [float(value) for value in values],
+                "mode": str(segment["mode"]),
             }
         )
         previous_stop = stop
-    if normalized_segments[0]["start_frame_inclusive"] != branch_frame:
-        raise ValueError("teacher action schedule does not start at its branch")
+    nominal_trace_metadata = None
+    nominal_actions = None
+    nominal_trace = schedule.get("nominal_trace")
+    if nominal_trace is not None:
+        if not isinstance(nominal_trace, dict):
+            raise ValueError("teacher nominal trace metadata is invalid")
+        nominal_path = Path(
+            str(nominal_trace.get("path", ""))
+        ).expanduser().resolve()
+        if not nominal_path.is_file():
+            raise ValueError("teacher nominal trace is unavailable")
+        nominal_sha256 = _sha256(nominal_path)
+        if nominal_trace.get("sha256") != nominal_sha256:
+            raise ValueError("teacher nominal trace hash drifted")
+        nominal_payload = torch.load(
+            nominal_path,
+            map_location="cpu",
+            weights_only=False,
+        )
+        nominal_safety = (
+            nominal_payload.get("safety_events")
+            if isinstance(nominal_payload, dict)
+            else None
+        )
+        if (
+            not isinstance(nominal_payload, dict)
+            or nominal_payload.get("schema_version")
+            != HANDOVER_TEACHER_TRACE_SCHEMA
+            or nominal_payload.get("role") != "control"
+            or nominal_payload.get("teacher_kind") != "frozen_baseline"
+            or nominal_payload.get("task") != task
+            or int(nominal_payload.get("seed", -1)) != seed
+            or int(nominal_payload.get("num_envs", -1)) != 1
+            or not nominal_payload.get("terminal", {}).get("complete")
+            or not isinstance(nominal_safety, torch.Tensor)
+        ):
+            raise ValueError(
+                "teacher nominal trace must be one isolated incumbent rollout"
+            )
+        nominal_actions = nominal_payload.get("actions")
+        if (
+            not isinstance(nominal_actions, torch.Tensor)
+            or nominal_actions.ndim != 2
+            or nominal_actions.shape[1] != 14
+            or nominal_actions.shape[0] <= branch_frame
+        ):
+            raise ValueError("teacher nominal trace actions are invalid")
+        nominal_trace_metadata = {
+            "path": str(nominal_path),
+            "sha256": nominal_sha256,
+            "frame_count": int(nominal_actions.shape[0]),
+            "outcome": nominal_payload["terminal"]["outcome"],
+        }
+    first_segment_start = normalized_segments[0][
+        "start_frame_inclusive"
+    ]
+    if nominal_trace_metadata is None and first_segment_start != branch_frame:
+        raise ValueError(
+            "teacher action schedule does not start at its branch"
+        )
+    if nominal_trace_metadata is not None and first_segment_start < branch_frame:
+        raise ValueError(
+            "teacher nominal residual starts before the action branch"
+        )
     return {
         "path": str(path),
         "sha256": _sha256(path),
@@ -432,6 +508,8 @@ def _load_handover_teacher_action_schedule(
             "path": str(source_control_path),
             "sha256": source_control["sha256"],
         },
+        "nominal_trace": nominal_trace_metadata,
+        "nominal_actions": nominal_actions,
         "segments": normalized_segments,
     }
 
@@ -3589,6 +3667,925 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         env.close()
 
 
+def _optimize_handover_teacher(
+    args: argparse.Namespace,
+    repo_root: Path,
+) -> int:
+    """Search bounded student-action residuals; emit proposals, never labels."""
+
+    import gymnasium as gym
+    import torch
+
+    from isaaclab.utils.math import combine_frame_transforms, quat_apply
+    from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
+    from orbit.surgical.tasks.surgical import mdp_common
+    from orbit.surgical.tasks.surgical.handover.mdp import (
+        reset_root_state_uniform_grouped,
+    )
+    from orbit.surgical.tasks.surgical.handover.successor_policy import (
+        load_handover_successor_checkpoint,
+    )
+
+    control_path = Path(args.control).expanduser().resolve()
+    successor_path = (
+        Path(args.handover_successor_checkpoint).expanduser().resolve()
+    )
+    if not control_path.is_file() or not successor_path.is_file():
+        return _fail("optimizer control and successor checkpoint must exist")
+    control = torch.load(
+        control_path,
+        map_location="cpu",
+        weights_only=False,
+    )
+    if (
+        not isinstance(control, dict)
+        or control.get("schema_version") != HANDOVER_TEACHER_TRACE_SCHEMA
+        or control.get("role") != "control"
+        or control.get("teacher_kind") != "successor_candidate"
+    ):
+        return _fail(
+            "optimizer requires one successor-candidate control trace"
+        )
+    if int(control.get("seed", -1)) != args.seed:
+        return _fail("optimizer seed does not match its source control")
+    if control.get("pair_id") != args.pair_id:
+        return _fail("optimizer pair id does not match its source control")
+    if args.seed in RECOVERY_QUALIFICATION_SEEDS:
+        return _fail("qualification seeds cannot drive teacher optimization")
+    if control.get("task") != args.task:
+        return _fail("optimizer task does not match its source control")
+    if control.get("terminal", {}).get("outcome") == "success":
+        return _fail("teacher optimization requires a reproducible failure")
+    control_observations = control.get("observations")
+    if (
+        not isinstance(control_observations, torch.Tensor)
+        or control_observations.ndim != 2
+        or control_observations.shape[1] != 98
+        or control_observations.shape[0] < 1
+    ):
+        return _fail("optimizer control observations are invalid")
+    successor_sha256 = _sha256(successor_path)
+    if (
+        control.get("policy", {}).get("successor_checkpoint_sha256")
+        != successor_sha256
+    ):
+        return _fail(
+            "optimizer control was not produced by the candidate checkpoint"
+        )
+    nominal_path = (
+        Path(args.nominal_trace).expanduser().resolve()
+        if args.nominal_trace
+        else None
+    )
+    nominal = None
+    nominal_actions = None
+    nominal_observations = None
+    if nominal_path is not None:
+        if not nominal_path.is_file():
+            return _fail("optimizer nominal trace does not exist")
+        nominal = torch.load(
+            nominal_path,
+            map_location="cpu",
+            weights_only=False,
+        )
+        nominal_safety = (
+            nominal.get("safety_events")
+            if isinstance(nominal, dict)
+            else None
+        )
+        if (
+            not isinstance(nominal, dict)
+            or nominal.get("schema_version")
+            != HANDOVER_TEACHER_TRACE_SCHEMA
+            or nominal.get("role") != "control"
+            or nominal.get("teacher_kind") != "frozen_baseline"
+            or nominal.get("task") != args.task
+            or int(nominal.get("seed", -1)) != args.seed
+            or int(nominal.get("num_envs", -1)) != 1
+            or not nominal.get("terminal", {}).get("complete")
+            or not isinstance(nominal_safety, torch.Tensor)
+        ):
+            return _fail(
+                "optimizer nominal must be one isolated incumbent rollout"
+            )
+        nominal_actions = nominal.get("actions")
+        nominal_observations = nominal.get("observations")
+        if (
+            not isinstance(nominal_actions, torch.Tensor)
+            or nominal_actions.ndim != 2
+            or nominal_actions.shape[1] != 14
+            or not isinstance(nominal_observations, torch.Tensor)
+            or nominal_observations.ndim != 2
+            or nominal_observations.shape[1] != 98
+            or nominal_observations.shape[0]
+            != nominal_actions.shape[0]
+        ):
+            return _fail("optimizer nominal trajectory tensors are invalid")
+        nominal_source = nominal.get("runtime", {}).get("source", {})
+        control_source = control.get("runtime", {}).get("source", {})
+        if (
+            nominal_source.get("dranmar_revision")
+            != control_source.get("dranmar_revision")
+            or nominal_source.get("asset_revision")
+            != control_source.get("asset_revision")
+            or nominal.get("policy", {}).get("base_checkpoint_sha256")
+            != control.get("policy", {}).get(
+                "base_checkpoint_sha256"
+            )
+            or nominal.get("policy", {}).get(
+                "successor_checkpoint_sha256"
+            )
+            is not None
+        ):
+            return _fail(
+                "optimizer nominal and candidate control contracts differ"
+            )
+        if not torch.equal(
+            nominal_observations[0],
+            control_observations[0],
+        ):
+            return _fail(
+                "optimizer nominal and candidate controls must start from "
+                "one bit-identical isolated reset"
+            )
+    try:
+        successor, successor_payload = (
+            load_handover_successor_checkpoint(
+                str(successor_path),
+                device="cuda:0",
+            )
+        )
+    except (KeyError, RuntimeError, TypeError, ValueError) as error:
+        return _fail(str(error))
+    current_revision = _command_output(
+        ["git", "rev-parse", "HEAD"],
+        repo_root,
+    )
+    asset_source = _module_git_source("orbit.surgical.assets")
+    expected_source = successor_payload.get("source", {})
+    control_source = control.get("runtime", {}).get("source", {})
+    if (
+        current_revision != expected_source.get("dranmar_revision")
+        or current_revision != control_source.get("dranmar_revision")
+        or asset_source.get("revision")
+        != expected_source.get("asset_revision")
+        or asset_source.get("revision")
+        != control_source.get("asset_revision")
+    ):
+        return _fail(
+            "optimizer source, assets, checkpoint, and control are not locked"
+        )
+    if args.population < 16 or args.population > 512:
+        return _fail("optimizer population must be in [16, 512]")
+    if args.generations < 1 or args.generations > 16:
+        return _fail("optimizer generations must be in [1, 16]")
+    if args.ranked_candidate_limit < 1 or args.ranked_candidate_limit > 64:
+        return _fail(
+            "optimizer ranked candidate limit must be in [1, 64]"
+        )
+    if args.segments < 1 or args.segments > 16:
+        return _fail("optimizer segments must be in [1, 16]")
+    if args.segment_frames < 1 or args.segment_frames > 32:
+        return _fail("optimizer segment frames must be in [1, 32]")
+    if not 0.05 <= args.elite_fraction <= 0.25:
+        return _fail("optimizer elite fraction must be in [0.05, 0.25]")
+    if not 0.0 < args.translation_cap <= 0.3:
+        return _fail("optimizer translation cap must be in (0, 0.3]")
+    if not 0.0 < args.orientation_cap <= 0.5:
+        return _fail("optimizer orientation cap must be in (0, 0.5]")
+
+    branch_source = nominal if nominal is not None else control
+    phases = branch_source["phases"].long()
+    frame_count = int(phases.shape[0])
+    duration = args.segments * args.segment_frames
+    if args.branch_frame is not None:
+        optimization_start_frame = int(args.branch_frame)
+    elif args.stratum == "custody":
+        phase_three = torch.nonzero(
+            phases == 3,
+            as_tuple=False,
+        ).flatten()
+        if phase_three.numel() == 0:
+            return _fail(
+                "custody optimization requires a phase-three control state"
+            )
+        optimization_start_frame = int(phase_three[0].item())
+    else:
+        optimization_start_frame = (
+            0
+            if nominal is not None
+            else max(0, frame_count - duration - 1)
+        )
+    if not 0 <= optimization_start_frame < args.num_frames:
+        return _fail("optimizer branch frame is outside the rollout")
+    branch_frame = 0 if nominal is not None else optimization_start_frame
+
+    giver_is_robot_1 = bool(
+        branch_source["observations"][
+            optimization_start_frame,
+            82,
+        ].item()
+        > 0.5
+    )
+    active_robot_is_one = (
+        giver_is_robot_1
+        if args.stratum == "phase0"
+        else not giver_is_robot_1
+    )
+    action_start = 0 if active_robot_is_one else 7
+    action_indices = list(range(action_start, action_start + 6))
+    caps = torch.tensor(
+        [args.translation_cap] * 3 + [args.orientation_cap] * 3,
+        device="cuda:0",
+    )
+    generator = torch.Generator(device="cuda:0").manual_seed(
+        args.optimizer_seed
+    )
+    mean = torch.zeros(
+        args.segments,
+        6,
+        device="cuda:0",
+    )
+    std = caps.unsqueeze(0).expand_as(mean) * 0.5
+    elite_count = max(
+        2,
+        math.ceil(args.population * args.elite_fraction),
+    )
+    best_parameters = mean.clone()
+    best_score: (
+        tuple[int, int, int, float, float, float] | None
+    ) = None
+    best_outcome = "unclassified"
+    generation_records = []
+    candidate_pool: list[
+        tuple[
+            tuple[int, int, int, float, float, float],
+            torch.Tensor,
+            int,
+            int,
+        ]
+    ] = []
+    initial_replica_max_abs_deviation = 0.0
+
+    def run_population(
+        parameters: torch.Tensor,
+    ) -> tuple[
+        list[tuple[int, int, int, float, float, float]],
+        list[str],
+    ]:
+        population_size = int(parameters.shape[0])
+        env_cfg, agent_cfg = _load_configs(
+            args.task,
+            population_size,
+            args.seed,
+        )
+        if population_size > 1:
+            env_cfg.events.reset_object_position.func = (
+                reset_root_state_uniform_grouped
+            )
+            env_cfg.events.reset_object_position.params["replicas"] = (
+                population_size
+            )
+        env = gym.make(args.task, cfg=env_cfg)
+        env = RslRlVecEnvWrapper(
+            env,
+            clip_actions=agent_cfg.clip_actions,
+        )
+        try:
+            nonlocal initial_replica_max_abs_deviation
+            successor.reset()
+            if nominal_observations is not None:
+                expected_initial = nominal_observations[0].to(
+                    device=env.unwrapped.device,
+                    dtype=torch.float32,
+                )
+                unwrapped = env.unwrapped
+                if not torch.equal(
+                    expected_initial[84:],
+                    torch.zeros_like(expected_initial[84:]),
+                ):
+                    raise ValueError(
+                        "optimizer source controls must begin before any action"
+                    )
+                if population_size > 1:
+                    robot = unwrapped.scene["robot_1"]
+                    obj = unwrapped.scene["object"]
+                    robot_position = mdp_common.as_torch(
+                        robot.data.root_pos_w
+                    )
+                    robot_orientation = mdp_common.as_torch(
+                        robot.data.root_quat_w
+                    )
+                    local_object_pose = expected_initial[
+                        46:53
+                    ].unsqueeze(0).expand(population_size, -1)
+                    object_position, object_orientation = (
+                        combine_frame_transforms(
+                            robot_position,
+                            robot_orientation,
+                            local_object_pose[:, :3],
+                            local_object_pose[:, 3:],
+                        )
+                    )
+                    local_object_velocity = expected_initial[
+                        60:66
+                    ].unsqueeze(0).expand(population_size, -1)
+                    object_velocity = torch.cat(
+                        (
+                            quat_apply(
+                                robot_orientation,
+                                local_object_velocity[:, :3],
+                            ),
+                            quat_apply(
+                                robot_orientation,
+                                local_object_velocity[:, 3:],
+                            ),
+                        ),
+                        dim=-1,
+                    )
+                    obj.write_root_pose_to_sim_index(
+                        root_pose=torch.cat(
+                            (object_position, object_orientation),
+                            dim=-1,
+                        )
+                    )
+                    obj.write_root_velocity_to_sim_index(
+                        root_velocity=object_velocity
+                    )
+                    command = unwrapped.command_manager.get_term(
+                        "receiver_pose"
+                    )
+                    pose_command = getattr(
+                        command,
+                        "pose_command_b",
+                        None,
+                    )
+                    if not isinstance(pose_command, torch.Tensor):
+                        raise ValueError(
+                            "optimizer cannot restore the receiver command"
+                        )
+                    pose_command.copy_(
+                        expected_initial[70:77]
+                        .unsqueeze(0)
+                        .expand_as(pose_command)
+                    )
+                    if hasattr(
+                        unwrapped,
+                        "_dr_anmar_handover_state",
+                    ):
+                        delattr(
+                            unwrapped,
+                            "_dr_anmar_handover_state",
+                        )
+            observations = env.get_observations()
+            if nominal_observations is not None:
+                expected_replicas = expected_initial.unsqueeze(0).expand(
+                    population_size,
+                    -1,
+                )
+                deviations = (
+                    observations["policy"] - expected_replicas
+                ).abs()
+                maximum_deviation = float(deviations.max().item())
+                initial_replica_max_abs_deviation = max(
+                    initial_replica_max_abs_deviation,
+                    maximum_deviation,
+                )
+                isolated_reset_mismatch = (
+                    population_size == 1
+                    and not torch.equal(
+                        observations["policy"],
+                        expected_replicas,
+                    )
+                )
+                vector_reset_mismatch = (
+                    population_size > 1
+                    and (
+                        maximum_deviation > 5.0e-6
+                        or not torch.equal(
+                            observations["policy"][:, 77:],
+                            expected_replicas[:, 77:],
+                        )
+                    )
+                )
+                if isolated_reset_mismatch:
+                    raise ValueError(
+                        "optimizer isolated probe does not exactly reproduce "
+                        "the native source reset; "
+                        f"maximum deviation was {maximum_deviation:.9g}"
+                    )
+                if vector_reset_mismatch:
+                    raise ValueError(
+                        "optimizer replicas do not reproduce the isolated "
+                        "reset within the 5e-6 spatial-origin tolerance; "
+                        f"maximum deviation was {maximum_deviation:.9g}"
+                    )
+            unresolved = torch.ones(
+                population_size,
+                dtype=torch.bool,
+                device=env.unwrapped.device,
+            )
+            maximum_phase = torch.zeros(
+                population_size,
+                dtype=torch.long,
+                device=env.unwrapped.device,
+            )
+            terminal_frame = torch.full_like(
+                maximum_phase,
+                args.num_frames - 1,
+            )
+            successful = torch.zeros_like(unresolved)
+            safety = torch.zeros_like(unresolved)
+            peak_contact_force = torch.zeros(
+                population_size,
+                device=env.unwrapped.device,
+            )
+            peak_object_speed = torch.zeros_like(
+                peak_contact_force
+            )
+            action_variation = torch.zeros_like(
+                peak_contact_force
+            )
+            action_variation_frames = torch.zeros_like(
+                peak_contact_force
+            )
+            previous_actions = None
+            outcomes = ["time_out"] * population_size
+            manager = env.unwrapped.termination_manager
+            active_terms = list(manager.active_terms)
+            missing = sorted(
+                set(HANDOVER_SAFETY_TERMS) - set(active_terms)
+            )
+            if missing:
+                raise ValueError(
+                    "optimizer task lacks safety terms: "
+                    + ", ".join(missing)
+                )
+            for frame_index in range(args.num_frames):
+                raw_observation = observations["policy"]
+                observed_phase = torch.argmax(
+                    raw_observation[:, 77:82],
+                    dim=-1,
+                )
+                maximum_phase = torch.where(
+                    unresolved,
+                    torch.maximum(maximum_phase, observed_phase),
+                    maximum_phase,
+                )
+                contact_force = (
+                    raw_observation[:, 66:70].abs().amax(dim=-1)
+                    / 0.2
+                )
+                object_speed = torch.linalg.vector_norm(
+                    raw_observation[:, 60:66],
+                    dim=-1,
+                )
+                peak_contact_force = torch.where(
+                    unresolved,
+                    torch.maximum(
+                        peak_contact_force,
+                        contact_force,
+                    ),
+                    peak_contact_force,
+                )
+                peak_object_speed = torch.where(
+                    unresolved,
+                    torch.maximum(
+                        peak_object_speed,
+                        object_speed,
+                    ),
+                    peak_object_speed,
+                )
+                if nominal_actions is not None:
+                    nominal_index = min(
+                        frame_index,
+                        int(nominal_actions.shape[0]) - 1,
+                    )
+                    actions = nominal_actions[nominal_index].to(
+                        device=env.unwrapped.device,
+                        dtype=raw_observation.dtype,
+                    ).unsqueeze(0).expand(
+                        population_size,
+                        -1,
+                    ).clone()
+                else:
+                    with torch.no_grad():
+                        actions = successor(observations)
+                if (
+                    optimization_start_frame
+                    <= frame_index
+                    < optimization_start_frame + duration
+                ):
+                    segment = (
+                        frame_index - optimization_start_frame
+                    ) // args.segment_frames
+                    actions = actions.clone()
+                    actions[:, action_indices] = (
+                        actions[:, action_indices]
+                        + parameters[:, segment]
+                    ).clamp(-1.0, 1.0)
+                if previous_actions is not None:
+                    variation = (
+                        actions - previous_actions
+                    ).square().mean(dim=-1)
+                    action_variation += torch.where(
+                        unresolved,
+                        variation,
+                        torch.zeros_like(variation),
+                    )
+                    action_variation_frames += unresolved.float()
+                previous_actions = actions.clone()
+                observations, _, dones, _ = env.step(actions)
+                term_values = {
+                    name: manager.get_term(name).bool()
+                    for name in active_terms
+                }
+                current_safety = torch.zeros_like(unresolved)
+                for name in HANDOVER_SAFETY_TERMS:
+                    current_safety |= term_values[name]
+                safety |= unresolved & current_safety
+                newly_done = unresolved & dones.bool()
+                safe_success = (
+                    newly_done
+                    & term_values["success"]
+                    & ~current_safety
+                )
+                successful |= safe_success
+                terminal_frame[newly_done] = frame_index
+                for index in torch.nonzero(
+                    newly_done,
+                    as_tuple=False,
+                ).flatten().tolist():
+                    if bool(safe_success[index].item()):
+                        outcomes[index] = "success"
+                    else:
+                        outcomes[index] = next(
+                            (
+                                name
+                                for name in HANDOVER_SAFETY_TERMS
+                                if bool(term_values[name][index].item())
+                            ),
+                            "time_out",
+                        )
+                unresolved &= ~dones.bool()
+                successor.reset(dones)
+                if not bool(unresolved.any()):
+                    break
+            mean_action_variation = (
+                action_variation
+                / action_variation_frames.clamp_min(1.0)
+            )
+            scores = [
+                (
+                    int(not safety[index].item()),
+                    int(maximum_phase[index].item()),
+                    int(successful[index].item()),
+                    -float(peak_contact_force[index].item()),
+                    -float(peak_object_speed[index].item()),
+                    -float(mean_action_variation[index].item()),
+                )
+                for index in range(population_size)
+            ]
+            return scores, outcomes
+        finally:
+            env.close()
+            successor.reset()
+
+    for generation in range(args.generations):
+        noise = torch.randn(
+            args.population,
+            args.segments,
+            6,
+            generator=generator,
+            device="cuda:0",
+        )
+        parameters = (
+            mean.unsqueeze(0) + std.unsqueeze(0) * noise
+        ).clamp(
+            -caps.view(1, 1, 6),
+            caps.view(1, 1, 6),
+        )
+        parameters[0] = mean
+        scores, outcomes = run_population(parameters)
+        ranked = sorted(
+            range(args.population),
+            key=lambda index: scores[index],
+            reverse=True,
+        )
+        elite = parameters[ranked[:elite_count]]
+        mean = elite.mean(dim=0)
+        std = elite.std(dim=0, unbiased=False).clamp_min(
+            caps.unsqueeze(0) * 0.02
+        )
+        nonzero = (
+            parameters.abs().flatten(1).amax(dim=-1) > 1.0e-7
+        )
+        optimized_successes = [
+            index
+            for index in ranked
+            if scores[index][0] == 1
+            and scores[index][2] == 1
+            and bool(nonzero[index].item())
+        ]
+        candidate_pool.extend(
+            (
+                scores[index],
+                parameters[index].detach().clone(),
+                generation + 1,
+                index,
+            )
+            for index in optimized_successes
+        )
+        generation_best = (
+            optimized_successes[0]
+            if optimized_successes
+            else ranked[0]
+        )
+        if (
+            best_score is None
+            or scores[generation_best] > best_score
+        ):
+            best_score = scores[generation_best]
+            best_parameters = parameters[generation_best].clone()
+            best_outcome = outcomes[generation_best]
+        generation_records.append(
+            {
+                "generation": generation + 1,
+                "best_score": list(scores[generation_best]),
+                "best_outcome": outcomes[generation_best],
+                "safe_successes": sum(
+                    score[0] == 1 and score[2] == 1
+                    for score in scores
+                ),
+                "nonzero_safe_successes": len(
+                    optimized_successes
+                ),
+            }
+        )
+
+    vectorized_best_score = best_score
+    vectorized_best_outcome = best_outcome
+    vectorized_best_parameters = best_parameters.clone()
+    unique_candidates = []
+    seen_candidates: set[bytes] = set()
+    for record in sorted(
+        candidate_pool,
+        key=lambda item: item[0],
+        reverse=True,
+    ):
+        fingerprint = (
+            record[1]
+            .detach()
+            .cpu()
+            .contiguous()
+            .numpy()
+            .tobytes()
+        )
+        if fingerprint in seen_candidates:
+            continue
+        seen_candidates.add(fingerprint)
+        unique_candidates.append(record)
+        if len(unique_candidates) >= args.ranked_candidate_limit:
+            break
+    if unique_candidates:
+        (
+            best_score,
+            best_parameters,
+            _,
+            _,
+        ) = unique_candidates[0]
+        best_outcome = "success"
+
+    schedule_path = Path(args.output_schedule).expanduser().resolve()
+    receipt_path = Path(args.output_receipt).expanduser().resolve()
+    evidence_path = Path(args.output_path).expanduser().resolve()
+    candidate_directory = (
+        Path(args.output_candidate_directory).expanduser().resolve()
+    )
+    for output in (schedule_path, receipt_path, evidence_path):
+        if output.exists():
+            return _fail(
+                f"refusing to overwrite optimizer artifact: {output}"
+            )
+        output.parent.mkdir(parents=True, exist_ok=True)
+    if candidate_directory.exists():
+        return _fail(
+            "refusing to overwrite optimizer candidate directory: "
+            f"{candidate_directory}"
+        )
+    candidate_directory.mkdir(parents=True)
+
+    def proposal_schedule(parameters: torch.Tensor) -> dict[str, Any]:
+        return {
+            "schema_version": HANDOVER_TEACHER_ACTION_SCHEDULE_SCHEMA,
+            "task": args.task,
+            "seed": args.seed,
+            "pair_id": args.pair_id,
+            "source_control": {
+                "path": str(control_path),
+                "sha256": _sha256(control_path),
+            },
+            "nominal_trace": (
+                {
+                    "path": str(nominal_path),
+                    "sha256": _sha256(nominal_path),
+                }
+                if nominal_path is not None
+                else None
+            ),
+            "branch_frame": branch_frame,
+            "segments": [
+                {
+                    "start_frame_inclusive": (
+                        optimization_start_frame
+                        + segment * args.segment_frames
+                    ),
+                    "stop_frame_exclusive": (
+                        optimization_start_frame
+                        + (segment + 1) * args.segment_frames
+                    ),
+                    "action_indices": action_indices,
+                    "values": [
+                        float(value)
+                        for value in parameters[segment].tolist()
+                    ],
+                    "mode": "add_clamped",
+                }
+                for segment in range(args.segments)
+            ],
+            "proposal_only": True,
+        }
+
+    def proposal_receipt(schedule_sha256: str) -> dict[str, Any]:
+        return {
+            "schema_version": HANDOVER_TEACHER_RECEIPT_SCHEMA,
+            "task": args.task,
+            "seed": args.seed,
+            "pair_id": args.pair_id,
+            "teacher_kind": "constrained_trajectory_optimizer",
+            "optimizer": {
+                "algorithm": (
+                    "bounded_cross_entropy_action_residual_search"
+                ),
+                "stratum": args.stratum,
+                "optimization_start_frame": optimization_start_frame,
+                "objective": (
+                    "lexicographic_no_safety_then_physical_phase_then_"
+                    "terminal_success_then_force_margin_then_slip_then_"
+                    "action_variation"
+                ),
+                "constraints": {
+                    "proposal_search_may_use_vectorized_clones": True,
+                    "ranked_proposal_must_pass_fresh_process_replay": True,
+                    "single_environment_final_replay_required": True,
+                    "proposal_sources_are_not_training_labels": True,
+                    "qualification_seeds_forbidden": True,
+                    "environment_action_bound": 1.0,
+                    "translation_residual_cap": args.translation_cap,
+                    "orientation_residual_cap": args.orientation_cap,
+                },
+                "selected_parameters": {
+                    "action_schedule_sha256": schedule_sha256,
+                },
+                "proposal_sources": [
+                    {
+                        "path": str(control_path),
+                        "sha256": _sha256(control_path),
+                    },
+                    {
+                        "path": str(successor_path),
+                        "sha256": successor_sha256,
+                    },
+                    *(
+                        [
+                            {
+                                "path": str(nominal_path),
+                                "sha256": _sha256(nominal_path),
+                            }
+                        ]
+                        if nominal_path is not None
+                        else []
+                    ),
+                ],
+            },
+        }
+
+    schedule = proposal_schedule(best_parameters)
+    with schedule_path.open("x") as stream:
+        json.dump(schedule, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+    schedule_sha256 = _sha256(schedule_path)
+    receipt = proposal_receipt(schedule_sha256)
+    with receipt_path.open("x") as stream:
+        json.dump(receipt, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+
+    ranked_candidate_records = []
+    for rank, (
+        vector_score,
+        parameters,
+        generation,
+        proposal_index,
+    ) in enumerate(unique_candidates, start=1):
+        candidate_schedule_path = (
+            candidate_directory / f"candidate-{rank:03d}-schedule.json"
+        )
+        candidate_receipt_path = (
+            candidate_directory / f"candidate-{rank:03d}-receipt.json"
+        )
+        with candidate_schedule_path.open("x") as stream:
+            json.dump(
+                proposal_schedule(parameters),
+                stream,
+                indent=2,
+                sort_keys=True,
+            )
+            stream.write("\n")
+        candidate_schedule_sha256 = _sha256(candidate_schedule_path)
+        with candidate_receipt_path.open("x") as stream:
+            json.dump(
+                proposal_receipt(candidate_schedule_sha256),
+                stream,
+                indent=2,
+                sort_keys=True,
+            )
+            stream.write("\n")
+        ranked_candidate_records.append(
+            {
+                "rank": rank,
+                "generation": generation,
+                "proposal_index": proposal_index,
+                "vectorized_score": list(vector_score),
+                "schedule": {
+                    "path": str(candidate_schedule_path),
+                    "sha256": candidate_schedule_sha256,
+                },
+                "receipt": {
+                    "path": str(candidate_receipt_path),
+                    "sha256": _sha256(candidate_receipt_path),
+                },
+            }
+        )
+    evidence = {
+        "schema_version": "dranmar-handover-teacher-optimizer-1.0",
+        "status": (
+            "ranked_proposals_require_fresh_replay"
+            if ranked_candidate_records
+            else "proposal_only_no_safe_success"
+        ),
+        "task": args.task,
+        "seed": args.seed,
+        "pair_id": args.pair_id,
+        "stratum": args.stratum,
+        "branch_frame": branch_frame,
+        "optimization_start_frame": optimization_start_frame,
+        "action_indices": action_indices,
+        "nominal_trace": (
+            {
+                "path": str(nominal_path),
+                "sha256": _sha256(nominal_path),
+            }
+            if nominal_path is not None
+            else None
+        ),
+        "population": args.population,
+        "generations": args.generations,
+        "elite_fraction": args.elite_fraction,
+        "initial_replica_max_abs_deviation": (
+            initial_replica_max_abs_deviation
+        ),
+        "best_score": list(best_score) if best_score is not None else None,
+        "best_outcome": best_outcome,
+        "vectorized_best_score": (
+            list(vectorized_best_score)
+            if vectorized_best_score is not None
+            else None
+        ),
+        "vectorized_best_outcome": vectorized_best_outcome,
+        "vectorized_best_parameters": (
+            vectorized_best_parameters.detach().cpu().tolist()
+        ),
+        "generation_records": generation_records,
+        "ranked_candidate_limit": args.ranked_candidate_limit,
+        "ranked_candidate_records": ranked_candidate_records,
+        "fresh_process_replay_required": True,
+        "schedule": {
+            "path": str(schedule_path),
+            "sha256": schedule_sha256,
+        },
+        "receipt": {
+            "path": str(receipt_path),
+            "sha256": _sha256(receipt_path),
+        },
+        "runtime": _runtime_evidence(repo_root),
+    }
+    with evidence_path.open("x") as stream:
+        json.dump(evidence, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+    print(json.dumps(evidence, indent=2, sort_keys=True))
+    return 0
+
+
 def _play(args: argparse.Namespace, repo_root: Path) -> int:
     import gymnasium as gym
     import torch
@@ -3597,9 +4594,20 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     from isaaclab.managers import SceneEntityCfg
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
-    checkpoint = Path(args.checkpoint).expanduser().resolve()
-    if not checkpoint.is_file():
+    checkpoint = (
+        Path(args.checkpoint).expanduser().resolve()
+        if args.checkpoint
+        else None
+    )
+    if checkpoint is not None and not checkpoint.is_file():
         return _fail(f"checkpoint not found: {checkpoint}")
+    if checkpoint is None and not args.handover_successor_checkpoint:
+        return _fail(
+            "play requires --checkpoint or --handover_successor_checkpoint"
+        )
+    base_checkpoint_sha256 = (
+        _sha256(checkpoint) if checkpoint is not None else None
+    )
 
     handover_teacher_trace_path = None
     handover_teacher_receipt = None
@@ -3688,8 +4696,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if asset_status is None or asset_status:
             return _fail("teacher traces require a clean asset worktree")
         if args.handover_teacher_role == "control":
-            if args.handover_teacher_kind != "frozen_baseline":
-                return _fail("control traces must identify the frozen baseline")
+            expected_control_kind = (
+                "successor_candidate"
+                if args.handover_successor_checkpoint
+                else "frozen_baseline"
+            )
+            if args.handover_teacher_kind != expected_control_kind:
+                return _fail(
+                    "control trace kind does not match the executed policy: "
+                    f"expected {expected_control_kind}"
+                )
             if args.handover_teacher_receipt:
                 return _fail("control traces cannot claim a teacher receipt")
             if args.handover_teacher_action_schedule:
@@ -3792,6 +4808,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     ):
         return _fail(
             "the full-action successor cannot be stacked with recovery policies"
+        )
+    if checkpoint is None and successor_incompatible:
+        return _fail(
+            "standalone successor play cannot configure legacy recovery policy"
         )
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
@@ -4137,14 +5157,25 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             disable_logger=True,
         )
     env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
-    runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
-    runner.load(str(checkpoint))
-    policy_model = runner.alg.get_policy()
+    runner = None
+    policy_model = None
+    if checkpoint is not None:
+        runner = OnPolicyRunner(
+            env,
+            agent_cfg.to_dict(),
+            log_dir=None,
+            device=agent_cfg.device,
+        )
+        runner.load(str(checkpoint))
+        policy_model = runner.alg.get_policy()
     if args.residual_scale is not None:
         if args.residual_scale < 0.0:
             env.close()
             return _fail("play residual scale must be non-negative")
-        if not hasattr(policy_model, "residual_scale"):
+        if policy_model is None or not hasattr(
+            policy_model,
+            "residual_scale",
+        ):
             env.close()
             return _fail(
                 "loaded policy does not expose a residual scale"
@@ -4359,7 +5390,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             if (
                 isinstance(recovery_payload, dict)
                 and recovery_payload.get("base_checkpoint_sha256")
-                not in {None, _sha256(checkpoint)}
+                not in {None, base_checkpoint_sha256}
             ):
                 env.close()
                 return _fail(
@@ -4614,7 +5645,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         pickup_recovery_policy.eval()
         policy = pickup_recovery_policy
     else:
-        policy = runner.get_inference_policy(device=env.unwrapped.device)
+        policy = (
+            runner.get_inference_policy(device=env.unwrapped.device)
+            if runner is not None
+            else None
+        )
 
     receiver_recovery_policy = None
     if (
@@ -4697,7 +5732,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
             if receiver_payload.get("base_checkpoint_sha256") not in {
                 None,
-                _sha256(checkpoint),
+                base_checkpoint_sha256,
             }:
                 env.close()
                 return _fail(
@@ -4786,7 +5821,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
             if (
                 receiver_gate_payload.get("base_checkpoint_sha256")
-                != _sha256(checkpoint)
+                != base_checkpoint_sha256
             ):
                 env.close()
                 return _fail(
@@ -4878,7 +5913,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
             if (
                 stabilization_payload.get("base_checkpoint_sha256")
-                != _sha256(checkpoint)
+                != base_checkpoint_sha256
             ):
                 env.close()
                 return _fail(
@@ -4960,7 +5995,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
             if (
                 candidate_payload.get("base_checkpoint_sha256")
-                != _sha256(checkpoint)
+                != base_checkpoint_sha256
             ):
                 env.close()
                 return _fail(
@@ -5295,6 +6330,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     handover_successor = None
     handover_successor_payload = None
     handover_successor_checkpoint = None
+    handover_successor_jit = None
+    handover_successor_onnx = None
     if args.handover_successor_checkpoint:
         if args.task != "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0":
             env.close()
@@ -5309,6 +6346,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 f"{handover_successor_checkpoint}"
             )
         from orbit.surgical.tasks.surgical.handover.successor_policy import (
+            export_handover_successor_checkpoint as export_policy_to_jit,
+            export_handover_successor_onnx as export_policy_to_onnx,
             load_handover_successor_checkpoint,
         )
 
@@ -5323,11 +6362,112 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             env.close()
             return _fail(str(error))
         if (
-            handover_successor_payload.get("base_checkpoint_sha256")
-            != _sha256(checkpoint)
+            base_checkpoint_sha256 is not None
+            and handover_successor_payload.get("base_checkpoint_sha256")
+            != base_checkpoint_sha256
         ):
             env.close()
             return _fail("successor was trained from another frozen baseline")
+        if base_checkpoint_sha256 is None:
+            base_checkpoint_sha256 = handover_successor_payload.get(
+                "base_checkpoint_sha256"
+            )
+        if not base_checkpoint_sha256:
+            env.close()
+            return _fail("successor lacks its frozen training baseline hash")
+        if args.handover_successor_jit_output:
+            jit_path = (
+                Path(args.handover_successor_jit_output)
+                .expanduser()
+                .resolve()
+            )
+            if jit_path.exists():
+                env.close()
+                return _fail(
+                    "refusing to overwrite immutable successor JIT export: "
+                    f"{jit_path}"
+                )
+            jit_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary_jit = jit_path.with_name(
+                f".{jit_path.name}.{os.getpid()}.tmp"
+            )
+            try:
+                export_policy_to_jit(
+                    str(handover_successor_checkpoint),
+                    str(temporary_jit),
+                    device=env.unwrapped.device,
+                )
+                scripted = torch.jit.load(
+                    str(temporary_jit),
+                    map_location=env.unwrapped.device,
+                )
+                parity_observation = torch.zeros(
+                    2,
+                    98,
+                    device=env.unwrapped.device,
+                )
+                parity_observation[:, 77] = 1.0
+                parity_hidden = handover_successor.initial_hidden(
+                    2,
+                    device=env.unwrapped.device,
+                )
+                with torch.inference_mode():
+                    eager_action, eager_hidden = handover_successor.step(
+                        parity_observation,
+                        parity_hidden,
+                    )
+                    jit_action, jit_hidden = scripted(
+                        parity_observation,
+                        parity_hidden,
+                    )
+                if not (
+                    torch.equal(eager_action, jit_action)
+                    and torch.equal(eager_hidden, jit_hidden)
+                ):
+                    env.close()
+                    return _fail(
+                        "successor JIT export does not match eager inference"
+                    )
+                os.replace(temporary_jit, jit_path)
+            finally:
+                if temporary_jit.exists():
+                    temporary_jit.unlink()
+            handover_successor_jit = {
+                "path": str(jit_path),
+                "sha256": _sha256(jit_path),
+                "eager_action_parity": True,
+                "eager_hidden_parity": True,
+            }
+        if args.handover_successor_onnx_output:
+            onnx_path = (
+                Path(args.handover_successor_onnx_output)
+                .expanduser()
+                .resolve()
+            )
+            if onnx_path.exists():
+                env.close()
+                return _fail(
+                    "refusing to overwrite immutable successor ONNX export: "
+                    f"{onnx_path}"
+                )
+            onnx_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary_onnx = onnx_path.with_name(
+                f".{onnx_path.name}.{os.getpid()}.tmp"
+            )
+            try:
+                export_policy_to_onnx(
+                    str(handover_successor_checkpoint),
+                    str(temporary_onnx),
+                    device=env.unwrapped.device,
+                )
+                os.replace(temporary_onnx, onnx_path)
+            finally:
+                if temporary_onnx.exists():
+                    temporary_onnx.unlink()
+            handover_successor_onnx = {
+                "path": str(onnx_path),
+                "sha256": _sha256(onnx_path),
+            }
         expected_source = handover_successor_payload.get("source", {})
         if expected_source.get("dranmar_revision") != _command_output(
             ["git", "rev-parse", "HEAD"],
@@ -5881,7 +7021,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     )
     handover_dagger_terminal = None
     handover_teacher_policy = {
-        "base_checkpoint_sha256": _sha256(checkpoint),
+        "base_checkpoint_sha256": base_checkpoint_sha256,
         "successor_checkpoint_sha256": (
             _sha256(handover_successor_checkpoint)
             if handover_successor_checkpoint is not None
@@ -6350,6 +7490,20 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         actions[0].detach().cpu().clone()
                     )
                 if handover_teacher_action_schedule is not None:
+                    nominal_actions = (
+                        handover_teacher_action_schedule.get(
+                            "nominal_actions"
+                        )
+                    )
+                    if nominal_actions is not None:
+                        nominal_index = min(
+                            frame_index,
+                            int(nominal_actions.shape[0]) - 1,
+                        )
+                        actions = nominal_actions[nominal_index].to(
+                            device=actions.device,
+                            dtype=actions.dtype,
+                        ).unsqueeze(0)
                     for segment in handover_teacher_action_schedule[
                         "segments"
                     ]:
@@ -6359,14 +7513,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             < segment["stop_frame_exclusive"]
                         ):
                             actions = actions.clone()
-                            actions[
-                                0,
-                                segment["action_indices"],
-                            ] = torch.tensor(
+                            scheduled_values = torch.tensor(
                                 segment["values"],
                                 dtype=actions.dtype,
                                 device=actions.device,
                             )
+                            if segment["mode"] == "replace":
+                                actions[
+                                    0,
+                                    segment["action_indices"],
+                                ] = scheduled_values
+                            else:
+                                actions[
+                                    0,
+                                    segment["action_indices"],
+                                ] = (
+                                    actions[
+                                        0,
+                                        segment["action_indices"],
+                                    ]
+                                    + scheduled_values
+                                ).clamp(-1.0, 1.0)
                 if handover_teacher_actions is not None:
                     handover_teacher_actions.append(
                         actions[0].detach().cpu().clone()
@@ -7720,7 +8887,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "task": args.task,
                     "seed": args.seed,
-                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "base_checkpoint_sha256": base_checkpoint_sha256,
                     "pickup_recovery_checkpoint_sha256": (
                         _sha256(
                             Path(args.pickup_recovery_checkpoint)
@@ -7953,7 +9120,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "reset_rotation_randomization_deg": (
                         args.recovery_demo_rotation_deg
                     ),
-                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "base_checkpoint_sha256": base_checkpoint_sha256,
                     "position_cap_m": (
                         args.pickup_recovery_position_cap
                     ),
@@ -8276,7 +9443,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "reset_rotation_randomization_deg": (
                         args.recovery_demo_rotation_deg
                     ),
-                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "base_checkpoint_sha256": base_checkpoint_sha256,
                     "pickup_recovery_checkpoint_sha256": (
                         _sha256(
                             Path(
@@ -8582,7 +9749,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "maximum_phase": int(phases_tensor.max().item()),
                 },
                 "policy": {
-                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "base_checkpoint_sha256": base_checkpoint_sha256,
                     "successor_checkpoint_sha256": _sha256(
                         handover_successor_checkpoint
                     ),
@@ -8741,10 +9908,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 if first_completed_count
                 else None
             ),
-            "checkpoint": {
-                "path": str(checkpoint),
-                "sha256": _sha256(checkpoint),
-            },
+            "checkpoint": (
+                {
+                    "path": str(checkpoint),
+                    "sha256": base_checkpoint_sha256,
+                }
+                if checkpoint is not None
+                else None
+            ),
             "handover_successor": (
                 {
                     "enabled": True,
@@ -8757,6 +9928,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "deployment_status"
                     ],
                     "runtime_heuristic_stack": False,
+                    "jit_export": handover_successor_jit,
+                    "onnx_export": handover_successor_onnx,
                 }
                 if handover_successor_checkpoint is not None
                 and handover_successor_payload is not None
@@ -8865,7 +10038,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "pickup_recovery": (
                 {
                     "enabled": True,
-                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "base_checkpoint_sha256": base_checkpoint_sha256,
                     "head_checkpoint": (
                         {
                             "path": str(
@@ -8985,7 +10158,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "receiver_recovery": (
                 {
                     "enabled": True,
-                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "base_checkpoint_sha256": base_checkpoint_sha256,
                     "head_checkpoint": (
                         {
                             "path": str(
@@ -9435,9 +10608,72 @@ def _parser() -> argparse.ArgumentParser:
     pretrain.add_argument("--output_path", required=True)
     pretrain.add_argument("--benchmark_formatter", default="schema,json")
 
+    optimize_teacher = subparsers.add_parser("optimize-teacher")
+    optimize_teacher.add_argument("--task", required=True)
+    optimize_teacher.add_argument("--control", required=True)
+    optimize_teacher.add_argument(
+        "--handover_successor_checkpoint",
+        required=True,
+    )
+    optimize_teacher.add_argument(
+        "--nominal_trace",
+        help="isolated safe incumbent success used as the CEM nominal",
+    )
+    optimize_teacher.add_argument("--pair_id", required=True)
+    optimize_teacher.add_argument("--seed", type=int, required=True)
+    optimize_teacher.add_argument(
+        "--stratum",
+        choices=("phase0", "custody"),
+        required=True,
+    )
+    optimize_teacher.add_argument("--branch_frame", type=int)
+    optimize_teacher.add_argument("--population", type=int, default=128)
+    optimize_teacher.add_argument("--generations", type=int, default=4)
+    optimize_teacher.add_argument(
+        "--ranked_candidate_limit",
+        "--isolated_candidate_limit",
+        dest="ranked_candidate_limit",
+        type=int,
+        default=16,
+        help=(
+            "number of vector-ranked proposals to emit for mandatory "
+            "fresh-process replay"
+        ),
+    )
+    optimize_teacher.add_argument("--segments", type=int, default=4)
+    optimize_teacher.add_argument("--segment_frames", type=int, default=8)
+    optimize_teacher.add_argument(
+        "--elite_fraction",
+        type=float,
+        default=0.1,
+    )
+    optimize_teacher.add_argument(
+        "--translation_cap",
+        type=float,
+        default=0.15,
+    )
+    optimize_teacher.add_argument(
+        "--orientation_cap",
+        type=float,
+        default=0.2,
+    )
+    optimize_teacher.add_argument(
+        "--optimizer_seed",
+        type=int,
+        default=104729,
+    )
+    optimize_teacher.add_argument("--num_frames", type=int, default=2000)
+    optimize_teacher.add_argument("--output_schedule", required=True)
+    optimize_teacher.add_argument("--output_receipt", required=True)
+    optimize_teacher.add_argument(
+        "--output_candidate_directory",
+        required=True,
+    )
+    optimize_teacher.add_argument("--output_path", required=True)
+
     play = subparsers.add_parser("play")
     play.add_argument("--task", required=True)
-    play.add_argument("--checkpoint", required=True)
+    play.add_argument("--checkpoint")
     play.add_argument("--num_envs", type=int, required=True)
     play.add_argument("--num_frames", type=int, required=True)
     play.add_argument("--seed", type=int, default=2361)
@@ -9452,6 +10688,14 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--handover_successor_checkpoint",
         help="evaluate one compact full-action successor without recovery stacking",
+    )
+    play.add_argument(
+        "--handover_successor_jit_output",
+        help="immutably export and parity-check the recurrent successor",
+    )
+    play.add_argument(
+        "--handover_successor_onnx_output",
+        help="immutably export the recurrent successor step to ONNX",
     )
     play.add_argument(
         "--handover_dagger_trace",
@@ -9480,6 +10724,7 @@ def _parser() -> argparse.ArgumentParser:
         "--handover_teacher_kind",
         choices=(
             "frozen_baseline",
+            "successor_candidate",
             "constrained_trajectory_optimizer",
             "clinician_teleoperation",
         ),
@@ -9735,6 +10980,8 @@ def main(argv: list[str]) -> int:
         return 0
     if not args.task.startswith("DrAnmar-"):
         return _fail("--task must name a registered DrAnmar learning task")
+    if args.mode == "optimize-teacher":
+        args.num_envs = args.population
 
     minimum_free_mib = int(os.environ.get("DR_ANMAR_MIN_FREE_GPU_MIB", "1024"))
     free_mib = _free_gpu_memory_mib()
@@ -9770,6 +11017,8 @@ def main(argv: list[str]) -> int:
             free_mib,
             system_available_mib,
         )
+    if args.mode == "optimize-teacher":
+        args.population = args.num_envs
 
     # Reuse one process-owned CUDA context across Torch, Warp, and PhysX. This
     # avoids a second large primary context when other GPU services are active.
@@ -9810,6 +11059,8 @@ def main(argv: list[str]) -> int:
             result = _train(args, repo_root)
         elif args.mode == "pretrain":
             result = _pretrain(args, repo_root)
+        elif args.mode == "optimize-teacher":
+            result = _optimize_handover_teacher(args, repo_root)
         else:
             result = _play(args, repo_root)
         del cuda_context_guard

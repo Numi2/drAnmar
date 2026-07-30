@@ -6,6 +6,9 @@ import math
 import runpy
 from pathlib import Path
 
+import pytest
+import torch
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TASK_ROOT = ROOT / "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks"
@@ -1049,3 +1052,99 @@ def test_launcher_fits_parallel_worlds_to_live_ram_and_vram() -> None:
     assert fit(512, 12_803, 11_613) == 256
     assert fit(512, 17_000, 30_000) == 512
     assert fit(1_024, 24_000, 8_500) == 128
+
+
+def test_teacher_schedule_locks_safe_nominal_trace(
+    tmp_path: Path,
+) -> None:
+    scope = runpy.run_path(
+        str(ROOT / "scripts/dr_anmar_learning_benchmark.py")
+    )
+    source_control = tmp_path / "candidate-control.pt"
+    source_control.write_bytes(b"candidate-control")
+    nominal_path = tmp_path / "nominal.pt"
+    nominal_actions = torch.zeros(4, 14)
+    torch.save(
+        {
+            "schema_version": (
+                scope["HANDOVER_TEACHER_TRACE_SCHEMA"]
+            ),
+            "role": "control",
+            "teacher_kind": "frozen_baseline",
+            "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
+            "seed": 104729,
+            "num_envs": 1,
+            "terminal": {"complete": True, "outcome": "success"},
+            "safety_events": torch.zeros(4, 6, dtype=torch.bool),
+            "actions": nominal_actions,
+        },
+        nominal_path,
+    )
+    schedule_path = tmp_path / "schedule.json"
+    schedule_path.write_text(
+        json.dumps(
+            {
+                "schema_version": (
+                    scope["HANDOVER_TEACHER_ACTION_SCHEDULE_SCHEMA"]
+                ),
+                "task": (
+                    "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0"
+                ),
+                "seed": 104729,
+                "pair_id": "rescue-104729-phase0",
+                "source_control": {
+                    "path": str(source_control),
+                    "sha256": scope["_sha256"](source_control),
+                },
+                "nominal_trace": {
+                    "path": str(nominal_path),
+                    "sha256": scope["_sha256"](nominal_path),
+                },
+                "branch_frame": 0,
+                "segments": [
+                    {
+                        "start_frame_inclusive": 0,
+                        "stop_frame_exclusive": 2,
+                        "action_indices": [0],
+                        "values": [0.1],
+                        "mode": "add_clamped",
+                    }
+                ],
+            }
+        )
+    )
+
+    loaded = scope["_load_handover_teacher_action_schedule"](
+        schedule_path,
+        task="DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
+        seed=104729,
+        pair_id="rescue-104729-phase0",
+        maximum_frame=10,
+    )
+
+    assert torch.equal(loaded["nominal_actions"], nominal_actions)
+    nominal_actions[0, 0] = 1.0
+    torch.save(
+        {
+            "schema_version": (
+                scope["HANDOVER_TEACHER_TRACE_SCHEMA"]
+            ),
+            "role": "control",
+            "teacher_kind": "frozen_baseline",
+            "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
+            "seed": 104729,
+            "num_envs": 1,
+            "terminal": {"complete": True, "outcome": "success"},
+            "safety_events": torch.zeros(4, 6, dtype=torch.bool),
+            "actions": nominal_actions,
+        },
+        nominal_path,
+    )
+    with pytest.raises(ValueError, match="nominal trace hash drifted"):
+        scope["_load_handover_teacher_action_schedule"](
+            schedule_path,
+            task="DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
+            seed=104729,
+            pair_id="rescue-104729-phase0",
+            maximum_frame=10,
+        )

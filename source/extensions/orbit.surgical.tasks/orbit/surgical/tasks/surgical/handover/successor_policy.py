@@ -12,7 +12,10 @@ import torch
 from torch import nn
 
 
-SUCCESSOR_CHECKPOINT_SCHEMA = "dranmar-handover-successor-policy-2.0"
+SUCCESSOR_CHECKPOINT_SCHEMA = "dranmar-handover-successor-policy-3.0"
+LEGACY_SUCCESSOR_CHECKPOINT_SCHEMAS = {
+    "dranmar-handover-successor-policy-2.0",
+}
 HANDOVER_OBSERVATION_DIM = 98
 HANDOVER_ACTION_DIM = 14
 HANDOVER_PHASE_SLICE = slice(77, 82)
@@ -181,6 +184,66 @@ class PhaseConditionedHandoverPolicy(nn.Module):
         self._runtime_hidden = hidden.detach()
         return self._outputs_from_latent(raw, latent[:, 0])
 
+    def initial_hidden(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> torch.Tensor:
+        """Create the explicit recurrent state used by exported inference."""
+
+        if batch_size <= 0:
+            raise ValueError("successor recurrent batch size must be positive")
+        reference = self.observation_mean
+        return torch.zeros(
+            1,
+            batch_size,
+            self.memory_dim,
+            device=device if device is not None else reference.device,
+            dtype=dtype if dtype is not None else reference.dtype,
+        )
+
+    @torch.jit.export
+    def step(
+        self,
+        observation: torch.Tensor,
+        hidden: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run one explicit recurrent inference step.
+
+        This interface is independent of Python-side mutable state so the exact
+        promoted actor can be exported and compared with native PyTorch.
+        """
+
+        if (
+            observation.ndim != 2
+            or observation.shape[-1] != HANDOVER_OBSERVATION_DIM
+        ):
+            raise ValueError(
+                "successor step expects observations with shape [N, 98]"
+            )
+        if (
+            hidden.ndim != 3
+            or hidden.shape[0] != 1
+            or hidden.shape[1] != observation.shape[0]
+            or hidden.shape[2] != self.memory_dim
+        ):
+            raise ValueError(
+                "successor hidden state must have shape [1, N, memory_dim]"
+            )
+        encoded = self.encoder(self._normalize(observation))
+        latent, next_hidden = self.memory(encoded.unsqueeze(1), hidden)
+        raw_action, saturation_logits, phase_index = (
+            self._outputs_from_latent(observation, latent[:, 0])
+        )
+        action = self._hard_actions(
+            raw_action,
+            saturation_logits,
+            phase_index,
+        )
+        return action, next_hidden
+
     def training_outputs(
         self,
         observation: torch.Tensor | Mapping[str, torch.Tensor],
@@ -329,19 +392,29 @@ class PhaseConditionedHandoverPolicy(nn.Module):
             HANDOVER_ACTION_DIM,
         )
 
+    @torch.jit.ignore
     def forward(
         self,
         observation: torch.Tensor | Mapping[str, torch.Tensor],
     ) -> torch.Tensor:
         raw = self._policy_observation(observation)
-        raw_action, saturation_logits, phase_index = (
-            self._runtime_outputs(raw)
+        if (
+            self._runtime_hidden is None
+            or self._runtime_hidden.shape[1] != raw.shape[0]
+            or self._runtime_hidden.device != raw.device
+            or self._runtime_hidden.dtype != raw.dtype
+        ):
+            self._runtime_hidden = self.initial_hidden(
+                raw.shape[0],
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+        action, hidden = self.step(
+            raw,
+            self._runtime_hidden,
         )
-        return self._hard_actions(
-            raw_action,
-            saturation_logits,
-            phase_index,
-        )
+        self._runtime_hidden = hidden.detach()
+        return action
 
     def reset(self, dones: torch.Tensor | None = None) -> None:
         """Clear recurrent state for completed Isaac environments."""
@@ -368,7 +441,11 @@ def load_handover_successor_checkpoint(
     payload = torch.load(path, map_location=device, weights_only=False)
     if not isinstance(payload, dict):
         raise ValueError("successor checkpoint must contain a mapping")
-    if payload.get("schema_version") != SUCCESSOR_CHECKPOINT_SCHEMA:
+    schema_version = payload.get("schema_version")
+    if schema_version not in {
+        SUCCESSOR_CHECKPOINT_SCHEMA,
+        *LEGACY_SUCCESSOR_CHECKPOINT_SCHEMAS,
+    }:
         raise ValueError("unsupported handover successor checkpoint")
     if payload.get("observation_dim") != HANDOVER_OBSERVATION_DIM:
         raise ValueError("successor checkpoint observation contract drifted")
@@ -419,3 +496,178 @@ def load_handover_successor_checkpoint(
     model.load_state_dict(payload["model"], strict=True)
     model.eval()
     return model, payload
+
+
+class HandoverSuccessorStepExport(nn.Module):
+    """TorchScript surface for explicit recurrent handover inference."""
+
+    def __init__(self, policy: PhaseConditionedHandoverPolicy) -> None:
+        super().__init__()
+        self.encoder = policy.encoder
+        self.memory = policy.memory
+        self.phase_heads = policy.phase_heads
+        self.register_buffer(
+            "observation_mean",
+            policy.observation_mean.detach().clone(),
+        )
+        self.register_buffer(
+            "observation_std",
+            policy.observation_std.detach().clone(),
+        )
+        self.register_buffer(
+            "continuous_indices",
+            torch.tensor(HANDOVER_CONTINUOUS_INDICES, dtype=torch.long),
+        )
+        self.register_buffer(
+            "gripper_indices",
+            torch.tensor(HANDOVER_GRIPPER_INDICES, dtype=torch.long),
+        )
+
+    def forward(
+        self,
+        observation: torch.Tensor,
+        hidden: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        normalized = (
+            (observation - self.observation_mean)
+            / self.observation_std
+        ).clamp(-10.0, 10.0)
+        encoded = self.encoder(normalized)
+        latent, next_hidden = self.memory(
+            encoded.unsqueeze(1),
+            hidden,
+        )
+        all_outputs = torch.stack(
+            [head(latent[:, 0]) for head in self.phase_heads],
+            dim=1,
+        )
+        phase_index = torch.argmax(observation[:, 77:82], dim=-1)
+        batch_index = torch.arange(
+            observation.shape[0],
+            device=observation.device,
+        )
+        selected = all_outputs[batch_index, phase_index]
+        raw_action = selected[:, :14]
+        saturation_logits = selected[:, 14:].view(
+            observation.shape[0],
+            12,
+            3,
+        )
+        action = torch.tanh(raw_action)
+        continuous_action = action.index_select(
+            1,
+            self.continuous_indices,
+        )
+        precision_logit = saturation_logits[:, :, 1]
+        negative_limit = (
+            saturation_logits[:, :, 0] >= precision_logit + 1.5
+        )
+        positive_limit = (
+            saturation_logits[:, :, 2] >= precision_logit + 1.5
+        )
+        continuous_action = torch.where(
+            negative_limit,
+            -torch.ones_like(continuous_action),
+            continuous_action,
+        )
+        continuous_action = torch.where(
+            positive_limit,
+            torch.ones_like(continuous_action),
+            continuous_action,
+        )
+        action[:, self.continuous_indices] = continuous_action
+        gripper_action = torch.where(
+            raw_action.index_select(1, self.gripper_indices) >= 0.0,
+            torch.ones_like(
+                raw_action.index_select(1, self.gripper_indices)
+            ),
+            -torch.ones_like(
+                raw_action.index_select(1, self.gripper_indices)
+            ),
+        )
+        action[:, self.gripper_indices] = gripper_action
+        action = torch.where(
+            (phase_index == 4).unsqueeze(-1),
+            torch.zeros_like(action),
+            action,
+        )
+        return action, next_hidden
+
+
+def export_handover_successor_checkpoint(
+    checkpoint_path: str,
+    output_path: str,
+    *,
+    device: str | torch.device = "cpu",
+) -> None:
+    """Export the exact recurrent checkpoint through its explicit step API."""
+
+    policy, _ = load_handover_successor_checkpoint(
+        checkpoint_path,
+        device=device,
+    )
+    wrapper = HandoverSuccessorStepExport(policy).to(device=device).eval()
+    example_observation = torch.zeros(
+        2,
+        HANDOVER_OBSERVATION_DIM,
+        device=device,
+    )
+    example_observation[0, HANDOVER_PHASE_SLICE.start] = 1.0
+    example_observation[1, HANDOVER_PHASE_SLICE.stop - 2] = 1.0
+    example_hidden = policy.initial_hidden(
+        2,
+        device=example_observation.device,
+        dtype=example_observation.dtype,
+    )
+    exported = torch.jit.trace(
+        wrapper,
+        (example_observation, example_hidden),
+        strict=True,
+    )
+    torch.jit.save(exported, output_path)
+
+
+def export_handover_successor_onnx(
+    checkpoint_path: str,
+    output_path: str,
+    *,
+    device: str | torch.device = "cpu",
+) -> None:
+    """Export the explicit recurrent step with dynamic environment count."""
+
+    policy, payload = load_handover_successor_checkpoint(
+        checkpoint_path,
+        device=device,
+    )
+    wrapper = HandoverSuccessorStepExport(policy).to(device=device).eval()
+    observation = torch.zeros(
+        1,
+        HANDOVER_OBSERVATION_DIM,
+        device=device,
+    )
+    observation[:, HANDOVER_PHASE_SLICE.start] = 1.0
+    hidden = policy.initial_hidden(
+        1,
+        device=observation.device,
+        dtype=observation.dtype,
+    )
+    torch.onnx.export(
+        wrapper,
+        (observation, hidden),
+        output_path,
+        input_names=("observation", "hidden"),
+        output_names=("action", "next_hidden"),
+        dynamic_axes={
+            "observation": {0: "num_envs"},
+            "hidden": {1: "num_envs"},
+            "action": {0: "num_envs"},
+            "next_hidden": {1: "num_envs"},
+        },
+        opset_version=17,
+        do_constant_folding=True,
+        dynamo=False,
+        export_params=True,
+        verbose=False,
+    )
+    if payload.get("action_dim") != HANDOVER_ACTION_DIM:
+        raise ValueError("exported successor action contract drifted")

@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|successor-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -23,6 +23,7 @@ usage() {
     echo "  sweep     [task] [iterations] [comma-separated env counts] [output]"
     echo "  pretrain  [task] [num_envs] [updates] [validation_frames] [output]"
     echo "  train     [task] [num_envs] [iterations] [output]"
+    echo "  successor-handover CHECKPOINT [num_envs] [frames] [output] [task]"
     echo "  promoted-handover [num_envs] [frames] [output] [task]"
     echo "  play      CHECKPOINT [task] [num_envs] [frames] [output]"
     echo "  record    CHECKPOINT [task] [frames] [output] [chunk_frames]"
@@ -217,6 +218,32 @@ case "${command}" in
             "${checkpoint_args[@]}" \
             "${learning_rate_args[@]}" \
             "${giver_adaptation_args[@]}"
+        ;;
+    successor-handover)
+        require_runtime
+        successor_checkpoint="${2:-}"
+        if [[ -z "${successor_checkpoint}" ]]; then
+            usage
+            exit 2
+        fi
+        if [[ ! -f "${successor_checkpoint}" ]]; then
+            echo "error: successor checkpoint not found: ${successor_checkpoint}" >&2
+            exit 2
+        fi
+        num_envs="${3:-1200}"
+        frames="${4:-2000}"
+        output="${5:-${DR_ANMAR_LEARNING_OUTPUT}/successor-handover}"
+        task="${6:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        mkdir -p "${output}"
+        exec "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
+            --task "${task}" \
+            --handover_successor_checkpoint "${successor_checkpoint}" \
+            --num_envs "${num_envs}" \
+            --num_frames "${frames}" \
+            --seed "${DR_ANMAR_SEED}" \
+            --output_path "${output}" \
+            --benchmark_formatter schema,json
         ;;
     promoted-handover)
         require_runtime
