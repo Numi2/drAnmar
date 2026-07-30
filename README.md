@@ -199,10 +199,23 @@ choose, scale, or gate robot motion.
 One-decision residual PPO, risk-guided residual PPO, retry interventions, and a
 receiver-only closed-loop PPO update all failed their predeclared development
 gates. They remain reproducible negative results; none replaced the incumbent.
-The next stage is an exact simulator snapshot/replay dataset: use the frozen
-risk critic to select informative pre-contact states, branch the same state
-through a small bounded trajectory portfolio, and train only from paired
-retained-transfer outcomes. See the
+
+The counterfactual trajectory stage is now complete. Repeating the same
+environment indices in separate Isaac processes reproduced all prebranch
+tensors and no-op terminal outcomes exactly; treating neighboring vectorized
+PhysX clones as independent counterfactuals did not. The surviving uniform
+receiver-translation candidate, scale `0.6`, was then rejected on its first
+prespecified seed: among 196 activated episodes it changed 93 control
+successes to 87, produced 23 wins versus 29 losses, and added four receiver
+safety failures. No behavior-cloning or PPO update was started from those
+labels.
+
+The incumbent therefore remains frozen. The next learning stage is independent
+teacher supervision at the acquisition-to-retention boundary: use the risk
+critic to allocate collection, obtain better actions from constrained
+trajectory optimization or clinician teleoperation in isolated
+single-environment executions, and train a short-horizon residual only from
+verified safe wins. See the
 [attempt-learning report](docs/handover_recovery_80/attempt_policy_learning_report.json)
 for checkpoint hashes, evidence paths, and stop decisions.
 

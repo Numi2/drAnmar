@@ -1,12 +1,12 @@
 {
-  "schema_version": "dranmar-receiver-attempt-learning-report-1.1",
+  "schema_version": "dranmar-receiver-attempt-learning-report-1.2",
   "created_at": "2026-07-30",
   "scope": "simulation_only",
   "status": "completed_no_promotion",
   "question_answered": {
     "can_the_promoted_policy_be_used_to_train_a_neural_network": true,
-    "method": "Keep the promoted composite frozen. Test bounded one-decision and receiver-trajectory residual policies, instrument the active-custody transition, and train cross-fitted temporal and pre-probe risk networks.",
-    "result": "No learned motion challenger passed its development gate. The pre-probe risk student reached 0.7913 cross-fitted ROC AUC and is preserved for risk-stratified data collection, not motion control."
+    "method": "Keep the promoted composite frozen. Test bounded one-decision and receiver-trajectory residual policies, instrument the active-custody transition, train cross-fitted temporal and pre-probe risk networks, and require deterministic no-op replay before using any counterfactual trajectory label.",
+    "result": "No learned motion challenger passed its development gate. The pre-probe risk student reached 0.7913 cross-fitted ROC AUC and is preserved for risk-stratified data collection, not motion control. A source-locked uniform 0.6 receiver-translation intervention was then rejected after the first prespecified seed because it lost six paired successes and added four safety failures."
   },
   "incumbent": {
     "lock": "docs/handover_recovery_80/promoted_policy.lock.json",
@@ -491,6 +491,160 @@
       "reason": "Both predeclared checkpoints regressed the exact parent by seven episodes; the final checkpoint also added one protected-surface termination."
     }
   },
+  "counterfactual_receiver_trajectory_replay": {
+    "dataset_schema_version": "dranmar-receiver-approach-trajectory-replay-1.3",
+    "scope": "simulation_only",
+    "source_revisions": {
+      "spatial_clone_diagnostic": "ded82af78bb259f148bc01eb3b19dedc4a188024",
+      "same_environment_index_pairing": "25c06e3a12d5c4f3fd234481e820fdcec5dae783",
+      "synchronized_intervention_barrier": "bb38796b3d29be0481198686d9e01db6583a0953",
+      "uniform_collection": "2cefe15b48343f1d23d5ac73983a7c98bbf6e703",
+      "isolation_aware_evaluator": "84f9b2e212030b5219b738cec19a855d4ed1cc3d"
+    },
+    "frozen_inputs": {
+      "base_checkpoint_sha256": "f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad",
+      "receiver_candidate_checkpoint_sha256": "582669a8a1c71bace2bdd3cb8e3fcdf12a64bb077e82f87a1a5ce7cc0ad64b79",
+      "preprobe_risk_checkpoint_sha256": "0b19dcf17a1db9d537345bc801d2818701dc9bb8aa43535c6979d9da0e1f8e0d",
+      "risk_role": "postbranch_retrospective_stratification_only"
+    },
+    "replay_design_audit": {
+      "spatial_clone_pairing": {
+        "decision": "invalid",
+        "reason": "Nominally identical PhysX clones inside one vectorized process diverged before the intervention boundary, so environment lanes are not valid counterfactual replicas.",
+        "dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-v1/noop-seed104729.pt",
+        "dataset_sha256": "95829042c3093982f034ddb2dc413b2530fb74bebe09cfc59301ad0457ac1f90",
+        "evaluation_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-v1/noop-parity-evaluation.json",
+        "evaluation_sha256": "9fc7a40a06fc96136780fe7a64b6222884e83a55a333fea2419e1e7bf85d65d9"
+      },
+      "same_environment_index_noop_replay": {
+        "decision": "qualified",
+        "runtime_seed": 104729,
+        "environments": 64,
+        "activated_environments": 61,
+        "prebranch_maximum_tensor_delta": 0.0,
+        "terminal_outcome_exact": true,
+        "control_dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-v2/noop-a-seed104729.pt",
+        "control_dataset_sha256": "4143a5d51145fd36992c008dd4752b0ac9b71cac5cde293b75d02603b5319c73",
+        "repeat_dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-v2/noop-b-seed104729.pt",
+        "repeat_dataset_sha256": "45ae8e962107c67e9be0f322358aa9890851df596568635ca8122d41fbe74841",
+        "evaluation_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-v2/noop-paired-evaluation.json",
+        "evaluation_sha256": "e509dda61bff0fa94b78a2d6a279b9b61e071db1b091c94a1f37b5b44bf74754"
+      },
+      "synchronized_mixed_lane_screen": {
+        "decision": "invalid_for_causal_selection",
+        "runtime_seed": 104729,
+        "environments": 600,
+        "activated_environments": 476,
+        "barrier_release_frame": 1200,
+        "prebranch_maximum_tensor_delta": 0.0,
+        "noop_lane_terminal_outcome_exact": false,
+        "reason": "The synchronized barrier made every recorded prebranch tensor exact, but postbranch treatment lanes still changed GPU solver scheduling enough to perturb the no-op lane.",
+        "untrusted_diagnostic_only": {
+          "scale_0_8": {
+            "samples": 119,
+            "wins": 6,
+            "losses": 17,
+            "paired_net_successes": -11,
+            "safety_delta": 10
+          },
+          "scale_0_6": {
+            "samples": 124,
+            "wins": 15,
+            "losses": 14,
+            "paired_net_successes": 1,
+            "safety_delta": -3
+          },
+          "scale_0_4": {
+            "samples": 116,
+            "wins": 14,
+            "losses": 17,
+            "paired_net_successes": -3,
+            "safety_delta": 3
+          }
+        },
+        "control_dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-v3/control-600-seed104729.pt",
+        "control_dataset_sha256": "dd865004e92e13953b68d401620c3f389a09a4cf59eaba84fefe5ec002617ea3",
+        "candidate_dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-v3/candidate-600-seed104729.pt",
+        "candidate_dataset_sha256": "d3e5c354c9a84597eb64d306711ca628d5ba908bd8011618bb52a4723a461eb9",
+        "evaluation_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-v3/screen-seed104729-evaluation.json",
+        "evaluation_sha256": "058dc0e9dd5bfae7903dae1371930b595af19d58590cd48b84f6c9aa62e6ac90"
+      }
+    },
+    "uniform_scale_0_6_screen": {
+      "decision": "rejected_after_first_prespecified_seed",
+      "runtime_seed": 104729,
+      "seed_stream_offset": 104712,
+      "environments": 256,
+      "control_frames_per_environment": 2000,
+      "barrier_release_frame": 1200,
+      "trajectory_profile": "minimum_jerk_receiver_translation_xyz",
+      "scale": 0.6,
+      "activated_environments": 196,
+      "replay_checks": {
+        "control_vs_noop_prebranch_exact": true,
+        "control_vs_candidate_prebranch_exact": true,
+        "maximum_prebranch_tensor_delta": 0.0,
+        "noop_terminal_outcome_exact": true,
+        "intervention_delivery_valid": true,
+        "candidate_expected_action_maximum_delta": 7.450580596923828e-09,
+        "candidate_modified_every_active_frame": true
+      },
+      "activated_cohort": {
+        "control_successful": 93,
+        "candidate_successful": 87,
+        "wins": 23,
+        "losses": 29,
+        "paired_net_successes": -6,
+        "paired_success_uplift": -0.030612244897959183,
+        "control_safety_failures": 101,
+        "candidate_safety_failures": 105,
+        "safety_delta": 4,
+        "control_time_out": 2,
+        "candidate_time_out": 4,
+        "control_needle_dropped_after_pickup": 47,
+        "candidate_needle_dropped_after_pickup": 52,
+        "control_receiver_retention_lost": 54,
+        "candidate_receiver_retention_lost": 53
+      },
+      "whole_batch_policy_deployment": {
+        "control_successful": 103,
+        "candidate_successful": 96,
+        "wins": 24,
+        "losses": 31,
+        "delta_successful": -7,
+        "safety_delta": 4
+      },
+      "postbranch_isolation_diagnostic": {
+        "untreated_environments": 60,
+        "untreated_outcome_exact": false,
+        "control_successful": 10,
+        "candidate_successful": 9,
+        "wins": 1,
+        "losses": 2,
+        "interpretation": "Changing treated environments can perturb other vectorized PhysX clones after the branch. Environment-level postbranch labels are therefore not isolated enough for neural-policy supervision even when prebranch replay is exact."
+      },
+      "control_dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-uniform-v1/control-seed104729.pt",
+      "control_dataset_sha256": "854cc5aad409ac779f29582d6cd689c365f127bee451140e1d1531b5f9252c34",
+      "noop_dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-uniform-v1/noop-seed104729.pt",
+      "noop_dataset_sha256": "88d1ff8354e6031ca7f4fad6a0b4b5a79ca5bed95b1a81c8d1a6f296ed778996",
+      "candidate_dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-uniform-v1/candidate-scale060-seed104729.pt",
+      "candidate_dataset_sha256": "25247a765242da6074b883ae5d899b842de19a96f7c79cb9bf8c86ade7c31245",
+      "evaluation_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-uniform-v1/evaluation-seed104729-isolation-aware.json",
+      "evaluation_sha256": "adcdd2fa8169022f2933226884473d4aec9eaafbb47e23da5773c0a78d7db313",
+      "remaining_prespecified_seeds_cancelled": [
+        130363,
+        196613
+      ],
+      "training_started": false,
+      "reason": "The first seed failed both directional requirements: success decreased and safety failures increased. Replication and advantage-weighted behavior cloning were stopped by design."
+    },
+    "learning_disposition": {
+      "trajectory_scaling_family_authorized_for_training": false,
+      "risk_checkpoint_preserved": true,
+      "promoted_policy_changed": false,
+      "conclusion": "The incumbent can generate baseline and failure-boundary data, but it cannot supply its own better action labels. A stronger independent teacher is required before another neural motion update."
+    }
+  },
   "decision": {
     "promote_checkpoint": false,
     "main_policy_changed": false,
@@ -498,25 +652,28 @@
     "preserve_temporal_risk_checkpoint": true,
     "preserve_preprobe_risk_checkpoint": true,
     "continue_unshaped_receiver_trajectory_ppo": false,
-    "reason": "One-decision and closed-loop motion updates failed exact paired development gates. The risk networks generalize well enough to prioritize expensive counterfactual data collection, but not to command motion."
+    "continue_uniform_receiver_trajectory_scaling": false,
+    "train_advantage_weighted_behavior_clone": false,
+    "reason": "One-decision and closed-loop motion updates failed exact paired development gates. The causal trajectory stage also rejected receiver speed scaling because it reduced success and increased safety failures. The risk networks remain useful for prioritizing independent teacher data, but not for commanding motion."
   },
   "next_step": {
-    "name": "risk_stratified_counterfactual_receiver_trajectory_dataset",
-    "principle": "A risk score identifies where the incumbent is weak but does not identify a helpful action. Build paired causal trajectory labels before training another controller.",
+    "name": "independent_teacher_supervision_at_receiver_retention_boundary",
+    "principle": "The incumbent and its risk critic can identify hard states, but neither supplies a better action. Obtain physically grounded action targets from an independent teacher before training again.",
     "keep_frozen": [
       "promoted composite policy",
       "preprobe risk checkpoint",
       "analytic gripper wrist release pickup and post-contact behavior"
     ],
-    "stage_1": "Implement and verify exact simulator state snapshot and deterministic replay at the presentation-ready pre-contact boundary.",
-    "stage_2": "Use risk quantiles only to allocate replay budget. For each selected state, branch an exact no-op and a small bounded portfolio of smooth receiver XYZ trajectories under common simulator state.",
-    "stage_3": "Label trajectories by retained transfer, timeout, receiver-retention loss, and hard safety terms. Reject intervention families that do not beat no-op within each seed.",
-    "learning_method": "Train a short-horizon residual by advantage-weighted behavior cloning from paired winning trajectories, with low-risk no-op examples preserving the incumbent. Do not resume PPO until the offline paired gate is positive.",
+    "stage_1": "Collect independent single-environment executions at risk-ranked acquisition-to-retention boundaries. Preserve complete contact, jaw, object-pose, relative-velocity, force, and termination traces; do not treat vectorized PhysX clones as isolated counterfactuals.",
+    "stage_2": "Generate candidate actions with a constrained trajectory optimizer or clinician teleoperation teacher. Focus on receiver grasp pose, orientation, symmetric jaw capture, and post-contact load stabilization; do not revisit global approach-speed scaling.",
+    "stage_3": "Accept a teacher target only after a source-locked isolated replay beats no-op on retained transfer without adding a hard safety event. Failed or numerically coupled comparisons remain diagnostics, not labels.",
+    "learning_method": "Once enough verified teacher wins exist, train a short-horizon residual by advantage-weighted behavior cloning with incumbent no-op distillation and explicit abstention outside teacher-supported states. Do not resume PPO or behavior cloning before that label gate is positive.",
     "promotion_gate": [
       "positive aggregate uplift on development streams",
-      "no development seed regression beyond the declared tolerance",
+      "no development seed regression",
       "positive aggregate uplift on untouched held-out seeds",
-      "no increase in excessive-object-force or protected-surface-force events"
+      "no increase in any receiver safety failure",
+      "no postbranch outcome drift in untreated isolated controls"
     ]
   }
 }
