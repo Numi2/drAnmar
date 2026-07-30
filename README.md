@@ -195,13 +195,24 @@ problems and are meant to compose, not replace one another:
 | [Promoted handover actor](docs/handover_recovery_80/promoted_policy.lock.json) | Robot motion | **1,292 / 1,800** development successes (**71.78%**). This is the owner-promoted simulation incumbent; the original 80% development goal was explicitly overridden and no qualification claim is made. |
 | One-decision receiver residual | Bounded motion correction | Not promoted. Its best held-out result was **+3 / 3,600** in aggregate while one seed regressed by 12; a fresh-stream update also lost to the incumbent on development seeds. |
 | Calibrated active-custody risk model | Failure probability | Preserved as the leading risk model. Across three left-out physics seeds, AUC was **0.704–0.776** and nested cross-fitted Brier score improved to **0.07455** from a **0.08063** base-rate reference. |
+| Counterfactual receiver trajectory | Bounded receiver XYZ scaling | Not promoted. Exact no-op replay passed, but uniform scale `0.6` reduced the activated cohort from **93 to 87** successes and added **4** receiver safety failures on the first prespecified seed. |
 
 The actor still moves the robot. The risk model observes the one-frame
 active-custody transition and estimates whether retention is likely to fail; it
-does not emit actions and has no release or motion authority. Its next use is to
-balance easy and difficult states while collecting randomized, tightly bounded
-receiver interventions, then train a separate recovery-controller challenger
-under the same multi-seed and contact-safety gates.
+does not emit actions and has no release or motion authority.
+
+The causal trajectory screen is complete. Separate same-index Isaac processes
+reproduced prebranch tensors and no-op terminal outcomes exactly, while
+neighboring vectorized PhysX clones did not remain isolated after an
+intervention. The only surviving speed candidate was negative, so no
+behavior-cloning or PPO update was started from it and the promoted actor
+remains unchanged.
+
+The next learning stage uses the risk model only to allocate independent
+single-environment collection. Better actions must come from constrained
+trajectory optimization or clinician teleoperation at the
+acquisition-to-retention boundary, then pass isolated no-op, safety, multi-seed,
+and held-out gates before training a residual motion policy.
 
 The full source-bound learning record, including per-seed calibration and
 checkpoint hashes, is in the
