@@ -183,6 +183,29 @@ minimizes **time to qualified task achievement**: wall-clock time from a frozen
 task contract to the first checkpoint that passes held-out competence, safety,
 and recovery gates.
 
+### Current needle-handover learning status
+
+The frozen simulation incumbent completed 1,292 of 1,800 development episodes
+(`71.78%`). That result was explicitly accepted as the current research
+baseline; it did not pass the original 80% target and is not a qualification
+claim.
+
+The strongest new neural checkpoint is a **risk critic**, not a motion policy.
+Its cross-fitted ROC AUC is `0.7913`, and the highest-risk 20% of states contain
+`58.56%` of observed failures. It is useful for finding hard receiver-custody
+states and prioritizing counterfactual data collection. It is not authorized to
+choose, scale, or gate robot motion.
+
+One-decision residual PPO, risk-guided residual PPO, retry interventions, and a
+receiver-only closed-loop PPO update all failed their predeclared development
+gates. They remain reproducible negative results; none replaced the incumbent.
+The next stage is an exact simulator snapshot/replay dataset: use the frozen
+risk critic to select informative pre-contact states, branch the same state
+through a small bounded trajectory portfolio, and train only from paired
+retained-transfer outcomes. See the
+[attempt-learning report](docs/handover_recovery_80/attempt_policy_learning_report.json)
+for checkpoint hashes, evidence paths, and stop decisions.
+
 ## Doctor Studio
 
 Doctor Studio is the clinician-facing workspace for live simulation,

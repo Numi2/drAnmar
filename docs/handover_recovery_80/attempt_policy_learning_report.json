@@ -1,12 +1,12 @@
 {
-  "schema_version": "dranmar-receiver-attempt-learning-report-1.0",
+  "schema_version": "dranmar-receiver-attempt-learning-report-1.1",
   "created_at": "2026-07-30",
   "scope": "simulation_only",
   "status": "completed_no_promotion",
   "question_answered": {
     "can_the_promoted_policy_be_used_to_train_a_neural_network": true,
-    "method": "Keep the promoted base and receiver candidate-value policy frozen. Test a bounded six-dimensional receiver correction as a one-decision contextual-bandit PPO residual, then instrument the active-custody transition and train a calibrated temporal risk network.",
-    "result": "Neither motion-residual checkpoint passed the multi-seed policy-promotion gate. The temporal risk network did pass nested cross-seed ranking and calibration gates and is preserved for risk stratification."
+    "method": "Keep the promoted composite frozen. Test bounded one-decision and receiver-trajectory residual policies, instrument the active-custody transition, and train cross-fitted temporal and pre-probe risk networks.",
+    "result": "No learned motion challenger passed its development gate. The pre-probe risk student reached 0.7913 cross-fitted ROC AUC and is preserved for risk-stratified data collection, not motion control."
   },
   "incumbent": {
     "lock": "docs/handover_recovery_80/promoted_policy.lock.json",
@@ -350,24 +350,168 @@
       "decision": "The small raw calibration miss on seed 130363 was corrected without using that seed in its calibrator. All three seeds now beat their cross-fitted base-rate Brier scores, so preserve and use this checkpoint for risk-stratified data collection. It is a risk model, not a motion policy."
     }
   },
+  "preprobe_risk_student": {
+    "model": "cross_fitted_linear_preprobe_failure_risk_student",
+    "checkpoint": {
+      "path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/preprobe-risk-v1/model-cf2d5d4.pt",
+      "sha256": "0b19dcf17a1db9d537345bc801d2818701dc9bb8aa43535c6979d9da0e1f8e0d",
+      "report_sha256": "db66cb0f588a43388b0875d0d092defb7c22bf465836b18546477c82f72da06d"
+    },
+    "cross_fit": {
+      "roc_auc": 0.7912578583,
+      "brier": 0.0611,
+      "base_rate_brier": 0.06665,
+      "failure_capture_rate_in_highest_risk_20_percent": 0.5856
+    },
+    "authority": {
+      "risk_stratification": true,
+      "motion_control": false,
+      "policy_promotion": false
+    },
+    "interpretation": "This is the strongest learned checkpoint in the experiment, but it predicts failure risk rather than robot actions."
+  },
+  "risk_monitored_attempt_update": {
+    "source_revision": "61a3c83beecbf4ad80921030fbf95b68913431c0",
+    "rollout_contract": {
+      "preprobe_monitor_is_read_only": true,
+      "exact_action_parity_test_passed": true,
+      "rollout_schema_version": "dranmar-receiver-attempt-risk-ppo-rollout-1.0",
+      "missing_risk_auxiliary_credit": 0.0,
+      "unsafe_termination_penalty": true
+    },
+    "training_data": {
+      "decisions": 3218,
+      "successful": 2395,
+      "success_rate": 0.744251,
+      "preprobe_risk_observed": 1607,
+      "observed_failures": 194,
+      "downstream_risk_roc_auc": 0.674426
+    },
+    "candidate": {
+      "path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-risk-ppo-v1/update-007488-risk-aux-61a3c83.pt",
+      "sha256": "8271f69364c1fc861629f4c4e525f631924d1190f6475b5fac269a2c8456d1dd",
+      "approximate_kl": 0.000060479,
+      "risk_auxiliary_weight": 0.1
+    },
+    "development_screen": {
+      "environments_per_seed": 600,
+      "seed_104729": {
+        "parent_successful": 440,
+        "challenger_successful": 450,
+        "delta": 10
+      },
+      "seed_130363": {
+        "parent_successful": 453,
+        "challenger_successful": 418,
+        "delta": -35,
+        "parent_receiver_retention_lost": 29,
+        "challenger_receiver_retention_lost": 60
+      },
+      "decision": "rejected_before_seed_196613_and_held_out_gate",
+      "reason": "The exact paired second development seed regressed by 35 of 600 episodes, primarily through doubled receiver-retention loss."
+    }
+  },
+  "receiver_trajectory_ppo": {
+    "source_revisions": {
+      "receiver_row_adaptation": "e39db39ce3f0e0d443f8b43e7b0db54fba38b42d",
+      "normalizer_freeze": "4460f9cfba9b5c2fa41e2730ecc274e8e77dcbe1"
+    },
+    "contract": {
+      "initial_checkpoint_sha256": "f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad",
+      "shared_actor_frozen": true,
+      "actor_observation_normalizer_frozen": true,
+      "giver_rows_frozen": true,
+      "trainable_receiver_xyz_rows": [
+        0,
+        1,
+        2,
+        7,
+        8,
+        9
+      ],
+      "ppo_clip": 0.05,
+      "desired_kl": 0.002,
+      "learning_rate": 0.00001,
+      "complete_episode_start": true
+    },
+    "invalid_smoke": {
+      "iterations": 8,
+      "disposition": "invalid_not_screened",
+      "reason": "No receiver-active policy weights changed, while the framework updated actor normalization statistics. The normalization path was frozen before the valid run."
+    },
+    "valid_training": {
+      "seed": 271828,
+      "environments": 1200,
+      "iterations": 32,
+      "simulated_frames": 1228800,
+      "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-ppo-v1/train-seed271828-iter32-frozen/dranmar_training_20260730T030716Z.json",
+      "evidence_sha256": "d74d8cc93b76a1da823385091b26d4449bb859cfaf5b74027d0bf2e4eb8e20e8",
+      "changed_actor_tensors": [
+        "mlp.6.weight",
+        "mlp.6.bias"
+      ],
+      "changed_output_rows_observed": [
+        7,
+        8,
+        9
+      ]
+    },
+    "development_screen_seed_104729": {
+      "environments": 600,
+      "frames_per_environment": 2000,
+      "exact_parent": {
+        "successful": 370,
+        "receiver_retention_lost": 20,
+        "protected_surface_force": 1,
+        "excessive_object_force": 0,
+        "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-ppo-v1/screen-parent-base-seed104729/dranmar_play_20260730T031244Z.json",
+        "evidence_sha256": "7c21db9d94388c00f8eacea5ce70f543f44e5f290b9de06de74e1caee063b0e5"
+      },
+      "iteration_25": {
+        "checkpoint_sha256": "524492505144d30ae427af8e93693998513a2d8f60154ebec6af88a952b283da",
+        "successful": 363,
+        "delta": -7,
+        "receiver_retention_lost": 28,
+        "protected_surface_force": 1,
+        "excessive_object_force": 0,
+        "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-ppo-v1/screen-model25-seed104729/dranmar_play_20260730T031004Z.json",
+        "evidence_sha256": "aae2c566330cdab25f760402c14d41cacd27894316bfc26afd18cab0ce4de44e"
+      },
+      "final": {
+        "checkpoint_sha256": "ff5b45b271f7241e13fceedc1dd7d767945b6ff4016fb6d8866ed1c5f2175294",
+        "successful": 363,
+        "delta": -7,
+        "receiver_retention_lost": 29,
+        "protected_surface_force": 2,
+        "excessive_object_force": 0,
+        "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-trajectory-ppo-v1/screen-final-seed104729/dranmar_play_20260730T031448Z.json",
+        "evidence_sha256": "57b72f6a167c56c87f813abaedb457333d0ff6108f6311c4fbef56da38db852e"
+      },
+      "decision": "rejected_before_other_development_and_held_out_seeds",
+      "reason": "Both predeclared checkpoints regressed the exact parent by seven episodes; the final checkpoint also added one protected-surface termination."
+    }
+  },
   "decision": {
     "promote_checkpoint": false,
     "main_policy_changed": false,
     "continue_one_shot_attempt_ppo_updates": false,
     "preserve_temporal_risk_checkpoint": true,
-    "reason": "The first motion update was only marginal on held-out episodes, while the fresh-stream second update shifted wins between seeds and reduced aggregate success. The temporal transition did support a cross-seed calibrated risk network, which is preserved to organize the next causal action dataset."
+    "preserve_preprobe_risk_checkpoint": true,
+    "continue_unshaped_receiver_trajectory_ppo": false,
+    "reason": "One-decision and closed-loop motion updates failed exact paired development gates. The risk networks generalize well enough to prioritize expensive counterfactual data collection, but not to command motion."
   },
   "next_step": {
-    "name": "randomized_active_custody_intervention_dataset",
-    "principle": "The calibrated load-probe model now estimates failure risk across seeds, but observational outcomes cannot identify which corrective action will help. Use it to balance a causal action dataset before training control.",
+    "name": "risk_stratified_counterfactual_receiver_trajectory_dataset",
+    "principle": "A risk score identifies where the incumbent is weak but does not identify a helpful action. Build paired causal trajectory labels before training another controller.",
     "keep_frozen": [
-      "promoted base policy",
-      "pickup fixed correction",
-      "receiver candidate-value first-attempt correction"
+      "promoted composite policy",
+      "preprobe risk checkpoint",
+      "analytic gripper wrist release pickup and post-contact behavior"
     ],
-    "stratification_only": "Use calibrated risk quantiles to balance easy and difficult custody states. Do not let the risk score itself choose or scale motion.",
-    "first_intervention": "Within each risk stratum, randomize an exact no-op and symmetric tiny receiver contact-centering pulses bounded by the existing contact-centering action limit. Record the assigned action and known behavior probability.",
-    "learning_method": "Contextual-bandit or short-horizon recurrent residual policy with conservative off-policy evaluation; do not fine-tune the frozen 98-observation base actor.",
+    "stage_1": "Implement and verify exact simulator state snapshot and deterministic replay at the presentation-ready pre-contact boundary.",
+    "stage_2": "Use risk quantiles only to allocate replay budget. For each selected state, branch an exact no-op and a small bounded portfolio of smooth receiver XYZ trajectories under common simulator state.",
+    "stage_3": "Label trajectories by retained transfer, timeout, receiver-retention loss, and hard safety terms. Reject intervention families that do not beat no-op within each seed.",
+    "learning_method": "Train a short-horizon residual by advantage-weighted behavior cloning from paired winning trajectories, with low-risk no-op examples preserving the incumbent. Do not resume PPO until the offline paired gate is positive.",
     "promotion_gate": [
       "positive aggregate uplift on development streams",
       "no development seed regression beyond the declared tolerance",
