@@ -28,6 +28,7 @@ from typing import Any
 RECOVERY_QUALIFICATION_SEEDS = {17, 2361, 4099}
 HANDOVER_TEACHER_TRACE_SCHEMA = "dranmar-handover-teacher-trace-1.0"
 HANDOVER_TEACHER_RECEIPT_SCHEMA = "dranmar-handover-teacher-receipt-1.0"
+HANDOVER_DAGGER_TRACE_SCHEMA = "dranmar-handover-dagger-trace-1.0"
 HANDOVER_TEACHER_ACTION_SCHEDULE_SCHEMA = (
     "dranmar-handover-teacher-action-schedule-1.0"
 )
@@ -3603,6 +3604,48 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     handover_teacher_trace_path = None
     handover_teacher_receipt = None
     handover_teacher_action_schedule = None
+    handover_dagger_trace_path = None
+    if args.handover_dagger_trace:
+        handover_dagger_trace_path = (
+            Path(args.handover_dagger_trace).expanduser().resolve()
+        )
+        if args.handover_teacher_trace:
+            return _fail("teacher and DAgger traces are mutually exclusive")
+        if args.task != "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0":
+            return _fail("DAgger traces require the needle handover task")
+        if args.num_envs != 1 or not args.stop_after_first_episode:
+            return _fail(
+                "DAgger traces require --num_envs 1 and "
+                "--stop_after_first_episode"
+            )
+        if args.seed in RECOVERY_QUALIFICATION_SEEDS:
+            return _fail("qualification seeds cannot become DAgger data")
+        if not args.handover_dagger_pair_id:
+            return _fail("DAgger traces require a stable pair id")
+        if not args.handover_successor_checkpoint:
+            return _fail("DAgger traces require a successor checkpoint")
+        if not 0.5 <= args.handover_dagger_oracle_beta < 1.0:
+            return _fail("DAgger oracle beta must be in [0.5, 1.0)")
+        if handover_dagger_trace_path.exists():
+            return _fail(
+                "DAgger traces are immutable and cannot be overwritten: "
+                f"{handover_dagger_trace_path}"
+            )
+        worktree_status = _command_output(
+            ["git", "status", "--porcelain"],
+            repo_root,
+        )
+        if worktree_status is None or worktree_status:
+            return _fail("DAgger traces require a clean source worktree")
+        asset_source = _module_git_source("orbit.surgical.assets")
+        if not asset_source["root"] or not asset_source["revision"]:
+            return _fail("DAgger traces require a source-locked asset package")
+        asset_status = _command_output(
+            ["git", "status", "--porcelain"],
+            Path(asset_source["root"]),
+        )
+        if asset_status is None or asset_status:
+            return _fail("DAgger traces require a clean asset worktree")
     if (
         args.handover_teacher_action_schedule
         and not args.handover_teacher_trace
@@ -3742,7 +3785,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             args.receiver_recovery_local_sweep,
         )
     )
-    if args.handover_successor_checkpoint and successor_incompatible:
+    if (
+        args.handover_successor_checkpoint
+        and successor_incompatible
+        and handover_dagger_trace_path is None
+    ):
         return _fail(
             "the full-action successor cannot be stacked with recovery policies"
         )
@@ -5242,6 +5289,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_recovery_policy.eval()
         policy = receiver_recovery_policy
 
+    handover_dagger_oracle = (
+        policy if handover_dagger_trace_path is not None else None
+    )
     handover_successor = None
     handover_successor_payload = None
     handover_successor_checkpoint = None
@@ -5285,9 +5335,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         ):
             env.close()
             return _fail("successor source revision does not match this checkout")
-        if expected_source.get("asset_revision") != _command_output(
-            ["git", "rev-parse", "HEAD"],
-            repo_root / "source/extensions/orbit.surgical.assets",
+        current_asset_source = _module_git_source(
+            "orbit.surgical.assets"
+        )
+        if (
+            expected_source.get("asset_revision")
+            != current_asset_source["revision"]
         ):
             env.close()
             return _fail("successor asset revision does not match this checkout")
@@ -5298,14 +5351,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     success_count = 0
     termination_manager = env.unwrapped.termination_manager
     termination_names = list(termination_manager.active_terms)
-    if handover_teacher_trace_path is not None:
+    if (
+        handover_teacher_trace_path is not None
+        or handover_dagger_trace_path is not None
+    ):
         missing_safety_terms = sorted(
             set(HANDOVER_SAFETY_TERMS) - set(termination_names)
         )
         if missing_safety_terms:
             env.close()
             return _fail(
-                "teacher trace safety contract is incomplete: "
+                "handover trace safety contract is incomplete: "
                 + ", ".join(missing_safety_terms)
             )
     termination_counts = {name: 0 for name in termination_names}
@@ -5802,6 +5858,28 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         [] if handover_teacher_trace_path is not None else None
     )
     handover_teacher_terminal = None
+    handover_dagger_observations = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_student_actions = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_oracle_actions = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_executed_actions = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_rewards = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_phases = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_safety_events = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_terminal = None
     handover_teacher_policy = {
         "base_checkpoint_sha256": _sha256(checkpoint),
         "successor_checkpoint_sha256": (
@@ -6238,7 +6316,39 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .detach()
                         .cpu()
                     )
+                if handover_dagger_observations is not None:
+                    handover_dagger_observations.append(
+                        obs["policy"][0].detach().cpu().clone()
+                    )
+                    handover_dagger_phases.append(
+                        torch.argmax(
+                            obs["policy"][0, 77:82],
+                            dim=-1,
+                        )
+                        .detach()
+                        .cpu()
+                    )
                 actions = policy(obs)
+                if handover_dagger_oracle is not None:
+                    student_actions = actions
+                    oracle_actions = handover_dagger_oracle(obs)
+                    actions = (
+                        args.handover_dagger_oracle_beta * oracle_actions
+                        + (1.0 - args.handover_dagger_oracle_beta)
+                        * student_actions
+                    )
+                    assert handover_dagger_student_actions is not None
+                    assert handover_dagger_oracle_actions is not None
+                    assert handover_dagger_executed_actions is not None
+                    handover_dagger_student_actions.append(
+                        student_actions[0].detach().cpu().clone()
+                    )
+                    handover_dagger_oracle_actions.append(
+                        oracle_actions[0].detach().cpu().clone()
+                    )
+                    handover_dagger_executed_actions.append(
+                        actions[0].detach().cpu().clone()
+                    )
                 if handover_teacher_action_schedule is not None:
                     for segment in handover_teacher_action_schedule[
                         "segments"
@@ -6623,6 +6733,45 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 for name, value in term_values.items()
                             },
                         }
+                if handover_dagger_rewards is not None:
+                    handover_dagger_rewards.append(
+                        reward[0].detach().cpu().float().clone()
+                    )
+                    assert handover_dagger_safety_events is not None
+                    handover_dagger_safety_events.append(
+                        torch.stack(
+                            [
+                                term_values[name][0].detach().cpu().bool()
+                                for name in HANDOVER_SAFETY_TERMS
+                            ]
+                        )
+                    )
+                    if bool(dones.bool()[0].item()):
+                        if bool(successes.bool()[0].item()):
+                            trace_outcome = "success"
+                        else:
+                            trace_outcome = next(
+                                (
+                                    name
+                                    for name in failure_names
+                                    if bool(
+                                        term_values[name].bool()[0].item()
+                                    )
+                                ),
+                                "unclassified",
+                            )
+                        handover_dagger_terminal = {
+                            "complete": True,
+                            "outcome": trace_outcome,
+                            "terminal_frame_inclusive": frame_index,
+                            "frame_count": len(handover_dagger_rewards),
+                            "termination_flags": {
+                                name: bool(
+                                    value.bool()[0].item()
+                                )
+                                for name, value in term_values.items()
+                            },
+                        }
                 unassigned_failures = dones & ~successes
                 for name in failure_names:
                     assigned = unassigned_failures & term_values[name]
@@ -6911,6 +7060,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             }
                         )
                 policy.reset(dones)
+                if handover_dagger_oracle is not None:
+                    handover_dagger_oracle.reset(dones)
             rewards.append(float(reward.float().mean().item()))
             done_count += int(dones.sum().item())
             success_count += int(successes.sum().item())
@@ -8353,6 +8504,111 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "frame_count": frame_count,
                 "outcome": handover_teacher_terminal["outcome"],
             }
+        handover_dagger_trace = None
+        if handover_dagger_trace_path is not None:
+            if (
+                handover_dagger_terminal is None
+                or handover_dagger_observations is None
+                or handover_dagger_student_actions is None
+                or handover_dagger_oracle_actions is None
+                or handover_dagger_executed_actions is None
+                or handover_dagger_rewards is None
+                or handover_dagger_phases is None
+                or handover_dagger_safety_events is None
+                or handover_successor_checkpoint is None
+            ):
+                return _fail(
+                    "DAgger trace did not reach a terminal first episode"
+                )
+            observations_tensor = torch.stack(
+                handover_dagger_observations
+            ).float()
+            student_actions_tensor = torch.stack(
+                handover_dagger_student_actions
+            ).float()
+            oracle_actions_tensor = torch.stack(
+                handover_dagger_oracle_actions
+            ).float()
+            executed_actions_tensor = torch.stack(
+                handover_dagger_executed_actions
+            ).float()
+            rewards_tensor = torch.stack(handover_dagger_rewards).float()
+            phases_tensor = torch.stack(handover_dagger_phases).long()
+            safety_events_tensor = torch.stack(
+                handover_dagger_safety_events
+            ).bool()
+            frame_count = int(observations_tensor.shape[0])
+            if not all(
+                tensor.shape[0] == frame_count
+                for tensor in (
+                    student_actions_tensor,
+                    oracle_actions_tensor,
+                    executed_actions_tensor,
+                    rewards_tensor,
+                    phases_tensor,
+                    safety_events_tensor,
+                )
+            ):
+                return _fail("DAgger trace tensors have inconsistent lengths")
+            oracle_configuration = {
+                key: value
+                for key, value in handover_teacher_policy.items()
+                if key != "successor_checkpoint_sha256"
+            }
+            trace_payload = {
+                "schema_version": HANDOVER_DAGGER_TRACE_SCHEMA,
+                "pair_id": args.handover_dagger_pair_id,
+                "task": args.task,
+                "seed": args.seed,
+                "num_envs": env.unwrapped.num_envs,
+                "frames_requested": args.num_frames,
+                "episode_length_s": float(env_cfg.episode_length_s),
+                "reset_rotation_randomization_deg": (
+                    args.recovery_demo_rotation_deg
+                ),
+                "oracle_beta": args.handover_dagger_oracle_beta,
+                "observation_dim": int(observations_tensor.shape[-1]),
+                "action_dim": int(oracle_actions_tensor.shape[-1]),
+                "observations": observations_tensor,
+                "student_actions": student_actions_tensor,
+                "oracle_actions": oracle_actions_tensor,
+                "executed_actions": executed_actions_tensor,
+                "rewards": rewards_tensor,
+                "phases": phases_tensor,
+                "safety_term_names": list(HANDOVER_SAFETY_TERMS),
+                "safety_events": safety_events_tensor,
+                "terminal": {
+                    **handover_dagger_terminal,
+                    "maximum_phase": int(phases_tensor.max().item()),
+                },
+                "policy": {
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "successor_checkpoint_sha256": _sha256(
+                        handover_successor_checkpoint
+                    ),
+                    "oracle_kind": "frozen_promoted_composite",
+                    "oracle_configuration": oracle_configuration,
+                    "mixture": (
+                        "oracle_beta_times_oracle_plus_"
+                        "one_minus_beta_times_student"
+                    ),
+                },
+                "runtime": _runtime_evidence(repo_root),
+            }
+            try:
+                _write_immutable_torch_artifact(
+                    handover_dagger_trace_path,
+                    trace_payload,
+                )
+            except (OSError, ValueError) as error:
+                return _fail(str(error))
+            handover_dagger_trace = {
+                "path": str(handover_dagger_trace_path),
+                "sha256": _sha256(handover_dagger_trace_path),
+                "frame_count": frame_count,
+                "outcome": handover_dagger_terminal["outcome"],
+                "oracle_beta": args.handover_dagger_oracle_beta,
+            }
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -8453,6 +8709,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 single_environment_episode_trace
             ),
             "handover_teacher_trace": handover_teacher_trace,
+            "handover_dagger_trace": handover_dagger_trace,
             "video_capture": (
                 {
                     "resolution": [args.video_width, args.video_height],
@@ -9195,6 +9452,20 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--handover_successor_checkpoint",
         help="evaluate one compact full-action successor without recovery stacking",
+    )
+    play.add_argument(
+        "--handover_dagger_trace",
+        help=(
+            "immutable on-policy trajectory labeled by the frozen promoted "
+            "handover oracle"
+        ),
+    )
+    play.add_argument("--handover_dagger_pair_id")
+    play.add_argument(
+        "--handover_dagger_oracle_beta",
+        type=float,
+        default=0.9,
+        help="oracle fraction in the executed DAgger action mixture",
     )
     play.add_argument(
         "--handover_teacher_trace",

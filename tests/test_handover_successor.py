@@ -121,6 +121,48 @@ def _trace(
     }
 
 
+def _dagger_trace(
+    *,
+    pair_id: str = "dagger-104729-round-1",
+    seed: int = 104729,
+    outcome: str = "success",
+    unsafe: bool = False,
+) -> dict:
+    trace = _trace(
+        role="control",
+        teacher_kind="frozen_baseline",
+        outcome=outcome,
+        pair_id=pair_id,
+        seed=seed,
+        unsafe=unsafe,
+    )
+    oracle_beta = 0.9
+    oracle_actions = trace.pop("actions")
+    student_actions = torch.full_like(oracle_actions, 0.2)
+    trace["schema_version"] = SUCCESSOR_TOOL.DAGGER_TRACE_SCHEMA
+    trace["oracle_beta"] = oracle_beta
+    trace["student_actions"] = student_actions
+    trace["oracle_actions"] = oracle_actions
+    trace["executed_actions"] = (
+        oracle_beta * oracle_actions
+        + (1.0 - oracle_beta) * student_actions
+    )
+    trace["policy"] = {
+        "base_checkpoint_sha256": "b" * 64,
+        "successor_checkpoint_sha256": "e" * 64,
+        "oracle_kind": "frozen_promoted_composite",
+        "oracle_configuration": {
+            "base_checkpoint_sha256": "b" * 64,
+            "residual_scale": 0.03,
+        },
+        "mixture": (
+            "oracle_beta_times_oracle_plus_"
+            "one_minus_beta_times_student"
+        ),
+    }
+    return trace
+
+
 def _save(path: Path, payload: dict) -> Path:
     torch.save(payload, path)
     return path
@@ -247,6 +289,50 @@ def test_exact_safe_baseline_success_is_admitted_for_distillation(
         SUCCESSOR_TOOL.admit_baseline_pair(
             _save(tmp_path / "failed-a.pt", failed),
             _save(tmp_path / "failed-b.pt", failed),
+        )
+
+
+def test_exact_safe_dagger_replay_is_admitted_with_oracle_labels(
+    tmp_path: Path,
+) -> None:
+    trace = _dagger_trace()
+    accepted = SUCCESSOR_TOOL.admit_dagger_pair(
+        _save(tmp_path / "dagger-a.pt", trace),
+        _save(tmp_path / "dagger-b.pt", trace),
+    )
+
+    assert accepted["accepted"] is True
+    assert all(accepted["gates"].values())
+    assert accepted["label_source"] == SUCCESSOR_TOOL.DAGGER_LABEL_SOURCE
+    assert accepted["collection"]["oracle_beta"] == pytest.approx(0.9)
+    assert torch.equal(
+        accepted["episode"]["actions"],
+        trace["oracle_actions"],
+    )
+    assert torch.equal(
+        accepted["episode"]["executed_actions"],
+        trace["executed_actions"],
+    )
+
+
+def test_dagger_admission_rejects_nonexact_or_unbound_mixtures(
+    tmp_path: Path,
+) -> None:
+    trace_a = _dagger_trace()
+    trace_b = _dagger_trace()
+    trace_b["observations"][2, 0] = 1.0e-6
+    with pytest.raises(ValueError, match="replay is not exact"):
+        SUCCESSOR_TOOL.admit_dagger_pair(
+            _save(tmp_path / "dagger-a.pt", trace_a),
+            _save(tmp_path / "dagger-b.pt", trace_b),
+        )
+
+    broken = _dagger_trace(pair_id="dagger-broken")
+    broken["executed_actions"][0, 0] = 0.5
+    with pytest.raises(ValueError, match="recorded mixture"):
+        SUCCESSOR_TOOL.admit_dagger_pair(
+            _save(tmp_path / "broken-a.pt", broken),
+            _save(tmp_path / "broken-b.pt", broken),
         )
 
 
@@ -410,8 +496,12 @@ def test_full_action_successor_trains_with_episode_level_split(
             "accepted": True,
             "label_source": (
                 SUCCESSOR_TOOL.BASELINE_LABEL_SOURCE
-                if index < 4
-                else SUCCESSOR_TOOL.TEACHER_LABEL_SOURCE
+                if index < 3
+                else (
+                    SUCCESSOR_TOOL.DAGGER_LABEL_SOURCE
+                    if index < 6
+                    else SUCCESSOR_TOOL.TEACHER_LABEL_SOURCE
+                )
             ),
             "gates": {"isolated": True, "safe": True, "teacher_wins": True},
             "pair_id": trace["pair_id"],
@@ -455,10 +545,15 @@ def test_full_action_successor_trains_with_episode_level_split(
     assert payload["architecture"]["full_action_policy"] is True
     assert payload["architecture"]["runtime_heuristic_stack"] is False
     assert payload["capability_scope"] == (
-        "incumbent_distillation_plus_teacher_rescues"
+        "incumbent_on_policy_distillation_plus_teacher_rescues"
     )
-    assert result["baseline_distillation_pairs"] == 4
-    assert result["teacher_rescue_pairs"] == 4
+    assert result["baseline_distillation_pairs"] == 3
+    assert result["dagger_pairs"] == 3
+    assert result["teacher_rescue_pairs"] == 2
+    assert {
+        f"pair-{(104729, 130363, 196613, 262147)[index % 4]}-{index}"
+        for index in range(3, 6)
+    }.issubset(payload["training"]["train_pair_ids"])
     assert set(payload["training"]["train_pair_ids"]).isdisjoint(
         payload["training"]["validation_pair_ids"]
     )
@@ -471,6 +566,12 @@ def test_full_action_successor_trains_with_episode_level_split(
     assert loaded["training_gate_passed"] is True
     assert action.shape == (2, 14)
     assert bool((action.abs() <= 1.0).all())
+    assert bool(
+        (
+            action[:, SUCCESSOR_POLICY.HANDOVER_GRIPPER_INDICES].abs()
+            == 1.0
+        ).all()
+    )
     terminal_observation = torch.zeros(1, 98)
     terminal_observation[:, 81] = 1.0
     assert torch.equal(

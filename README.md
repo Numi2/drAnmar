@@ -196,7 +196,7 @@ problems and are meant to compose, not replace one another:
 | One-decision receiver residual | Bounded motion correction | Not promoted. Its best held-out result was **+3 / 3,600** in aggregate while one seed regressed by 12; a fresh-stream update also lost to the incumbent on development seeds. |
 | Calibrated active-custody risk model | Failure probability | Preserved as the leading risk model. Across three left-out physics seeds, AUC was **0.704–0.776** and nested cross-fitted Brier score improved to **0.07455** from a **0.08063** base-rate reference. |
 | Counterfactual receiver trajectory | Bounded receiver XYZ scaling | Not promoted. Exact no-op replay passed, but uniform scale `0.6` reduced the activated cohort from **93 to 87** successes and added **4** receiver safety failures on the first prespecified seed. |
-| Phase-conditioned full-action successor | Complete 14-D dual-arm action | Candidate infrastructure is on `main`; no policy is promoted yet. A neural clone may bootstrap from at least eight reproducible safe incumbent successes across four development seeds and all four action-bearing phases. The terminal fifth phase emits no further action. Only independently verified teacher rescues can raise its capability ceiling. |
+| Phase-conditioned full-action successor | Complete 14-D dual-arm action | Candidate only; not promoted. Eight bit-identical safe incumbent successes were admitted across eight development seeds and all four action-bearing phases. The first offline clone fit those demonstrations but failed its first closed-loop replay in phase 0 with `protected_surface_force`, exposing covariate shift rather than just calibration error. The successor now uses hard binary gripper decisions and on-policy DAgger collection; the terminal fifth phase emits no further action. |
 
 The actor still moves the robot. The risk model observes the one-frame
 active-custody transition and estimates whether retention is likely to fail; it
@@ -211,26 +211,40 @@ remains unchanged.
 
 The next learning stage is executable through
 [`dr_anmar_handover_successor.py`](scripts/dr_anmar_handover_successor.py).
-Bit-identical safe successes from the frozen incumbent can now be admitted as
+Bit-identical safe successes from the frozen incumbent can be admitted as
 distillation demonstrations, which is how the hand-authored runtime is replaced
-by one network without treating failed incumbent actions as expertise. The risk
-model only allocates independent collection for failure states. Better actions
-there must come from constrained trajectory optimization or clinician
-teleoperation, then beat two bit-identical no-op controls without any safety
-event. Both kinds of accepted complete episode train one compact
-phase-conditioned network that emits the full 14-D action. Episode-level
-splitting prevents frame leakage, qualification seeds are forbidden from
-training, and every checkpoint is candidate-only until live seeded evaluation
-promotes it.
+by one network without treating failed incumbent actions as expertise. Offline
+action error is not a promotion metric: the first eight-episode clone failed
+closed loop despite low held-out error. The next pass therefore uses DAgger.
+The candidate visits states under a high-oracle action mixture, while the frozen
+promoted composite supplies labels for every visited state. A trajectory enters
+training only when two single-environment replays are bit-identical, end in
+success, contain no safety event, preserve source and checkpoint hashes, and
+cover all four action-bearing phases.
+
+The custody-risk model only allocates independent collection for failure states.
+Better-than-incumbent actions there must still come from constrained trajectory
+optimization or clinician teleoperation, then beat two bit-identical no-op
+controls without any safety event. Accepted offline successes, accepted DAgger
+episodes, and independently verified rescues train one compact
+phase-conditioned network that emits the full 14-D action with binary gripper
+decisions. Episode-level splitting prevents frame leakage, qualification seeds
+are forbidden from training, and every checkpoint is candidate-only until live
+seeded evaluation promotes it.
 
 ```text
-record exact incumbent success twice → admit distillation demonstration
+record exact incumbent success twice → admit offline distillation demonstration
+→ train candidate → record exact safe oracle-mixture replay twice
+→ admit on-policy DAgger labels → retrain
 or lock teacher proposal → record control/control/teacher → accept rescue
 → train full-action successor → compare against the frozen incumbent
 ```
 
-The hand-authored recovery composition remains only as a sealed regression
-baseline; none of its recovery wrappers are present in the successor runtime.
+The hand-authored recovery composition remains sealed as the 71.78% regression
+baseline until a successor passes the live gate. It is the DAgger oracle during
+training only; none of its recovery wrappers are present in the successor
+runtime. It should be archived, not deleted, only after a learned checkpoint
+demonstrably replaces it.
 
 The full source-bound learning record, including per-seed calibration and
 checkpoint hashes, is in the

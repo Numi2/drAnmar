@@ -653,6 +653,18 @@ case "${command}" in
                 "${DR_ANMAR_HANDOVER_SUCCESSOR_CHECKPOINT}"
             )
         fi
+        handover_dagger_args=()
+        if [[ -n "${DR_ANMAR_HANDOVER_DAGGER_TRACE:-}" ]]; then
+            handover_dagger_args+=(
+                --stop_after_first_episode
+                --handover_dagger_trace
+                "${DR_ANMAR_HANDOVER_DAGGER_TRACE}"
+                --handover_dagger_pair_id
+                "${DR_ANMAR_HANDOVER_DAGGER_PAIR_ID:-}"
+                --handover_dagger_oracle_beta
+                "${DR_ANMAR_HANDOVER_DAGGER_ORACLE_BETA:-0.9}"
+            )
+        fi
         handover_teacher_args=()
         if [[ -n "${DR_ANMAR_HANDOVER_TEACHER_TRACE:-}" ]]; then
             handover_teacher_args+=(
@@ -700,6 +712,7 @@ case "${command}" in
             "${giver_lift_on_live_contact_args[@]}" \
             "${pickup_recovery_args[@]}" \
             "${handover_successor_args[@]}" \
+            "${handover_dagger_args[@]}" \
             "${handover_teacher_args[@]}"
         ;;
     record)

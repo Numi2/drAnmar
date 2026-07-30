@@ -17,6 +17,7 @@ HANDOVER_OBSERVATION_DIM = 98
 HANDOVER_ACTION_DIM = 14
 HANDOVER_PHASE_SLICE = slice(77, 82)
 HANDOVER_PHASE_COUNT = 5
+HANDOVER_GRIPPER_INDICES = (6, 13)
 
 
 class PhaseConditionedHandoverPolicy(nn.Module):
@@ -85,10 +86,10 @@ class PhaseConditionedHandoverPolicy(nn.Module):
             return observation["policy"]
         return observation
 
-    def forward(
+    def _selected_raw_action(
         self,
         observation: torch.Tensor | Mapping[str, torch.Tensor],
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         raw = self._policy_observation(observation)
         if raw.ndim != 2 or raw.shape[-1] != HANDOVER_OBSERVATION_DIM:
             raise ValueError("successor expects observations with shape [N, 98]")
@@ -103,7 +104,36 @@ class PhaseConditionedHandoverPolicy(nn.Module):
         )
         phase_index = torch.argmax(raw[:, HANDOVER_PHASE_SLICE], dim=-1)
         batch_index = torch.arange(raw.shape[0], device=raw.device)
-        return torch.tanh(all_actions[batch_index, phase_index])
+        return all_actions[batch_index, phase_index], phase_index
+
+    def training_outputs(
+        self,
+        observation: torch.Tensor | Mapping[str, torch.Tensor],
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return soft actions and binary-gripper logits for hybrid BC."""
+
+        raw_action, _ = self._selected_raw_action(observation)
+        return (
+            torch.tanh(raw_action),
+            raw_action[:, HANDOVER_GRIPPER_INDICES],
+        )
+
+    def forward(
+        self,
+        observation: torch.Tensor | Mapping[str, torch.Tensor],
+    ) -> torch.Tensor:
+        raw_action, phase_index = self._selected_raw_action(observation)
+        action = torch.tanh(raw_action)
+        action[:, HANDOVER_GRIPPER_INDICES] = torch.where(
+            raw_action[:, HANDOVER_GRIPPER_INDICES] >= 0.0,
+            torch.ones_like(raw_action[:, HANDOVER_GRIPPER_INDICES]),
+            -torch.ones_like(raw_action[:, HANDOVER_GRIPPER_INDICES]),
+        )
+        return torch.where(
+            (phase_index == 4).unsqueeze(-1),
+            torch.zeros_like(action),
+            action,
+        )
 
     def reset(self, dones: torch.Tensor | None = None) -> None:
         """Match the stateless policy interface used by the Isaac rollout."""
@@ -138,6 +168,10 @@ def load_handover_successor_checkpoint(
     architecture = payload.get("architecture")
     if not isinstance(architecture, dict):
         raise ValueError("successor checkpoint lacks architecture metadata")
+    if architecture.get("binary_gripper_indices") != list(
+        HANDOVER_GRIPPER_INDICES
+    ):
+        raise ValueError("successor checkpoint gripper contract drifted")
     model = PhaseConditionedHandoverPolicy(
         payload["observation_mean"],
         payload["observation_std"],

@@ -19,13 +19,16 @@ import torch.nn.functional as functional
 
 
 TRACE_SCHEMA = "dranmar-handover-teacher-trace-1.0"
+DAGGER_TRACE_SCHEMA = "dranmar-handover-dagger-trace-1.0"
 DATASET_SCHEMA = "dranmar-handover-successor-dataset-1.0"
 RECEIPT_SCHEMA = "dranmar-handover-teacher-receipt-1.0"
 ACTION_SCHEDULE_SCHEMA = "dranmar-handover-teacher-action-schedule-1.0"
 BASELINE_LABEL_SOURCE = "frozen_baseline_success_distillation"
+DAGGER_LABEL_SOURCE = "frozen_baseline_dagger"
 TEACHER_LABEL_SOURCE = "independent_teacher_rescue"
 ALLOWED_LABEL_SOURCES = {
     BASELINE_LABEL_SOURCE,
+    DAGGER_LABEL_SOURCE,
     TEACHER_LABEL_SOURCE,
 }
 QUALIFICATION_SEEDS = {17, 2361, 4099}
@@ -212,6 +215,93 @@ def _validate_trace(path: Path, trace: dict[str, Any]) -> None:
     policy = trace.get("policy")
     if not isinstance(policy, dict) or not policy.get("base_checkpoint_sha256"):
         raise ValueError(f"trace lacks policy provenance: {path}")
+
+
+def _load_dagger_trace(path: Path) -> dict[str, Any]:
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    if not isinstance(payload, dict):
+        raise ValueError(f"DAgger trace is not a mapping: {path}")
+    if payload.get("schema_version") != DAGGER_TRACE_SCHEMA:
+        raise ValueError(f"unsupported DAgger trace schema: {path}")
+    return payload
+
+
+def _validate_dagger_trace(
+    path: Path,
+    trace: dict[str, Any],
+) -> None:
+    oracle_actions = trace.get("oracle_actions")
+    proxy = dict(trace)
+    proxy["schema_version"] = TRACE_SCHEMA
+    proxy["actions"] = oracle_actions
+    _validate_trace(path, proxy)
+
+    frame_count = int(trace["observations"].shape[0])
+    student_actions = trace.get("student_actions")
+    executed_actions = trace.get("executed_actions")
+    if not all(
+        isinstance(value, torch.Tensor)
+        for value in (student_actions, oracle_actions, executed_actions)
+    ):
+        raise ValueError(f"DAgger action tensors are incomplete: {path}")
+    for label, actions in (
+        ("student", student_actions),
+        ("oracle", oracle_actions),
+        ("executed", executed_actions),
+    ):
+        if tuple(actions.shape) != (frame_count, ACTION_DIM):
+            raise ValueError(
+                f"DAgger {label} action contract drifted: {path}"
+            )
+        if not torch.isfinite(actions).all():
+            raise ValueError(
+                f"DAgger {label} actions contain non-finite values: {path}"
+            )
+        if bool((actions.abs() > 1.000001).any()):
+            raise ValueError(
+                f"DAgger {label} actions exceed the environment contract: "
+                f"{path}"
+            )
+
+    oracle_beta = float(trace.get("oracle_beta", -1.0))
+    if not 0.5 <= oracle_beta < 1.0:
+        raise ValueError(f"DAgger oracle beta is outside [0.5, 1.0): {path}")
+    expected_executed = (
+        oracle_beta * oracle_actions
+        + (1.0 - oracle_beta) * student_actions
+    )
+    if not torch.allclose(
+        executed_actions,
+        expected_executed,
+        rtol=1.0e-6,
+        atol=1.0e-7,
+    ):
+        raise ValueError(
+            f"DAgger executed actions do not match the recorded mixture: {path}"
+        )
+
+    policy = trace["policy"]
+    if (
+        policy.get("oracle_kind") != "frozen_promoted_composite"
+        or not policy.get("successor_checkpoint_sha256")
+        or policy.get("mixture")
+        != (
+            "oracle_beta_times_oracle_plus_"
+            "one_minus_beta_times_student"
+        )
+    ):
+        raise ValueError(f"DAgger policy provenance is incomplete: {path}")
+    oracle_configuration = policy.get("oracle_configuration")
+    if (
+        not isinstance(oracle_configuration, dict)
+        or oracle_configuration.get("base_checkpoint_sha256")
+        != policy["base_checkpoint_sha256"]
+        or oracle_configuration.get("successor_checkpoint_sha256")
+        is not None
+    ):
+        raise ValueError(
+            f"DAgger oracle configuration is not independently locked: {path}"
+        )
 
 
 def propose_retention_schedule(args: argparse.Namespace) -> dict[str, Any]:
@@ -467,6 +557,134 @@ def admit_baseline_pair(
     }
 
 
+def _exact_dagger_replay(
+    trace_a: dict[str, Any],
+    trace_b: dict[str, Any],
+) -> bool:
+    return all(
+        (
+            trace_a["policy"] == trace_b["policy"],
+            trace_a["terminal"] == trace_b["terminal"],
+            float(trace_a["oracle_beta"])
+            == float(trace_b["oracle_beta"]),
+            torch.equal(
+                trace_a["observations"],
+                trace_b["observations"],
+            ),
+            torch.equal(
+                trace_a["student_actions"],
+                trace_b["student_actions"],
+            ),
+            torch.equal(
+                trace_a["oracle_actions"],
+                trace_b["oracle_actions"],
+            ),
+            torch.equal(
+                trace_a["executed_actions"],
+                trace_b["executed_actions"],
+            ),
+            torch.equal(trace_a["rewards"], trace_b["rewards"]),
+            torch.equal(trace_a["phases"], trace_b["phases"]),
+            torch.equal(
+                trace_a["safety_events"],
+                trace_b["safety_events"],
+            ),
+        )
+    )
+
+
+def admit_dagger_pair(
+    trace_a_path: Path,
+    trace_b_path: Path,
+) -> dict[str, Any]:
+    """Admit one exact safe on-policy trajectory with frozen-oracle labels."""
+
+    trace_a = _load_dagger_trace(trace_a_path)
+    trace_b = _load_dagger_trace(trace_b_path)
+    _validate_dagger_trace(trace_a_path, trace_a)
+    _validate_dagger_trace(trace_b_path, trace_b)
+
+    contract_match = _same_contract(trace_a, trace_b)
+    exact_replay = _exact_dagger_replay(trace_a, trace_b)
+    if not contract_match:
+        raise ValueError(
+            "DAgger traces do not share one source, seed, and baseline lock"
+        )
+    if not exact_replay:
+        raise ValueError(
+            "DAgger replay is not exact; this trajectory is inadmissible"
+        )
+    if trace_a["terminal"]["outcome"] != "success":
+        raise ValueError("DAgger admission requires a terminal success")
+    if bool(trace_a["safety_events"].any()):
+        raise ValueError("DAgger admission rejects trajectories with safety events")
+    phases = set(trace_a["phases"].long().unique().tolist())
+    if not set(range(4)).issubset(phases):
+        raise ValueError(
+            "DAgger success lacks an action-bearing handover phase"
+        )
+
+    gates = {
+        "single_environment_only": True,
+        "development_seed_only": True,
+        "source_baseline_and_student_match": contract_match,
+        "exact_replay": exact_replay,
+        "safe_terminal_success": True,
+        "complete_action_phase_coverage": True,
+        "frozen_promoted_oracle_only": True,
+        "on_policy_mixture_recorded": True,
+    }
+    return {
+        "schema_version": DATASET_SCHEMA,
+        "accepted": True,
+        "label_source": DAGGER_LABEL_SOURCE,
+        "gates": gates,
+        "pair_id": trace_a["pair_id"],
+        "task": trace_a["task"],
+        "seed": int(trace_a["seed"]),
+        "teacher_kind": "frozen_promoted_composite_oracle",
+        "teacher_receipt": None,
+        "branch_frame": None,
+        "control_outcome": None,
+        "teacher_outcome": "success",
+        "source": copy.deepcopy(trace_a["runtime"]["source"]),
+        "base_checkpoint_sha256": trace_a["policy"][
+            "base_checkpoint_sha256"
+        ],
+        "collection": {
+            "oracle_beta": float(trace_a["oracle_beta"]),
+            "successor_checkpoint_sha256": trace_a["policy"][
+                "successor_checkpoint_sha256"
+            ],
+            "oracle_kind": trace_a["policy"]["oracle_kind"],
+        },
+        "trace_sources": {
+            "dagger_a": {
+                "path": str(trace_a_path),
+                "sha256": _sha256(trace_a_path),
+            },
+            "dagger_b": {
+                "path": str(trace_b_path),
+                "sha256": _sha256(trace_b_path),
+            },
+        },
+        "episode": {
+            "observations": trace_a["observations"].float().clone(),
+            "actions": trace_a["oracle_actions"].float().clone(),
+            "student_actions": (
+                trace_a["student_actions"].float().clone()
+            ),
+            "executed_actions": (
+                trace_a["executed_actions"].float().clone()
+            ),
+            "rewards": trace_a["rewards"].float().clone(),
+            "phases": trace_a["phases"].long().clone(),
+            "safety_events": trace_a["safety_events"].bool().clone(),
+            "frame_count": int(trace_a["observations"].shape[0]),
+        },
+    }
+
+
 def accept_teacher_pair(
     control_a_path: Path,
     control_b_path: Path,
@@ -707,12 +925,18 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     policy_module = importlib.util.module_from_spec(specification)
     specification.loader.exec_module(policy_module)
     HANDOVER_ACTION_DIM = policy_module.HANDOVER_ACTION_DIM
+    HANDOVER_GRIPPER_INDICES = policy_module.HANDOVER_GRIPPER_INDICES
     HANDOVER_OBSERVATION_DIM = policy_module.HANDOVER_OBSERVATION_DIM
     HANDOVER_PHASE_SLICE = policy_module.HANDOVER_PHASE_SLICE
     SUCCESSOR_CHECKPOINT_SCHEMA = policy_module.SUCCESSOR_CHECKPOINT_SCHEMA
     PhaseConditionedHandoverPolicy = (
         policy_module.PhaseConditionedHandoverPolicy
     )
+    continuous_action_indices = [
+        index
+        for index in range(ACTION_DIM)
+        if index not in HANDOVER_GRIPPER_INDICES
+    ]
 
     if HANDOVER_OBSERVATION_DIM != OBSERVATION_DIM or HANDOVER_ACTION_DIM != ACTION_DIM:
         raise ValueError("trainer and successor policy contracts disagree")
@@ -743,6 +967,10 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         payload["label_source"] == BASELINE_LABEL_SOURCE
         for payload in datasets
     )
+    dagger_pair_count = sum(
+        payload["label_source"] == DAGGER_LABEL_SOURCE
+        for payload in datasets
+    )
     teacher_pair_count = sum(
         payload["label_source"] == TEACHER_LABEL_SOURCE
         for payload in datasets
@@ -758,7 +986,20 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     if len(source_revisions) != 1 or len(asset_revisions) != 1:
         raise ValueError("accepted demonstrations do not share one source lock")
 
-    validation_ids = _stable_validation_pair_ids(pair_ids, args.validation_fraction)
+    non_dagger_pair_ids = [
+        str(payload["pair_id"])
+        for payload in datasets
+        if payload["label_source"] != DAGGER_LABEL_SOURCE
+    ]
+    validation_pool = (
+        non_dagger_pair_ids
+        if len(non_dagger_pair_ids) >= 4
+        else pair_ids
+    )
+    validation_ids = _stable_validation_pair_ids(
+        validation_pool,
+        args.validation_fraction,
+    )
     train_payloads = [
         payload for payload in datasets if payload["pair_id"] not in validation_ids
     ]
@@ -804,6 +1045,49 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         0.90,
         dim=0,
     ).clamp_min(0.01)
+    gripper_class_counts = torch.zeros(5, 2, 2, dtype=torch.long)
+    train_gripper_class = (
+        train_actions[:, HANDOVER_GRIPPER_INDICES] > 0.0
+    ).long()
+    for phase in range(5):
+        phase_mask = train_phases == phase
+        for gripper in range(2):
+            gripper_class_counts[phase, gripper] = torch.bincount(
+                train_gripper_class[phase_mask, gripper],
+                minlength=2,
+            )
+    gripper_class_weight = torch.zeros_like(
+        gripper_class_counts,
+        dtype=torch.float32,
+    )
+    for phase in range(5):
+        for gripper in range(2):
+            counts = gripper_class_counts[phase, gripper]
+            present = counts > 0
+            if bool(present.any()):
+                gripper_class_weight[phase, gripper, present] = (
+                    counts.sum()
+                    / (present.sum() * counts[present])
+                )
+    validation_gripper_class = (
+        validation_actions[:, HANDOVER_GRIPPER_INDICES] > 0.0
+    ).long()
+    for phase in range(4):
+        phase_mask = validation_phases == phase
+        for gripper in range(2):
+            validation_classes = torch.bincount(
+                validation_gripper_class[phase_mask, gripper],
+                minlength=2,
+            )
+            if bool(
+                (
+                    (validation_classes > 0)
+                    & (gripper_class_counts[phase, gripper] == 0)
+                ).any()
+            ):
+                raise ValueError(
+                    "training split lacks a validation gripper class"
+                )
     hidden_dims = tuple(int(value) for value in args.hidden_dims.split(",") if value)
     if not hidden_dims:
         raise ValueError("at least one shared hidden dimension is required")
@@ -834,6 +1118,8 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     validation_actions = validation_actions.to(device)
     validation_phases = validation_phases.to(device)
     action_loss_scale_device = action_loss_scale.to(device)
+    gripper_class_weight_device = gripper_class_weight.to(device)
+    gripper_index = torch.arange(2, device=device)
     phase_counts_device = phase_counts.to(device=device, dtype=torch.float32)
     active_phase = phase_counts_device > 0
     phase_weight = torch.zeros_like(phase_counts_device)
@@ -857,13 +1143,42 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         sample_count = 0
         for start in range(0, permutation.numel(), args.batch_size):
             indices = permutation[start : start + args.batch_size]
-            predicted = model(train_observations[indices])
-            per_frame = functional.smooth_l1_loss(
-                predicted / action_loss_scale_device,
-                train_actions[indices] / action_loss_scale_device,
+            predicted, gripper_logits = model.training_outputs(
+                train_observations[indices]
+            )
+            continuous_per_action = functional.smooth_l1_loss(
+                (
+                    predicted[:, continuous_action_indices]
+                    / action_loss_scale_device[continuous_action_indices]
+                ),
+                (
+                    train_actions[indices][:, continuous_action_indices]
+                    / action_loss_scale_device[continuous_action_indices]
+                ),
                 reduction="none",
                 beta=0.1,
+            )
+            continuous_loss = (
+                continuous_per_action.mean(dim=-1)
+                + 0.25 * continuous_per_action.amax(dim=-1)
+            )
+            gripper_targets = (
+                train_actions[indices][:, HANDOVER_GRIPPER_INDICES] > 0.0
+            ).float()
+            gripper_per_action = functional.binary_cross_entropy_with_logits(
+                gripper_logits,
+                gripper_targets,
+                reduction="none",
+            )
+            gripper_sample_weight = gripper_class_weight_device[
+                train_phases[indices].unsqueeze(-1),
+                gripper_index,
+                gripper_targets.long(),
+            ]
+            gripper_loss = (
+                gripper_per_action * gripper_sample_weight
             ).mean(dim=-1)
+            per_frame = continuous_loss + gripper_loss
             loss = (
                 per_frame * phase_weight[train_phases[indices]]
             ).mean()
@@ -876,13 +1191,52 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
 
         model.eval()
         with torch.inference_mode():
-            validation_prediction = model(validation_observations)
-            validation_per_frame = functional.smooth_l1_loss(
-                validation_prediction / action_loss_scale_device,
-                validation_actions / action_loss_scale_device,
+            (
+                validation_prediction_soft,
+                validation_gripper_logits,
+            ) = model.training_outputs(validation_observations)
+            validation_continuous_per_action = functional.smooth_l1_loss(
+                (
+                    validation_prediction_soft[:, continuous_action_indices]
+                    / action_loss_scale_device[continuous_action_indices]
+                ),
+                (
+                    validation_actions[:, continuous_action_indices]
+                    / action_loss_scale_device[continuous_action_indices]
+                ),
                 reduction="none",
                 beta=0.1,
+            )
+            validation_continuous_loss = (
+                validation_continuous_per_action.mean(dim=-1)
+                + 0.25
+                * validation_continuous_per_action.amax(dim=-1)
+            )
+            validation_gripper_targets = (
+                validation_actions[:, HANDOVER_GRIPPER_INDICES] > 0.0
+            ).float()
+            validation_gripper_per_action = (
+                functional.binary_cross_entropy_with_logits(
+                    validation_gripper_logits,
+                    validation_gripper_targets,
+                    reduction="none",
+                )
+            )
+            validation_gripper_sample_weight = (
+                gripper_class_weight_device[
+                    validation_phases.unsqueeze(-1),
+                    gripper_index,
+                    validation_gripper_targets.long(),
+                ]
+            )
+            validation_gripper_loss = (
+                validation_gripper_per_action
+                * validation_gripper_sample_weight
             ).mean(dim=-1)
+            validation_per_frame = (
+                validation_continuous_loss
+                + validation_gripper_loss
+            )
             validation_loss = float(
                 (
                     validation_per_frame
@@ -891,6 +1245,7 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
                 .mean()
                 .item()
             )
+            validation_prediction = model(validation_observations)
             validation_mae = float(
                 (validation_prediction - validation_actions).abs().mean().item()
             )
@@ -946,10 +1301,16 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         }
 
     output = Path(args.output).expanduser().resolve()
-    if baseline_pair_count and teacher_pair_count:
+    if teacher_pair_count and dagger_pair_count:
+        capability_scope = (
+            "incumbent_on_policy_distillation_plus_teacher_rescues"
+        )
+    elif baseline_pair_count and teacher_pair_count:
         capability_scope = "incumbent_distillation_plus_teacher_rescues"
     elif teacher_pair_count:
         capability_scope = "teacher_rescue_only"
+    elif dagger_pair_count:
+        capability_scope = "incumbent_on_policy_distillation"
     else:
         capability_scope = "incumbent_distillation_only"
     checkpoint = {
@@ -967,6 +1328,7 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             "hidden_dims": list(hidden_dims),
             "head_dim": int(args.head_dim),
             "full_action_policy": True,
+            "binary_gripper_indices": list(HANDOVER_GRIPPER_INDICES),
             "runtime_heuristic_stack": False,
             "terminal_phase_action": "zero_initialized_no_training_required",
         },
@@ -987,9 +1349,11 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             "learning_rate": float(args.learning_rate),
             "weight_decay": float(args.weight_decay),
             "loss": (
-                "phase_balanced_p90_action_scaled_smooth_l1_beta_0.1"
+                "phase_balanced_tail_aware_continuous_smooth_l1_"
+                "plus_phase_class_balanced_binary_gripper_bce"
             ),
             "phase_counts": phase_counts.tolist(),
+            "gripper_class_counts": gripper_class_counts.tolist(),
             "train_frames": int(train_observations.shape[0]),
             "validation_frames": int(validation_observations.shape[0]),
             "train_pair_ids": [payload["pair_id"] for payload in train_payloads],
@@ -999,6 +1363,7 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             "validation_action_max_abs_error": final_max_abs_error,
             "validation_phase_mae": final_phase_mae,
             "baseline_distillation_pairs": baseline_pair_count,
+            "dagger_pairs": dagger_pair_count,
             "teacher_rescue_pairs": teacher_pair_count,
             "history_tail": history[-10:],
         },
@@ -1022,6 +1387,7 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         "deployment_status": "candidate_only",
         "accepted_successor_pairs": len(datasets),
         "baseline_distillation_pairs": baseline_pair_count,
+        "dagger_pairs": dagger_pair_count,
         "teacher_rescue_pairs": teacher_pair_count,
         "capability_scope": capability_scope,
         "train_frames": int(train_observations.shape[0]),
@@ -1080,6 +1446,14 @@ def _parser() -> argparse.ArgumentParser:
     distill.add_argument("--control_a", required=True)
     distill.add_argument("--control_b", required=True)
     distill.add_argument("--output", required=True)
+
+    dagger = subparsers.add_parser(
+        "admit-dagger",
+        help="admit two exact safe on-policy frozen-oracle replays",
+    )
+    dagger.add_argument("--trace_a", required=True)
+    dagger.add_argument("--trace_b", required=True)
+    dagger.add_argument("--output", required=True)
 
     train = subparsers.add_parser(
         "train",
@@ -1143,6 +1517,24 @@ def main(argv: list[str]) -> int:
             "pair_id": payload["pair_id"],
             "seed": payload["seed"],
             "label_source": payload["label_source"],
+            "frames": payload["episode"]["frame_count"],
+        }
+    elif args.command == "admit-dagger":
+        output = Path(args.output).expanduser().resolve()
+        payload = admit_dagger_pair(
+            Path(args.trace_a).expanduser().resolve(),
+            Path(args.trace_b).expanduser().resolve(),
+        )
+        _atomic_torch_save(payload, output)
+        result = {
+            "schema_version": DATASET_SCHEMA,
+            "accepted": True,
+            "output": str(output),
+            "sha256": _sha256(output),
+            "pair_id": payload["pair_id"],
+            "seed": payload["seed"],
+            "label_source": payload["label_source"],
+            "oracle_beta": payload["collection"]["oracle_beta"],
             "frames": payload["episode"]["frame_count"],
         }
     else:
