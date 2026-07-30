@@ -1250,6 +1250,19 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         active_custody_verification: bool = False,
         active_custody_intervention: bool = False,
         active_custody_intervention_profile: str = "symmetric_pulse",
+        active_custody_preprobe_risk_feature_mean: (
+            torch.Tensor | None
+        ) = None,
+        active_custody_preprobe_risk_feature_std: (
+            torch.Tensor | None
+        ) = None,
+        active_custody_preprobe_risk_weight: (
+            torch.Tensor | None
+        ) = None,
+        active_custody_preprobe_risk_bias: float = 0.0,
+        active_custody_preprobe_risk_calibration_slope: float = 1.0,
+        active_custody_preprobe_risk_calibration_intercept: float = 0.0,
+        active_custody_preprobe_risk_threshold: float = 1.0,
         active_custody_intervention_seed: int = 0,
         active_custody_intervention_action_limit: float = 0.0025,
         receiver_retention_contact_centering: bool = False,
@@ -1312,10 +1325,12 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             "symmetric_pulse",
             "release_delay",
             "preemptive_retry",
+            "preprobe_retry",
         }:
             raise ValueError(
                 "active-custody intervention profile must be "
-                "symmetric_pulse, release_delay, or preemptive_retry"
+                "symmetric_pulse, release_delay, preemptive_retry, "
+                "or preprobe_retry"
             )
         if (
             active_custody_intervention_profile == "preemptive_retry"
@@ -1324,6 +1339,49 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             raise ValueError(
                 "preemptive-retry intervention requires retries"
             )
+        preprobe_risk_tensors = (
+            active_custody_preprobe_risk_feature_mean,
+            active_custody_preprobe_risk_feature_std,
+            active_custody_preprobe_risk_weight,
+        )
+        if active_custody_intervention_profile == "preprobe_retry":
+            if any(value is None for value in preprobe_risk_tensors):
+                raise ValueError(
+                    "pre-probe retry requires a risk checkpoint"
+                )
+            feature_mean = active_custody_preprobe_risk_feature_mean
+            feature_std = active_custody_preprobe_risk_feature_std
+            risk_weight = active_custody_preprobe_risk_weight
+            assert feature_mean is not None
+            assert feature_std is not None
+            assert risk_weight is not None
+            if (
+                feature_mean.shape != (89,)
+                or feature_std.shape != (89,)
+                or risk_weight.shape != (89,)
+                or not bool(torch.isfinite(feature_mean).all())
+                or not bool(torch.isfinite(feature_std).all())
+                or not bool(torch.isfinite(risk_weight).all())
+                or not bool((feature_std > 0.0).all())
+                or not math.isfinite(
+                    active_custody_preprobe_risk_bias
+                )
+                or not (
+                    active_custody_preprobe_risk_calibration_slope
+                    > 0.0
+                )
+                or not math.isfinite(
+                    active_custody_preprobe_risk_calibration_intercept
+                )
+                or not (
+                    0.0
+                    < active_custody_preprobe_risk_threshold
+                    < 1.0
+                )
+            ):
+                raise ValueError(
+                    "pre-probe risk checkpoint contract drifted"
+                )
         if not 0 <= active_custody_intervention_seed < 2**31:
             raise ValueError(
                 "active-custody intervention seed must be in [0, 2^31)"
@@ -1734,6 +1792,42 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_intervention_profile = (
             active_custody_intervention_profile
         )
+        self.register_buffer(
+            "active_custody_preprobe_risk_feature_mean",
+            (
+                active_custody_preprobe_risk_feature_mean.detach().clone()
+                if active_custody_preprobe_risk_feature_mean is not None
+                else torch.empty(0)
+            ),
+        )
+        self.register_buffer(
+            "active_custody_preprobe_risk_feature_std",
+            (
+                active_custody_preprobe_risk_feature_std.detach().clone()
+                if active_custody_preprobe_risk_feature_std is not None
+                else torch.empty(0)
+            ),
+        )
+        self.register_buffer(
+            "active_custody_preprobe_risk_weight",
+            (
+                active_custody_preprobe_risk_weight.detach().clone()
+                if active_custody_preprobe_risk_weight is not None
+                else torch.empty(0)
+            ),
+        )
+        self.active_custody_preprobe_risk_bias = float(
+            active_custody_preprobe_risk_bias
+        )
+        self.active_custody_preprobe_risk_calibration_slope = float(
+            active_custody_preprobe_risk_calibration_slope
+        )
+        self.active_custody_preprobe_risk_calibration_intercept = float(
+            active_custody_preprobe_risk_calibration_intercept
+        )
+        self.active_custody_preprobe_risk_threshold = float(
+            active_custody_preprobe_risk_threshold
+        )
         self.active_custody_intervention_seed = int(
             active_custody_intervention_seed
         )
@@ -1924,6 +2018,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             0,
             dtype=torch.long,
         )
+        self.active_custody_preprobe_risk = torch.empty(0)
         self.last_giver_action_owner = torch.empty(
             0,
             dtype=torch.long,
@@ -2207,6 +2302,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.active_custody_intervention_delay_remaining = torch.zeros_like(self.retry_count)
         self.active_custody_intervention_applied_frames = torch.zeros_like(self.retry_count)
+        self.active_custody_preprobe_risk = torch.zeros(
+            batch_size,
+            dtype=raw.dtype,
+            device=device,
+        )
         self.last_giver_action_owner = torch.zeros_like(self.retry_count)
         self.last_receiver_action_owner = torch.zeros_like(
             self.retry_count
@@ -3081,6 +3181,84 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         return torch.remainder(mixed, 2)
 
+    def _active_custody_preprobe_risk_probability(
+        self,
+        raw: torch.Tensor,
+        giver_is_robot_1: torch.Tensor,
+    ) -> torch.Tensor:
+        """Score failure risk from state available before the load probe."""
+        receiver_is_robot_1 = ~giver_is_robot_1
+
+        def receiver(
+            robot_1_slice: slice,
+            robot_2_slice: slice,
+        ) -> torch.Tensor:
+            return self._select_role(
+                raw[:, robot_1_slice],
+                raw[:, robot_2_slice],
+                receiver_is_robot_1,
+            )
+
+        def giver(
+            robot_1_slice: slice,
+            robot_2_slice: slice,
+        ) -> torch.Tensor:
+            return self._select_role(
+                raw[:, robot_1_slice],
+                raw[:, robot_2_slice],
+                giver_is_robot_1,
+            )
+
+        role_invariant = torch.cat(
+            (
+                receiver(slice(0, 8), slice(16, 24)),
+                receiver(slice(8, 16), slice(24, 32)),
+                giver(slice(0, 8), slice(16, 24)),
+                giver(slice(8, 16), slice(24, 32)),
+                receiver(slice(32, 39), slice(39, 46)),
+                receiver(slice(46, 53), slice(53, 60)),
+                raw[:, 60:66],
+                receiver(slice(66, 68), slice(68, 70)),
+                giver(slice(66, 68), slice(68, 70)),
+                raw[:, 70:77],
+                raw[:, 77:82],
+                receiver(slice(84, 91), slice(91, 98)),
+                giver(slice(84, 91), slice(91, 98)),
+            ),
+            dim=-1,
+        )
+        features = torch.cat(
+            (
+                role_invariant,
+                self.correction,
+                self.retry_count.float().unsqueeze(-1).clamp(max=5.0)
+                / 5.0,
+            ),
+            dim=-1,
+        )
+        mean = self.active_custody_preprobe_risk_feature_mean.to(
+            device=raw.device,
+            dtype=raw.dtype,
+        )
+        std = self.active_custody_preprobe_risk_feature_std.to(
+            device=raw.device,
+            dtype=raw.dtype,
+        )
+        weight = self.active_custody_preprobe_risk_weight.to(
+            device=raw.device,
+            dtype=raw.dtype,
+        )
+        success_logit = (
+            ((features - mean) / std) @ weight
+            + self.active_custody_preprobe_risk_bias
+        )
+        success_probability = torch.sigmoid(
+            self.active_custody_preprobe_risk_calibration_slope
+            * success_logit
+            + self.active_custody_preprobe_risk_calibration_intercept
+        )
+        return 1.0 - success_probability
+
     def forward(
         self,
         obs: dict[str, torch.Tensor],
@@ -3226,6 +3404,62 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 >= retry_confirmation_steps
             )
         )
+        preprobe_retry_profile = (
+            self.active_custody_intervention
+            and self.active_custody_intervention_profile
+            == "preprobe_retry"
+        )
+        preprobe_intervention_now = torch.zeros_like(
+            basic_receiver_custody
+        )
+        preprobe_retry_now = torch.zeros_like(
+            basic_receiver_custody
+        )
+        if preprobe_retry_profile:
+            preprobe_risk = (
+                self._active_custody_preprobe_risk_probability(
+                    raw,
+                    giver_is_robot_1,
+                )
+            )
+            preprobe_intervention_now = (
+                basic_receiver_custody
+                & ~self.active_custody_probe_pending
+                & ~self.active_custody_probe_attempted_this_attempt
+                & ~self.active_custody_intervention_assigned
+                & (self.retry_count == 0)
+                & (
+                    preprobe_risk
+                    >= self.active_custody_preprobe_risk_threshold
+                )
+            )
+            randomized_preprobe_decision = (
+                self._randomized_active_custody_binary_action_id()
+            )
+            self.active_custody_intervention_assigned |= (
+                preprobe_intervention_now
+            )
+            self.active_custody_intervention_action_id[
+                preprobe_intervention_now
+            ] = randomized_preprobe_decision[
+                preprobe_intervention_now
+            ]
+            self.active_custody_intervention_probability[
+                preprobe_intervention_now
+            ] = 0.5
+            self.active_custody_preprobe_risk[
+                preprobe_intervention_now
+            ] = preprobe_risk[preprobe_intervention_now]
+            self.active_custody_probe_pre_observation[
+                preprobe_intervention_now
+            ] = raw[preprobe_intervention_now].detach()
+            self.active_custody_probe_post_observation[
+                preprobe_intervention_now
+            ] = raw[preprobe_intervention_now].detach()
+            preprobe_retry_now = (
+                preprobe_intervention_now
+                & (randomized_preprobe_decision == 1)
+            )
         probe_pending = self.active_custody_probe_pending.clone()
         probe_survived = (
             probe_pending
@@ -3248,6 +3482,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & ~probe_pending
             & ~self.active_custody_probe_attempted_this_attempt
             & ~self.receiver_release_authorized
+            & ~preprobe_retry_now
         )
         self.active_custody_probe_pre_forces[
             active_custody_load_probe
@@ -3279,6 +3514,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_probe_survived |= probe_survived
         active_custody_intervention_now = (
             self.active_custody_intervention
+            & (not preprobe_retry_profile)
             & probe_survived
             & ~self.active_custody_intervention_assigned
         )
@@ -3747,6 +3983,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 | probe_failed
                 | gate_retry
                 | preemptive_retry_now
+                | preprobe_retry_now
             ) & (
                 self.retry_state != self.state_failed
             ) & (
@@ -3755,7 +3992,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 self.retry_state != self.state_open_settle
             )
         else:
-            failure = torch.zeros_like(failed_close)
+            failure = preprobe_retry_now
         if bool(failure.any()):
             first_failure = (
                 failure
@@ -4051,6 +4288,29 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         ] = release_delay_giver_action[
             active_custody_intervention_now
         ].detach()
+        preprobe_retry_selected = (
+            self.active_custody_intervention_action_id == 1
+        )
+        preprobe_receiver_action = torch.where(
+            preprobe_retry_selected.unsqueeze(-1),
+            receiver_open,
+            torch.zeros_like(receiver_open),
+        )
+        preprobe_giver_action = torch.where(
+            preprobe_retry_selected.unsqueeze(-1),
+            giver_hold,
+            torch.zeros_like(giver_hold),
+        )
+        self.active_custody_intervention_action[
+            preprobe_intervention_now
+        ] = preprobe_receiver_action[
+            preprobe_intervention_now
+        ].detach()
+        self.active_custody_intervention_giver_action[
+            preprobe_intervention_now
+        ] = preprobe_giver_action[
+            preprobe_intervention_now
+        ].detach()
         giver_action, giver_action_priority, giver_action_owner = (
             self._claim_action(
                 giver_action,
@@ -4289,6 +4549,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_intervention_centering_direction[mask] = 0.0
         self.active_custody_intervention_delay_remaining[mask] = 0
         self.active_custody_intervention_applied_frames[mask] = 0
+        self.active_custody_preprobe_risk[mask] = 0.0
         self.last_giver_action_owner[mask] = 0
         self.last_receiver_action_owner[mask] = 0
         self.giver_release_completed[mask] = False

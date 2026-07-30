@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-delay-interventions|receiver-custody-retry-interventions|receiver-custody-delay-gate|receiver-custody-preprobe-risk|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-delay-interventions|receiver-custody-retry-interventions|receiver-custody-preprobe-interventions|receiver-custody-delay-gate|receiver-custody-preprobe-risk|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -29,6 +29,7 @@ usage() {
     echo "  receiver-custody-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-custody-delay-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-custody-retry-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
+    echo "  receiver-custody-preprobe-interventions RISK_CHECKPOINT DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-custody-delay-gate RISK_CHECKPOINT OUTPUT DATASET..."
     echo "  receiver-custody-preprobe-risk TEACHER OUTPUT CHECKPOINT DATASET..."
     echo "  receiver-custody-controller RISK_CHECKPOINT OUTPUT CHECKPOINT INTERVENTION_DATASET..."
@@ -545,6 +546,26 @@ case "${command}" in
             "${5:-${DR_ANMAR_LEARNING_OUTPUT}/receiver-custody-retry-interventions}" \
             "${6:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
         ;;
+    receiver-custody-preprobe-interventions)
+        risk_checkpoint="${2:-}"
+        dataset="${3:-}"
+        if [[ -z "${risk_checkpoint}" || -z "${dataset}" ]]; then
+            usage
+            exit 2
+        fi
+        exec env \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_VERIFICATION=1 \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION=1 \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_PROFILE=preprobe_retry \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT="${risk_checkpoint}" \
+            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PROBE_DATASET="${dataset}" \
+            DR_ANMAR_SEED_STREAM_OFFSET="${8:-0}" \
+            "${BASH_SOURCE[0]}" promoted-handover \
+            "${4:-1200}" \
+            "${5:-2000}" \
+            "${6:-${DR_ANMAR_LEARNING_OUTPUT}/receiver-custody-preprobe-interventions}" \
+            "${7:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        ;;
     attempt-handover)
         attempt_checkpoint="${2:-}"
         if [[ -z "${attempt_checkpoint}" ]]; then
@@ -1026,6 +1047,12 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_active_custody_intervention_profile
                 "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_PROFILE}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_active_custody_preprobe_risk_checkpoint
+                "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_SEED:-}" ]]; then

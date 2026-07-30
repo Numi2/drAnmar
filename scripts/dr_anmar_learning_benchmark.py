@@ -3660,6 +3660,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "non-default active-custody intervention profile requires "
             "the intervention flag"
         )
+    if (
+        args.receiver_active_custody_intervention_profile
+        == "preprobe_retry"
+    ) != bool(
+        args.receiver_active_custody_preprobe_risk_checkpoint
+    ):
+        return _fail(
+            "pre-probe retry profile and risk checkpoint must be "
+            "enabled together"
+        )
     if not 0 <= active_custody_intervention_seed < 2**31:
         return _fail(
             "active-custody intervention seed must be in [0, 2^31)"
@@ -4485,6 +4495,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_attempt_feature_mean = None
         receiver_attempt_feature_std = None
         receiver_attempt_source_revision = None
+        receiver_preprobe_risk_feature_mean = None
+        receiver_preprobe_risk_feature_std = None
+        receiver_preprobe_risk_weight = None
+        receiver_preprobe_risk_bias = 0.0
+        receiver_preprobe_risk_calibration_slope = 1.0
+        receiver_preprobe_risk_calibration_intercept = 0.0
+        receiver_preprobe_risk_threshold = 1.0
         if args.receiver_recovery_checkpoint:
             receiver_checkpoint = (
                 Path(args.receiver_recovery_checkpoint)
@@ -5131,6 +5148,119 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             receiver_attempt_source_revision = attempt_payload[
                 "source_revision"
             ]
+        if args.receiver_active_custody_preprobe_risk_checkpoint:
+            preprobe_path = (
+                Path(
+                    args.receiver_active_custody_preprobe_risk_checkpoint
+                )
+                .expanduser()
+                .resolve()
+            )
+            if not preprobe_path.is_file():
+                env.close()
+                return _fail(
+                    "pre-probe risk checkpoint not found: "
+                    f"{preprobe_path}"
+                )
+            preprobe_payload = torch.load(
+                preprobe_path,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            preprobe_model = (
+                preprobe_payload.get("model", {})
+                if isinstance(preprobe_payload, dict)
+                else {}
+            )
+            preprobe_calibration = preprobe_model.get(
+                "calibration",
+                {},
+            )
+            preprobe_trial = (
+                preprobe_payload.get("trial_allocation", {})
+                if isinstance(preprobe_payload, dict)
+                else {}
+            )
+            candidate_path = (
+                Path(args.receiver_candidate_value_checkpoint)
+                .expanduser()
+                .resolve()
+                if args.receiver_candidate_value_checkpoint
+                else None
+            )
+            if (
+                not isinstance(preprobe_payload, dict)
+                or preprobe_payload.get("schema_version")
+                != "dranmar-active-custody-preprobe-risk-model-1.0"
+                or preprobe_payload.get("control_scope")
+                != "pre_probe_risk_stratification_only"
+                or preprobe_payload.get("motion_control_authorized")
+                is not False
+                or preprobe_payload.get(
+                    "base_checkpoint_sha256"
+                )
+                != _sha256(checkpoint)
+                or candidate_path is None
+                or preprobe_payload.get(
+                    "receiver_candidate_checkpoint_sha256"
+                )
+                != _sha256(candidate_path)
+                or preprobe_payload.get(
+                    "feature_contract",
+                    {},
+                ).get("kind")
+                != "role_invariant_pre_observation_plus_correction"
+                or preprobe_payload.get(
+                    "feature_contract",
+                    {},
+                ).get("dimension")
+                != 89
+                or preprobe_payload.get(
+                    "feature_contract",
+                    {},
+                ).get("uses_probe_response")
+                is not False
+                or not preprobe_payload.get(
+                    "cross_fit_gate",
+                    {},
+                ).get("signal_gate_passed")
+                or preprobe_trial.get("kind")
+                != "top_risk_quartile"
+            ):
+                env.close()
+                return _fail(
+                    "pre-probe risk checkpoint contract drifted"
+                )
+            receiver_preprobe_risk_feature_mean = preprobe_model[
+                "feature_mean"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_preprobe_risk_feature_std = preprobe_model[
+                "feature_std"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_preprobe_risk_weight = preprobe_model[
+                "weight"
+            ].to(
+                device=env.unwrapped.device,
+                dtype=torch.float32,
+            )
+            receiver_preprobe_risk_bias = float(
+                preprobe_model["bias"].item()
+            )
+            receiver_preprobe_risk_calibration_slope = float(
+                preprobe_calibration["slope"]
+            )
+            receiver_preprobe_risk_calibration_intercept = float(
+                preprobe_calibration["intercept"]
+            )
+            receiver_preprobe_risk_threshold = float(
+                preprobe_trial["activation_threshold"]
+            )
         receiver_base_policy = (
             pickup_recovery_policy
             if pickup_recovery_policy is not None
@@ -5227,6 +5357,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             active_custody_intervention_profile=(
                 args.receiver_active_custody_intervention_profile
+            ),
+            active_custody_preprobe_risk_feature_mean=(
+                receiver_preprobe_risk_feature_mean
+            ),
+            active_custody_preprobe_risk_feature_std=(
+                receiver_preprobe_risk_feature_std
+            ),
+            active_custody_preprobe_risk_weight=(
+                receiver_preprobe_risk_weight
+            ),
+            active_custody_preprobe_risk_bias=(
+                receiver_preprobe_risk_bias
+            ),
+            active_custody_preprobe_risk_calibration_slope=(
+                receiver_preprobe_risk_calibration_slope
+            ),
+            active_custody_preprobe_risk_calibration_intercept=(
+                receiver_preprobe_risk_calibration_intercept
+            ),
+            active_custody_preprobe_risk_threshold=(
+                receiver_preprobe_risk_threshold
             ),
             active_custody_intervention_seed=(
                 active_custody_intervention_seed
@@ -5657,6 +5808,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         torch.zeros(
             env.unwrapped.num_envs,
             dtype=torch.long,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_preprobe_risk = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.float32,
             device=first_unresolved.device,
         )
         if receiver_recovery_policy is not None
@@ -7135,6 +7295,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         is not None
                     )
                     assert (
+                        first_receiver_active_custody_preprobe_risk
+                        is not None
+                    )
+                    assert (
                         first_receiver_active_custody_intervention_centering_direction
                         is not None
                     )
@@ -7266,6 +7430,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ] = (
                         receiver_recovery_policy
                         .active_custody_intervention_applied_frames[first_dones]
+                    )
+                    first_receiver_active_custody_preprobe_risk[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_preprobe_risk[first_dones]
                     )
                     first_receiver_active_custody_intervention_centering_direction[
                         first_dones
@@ -9185,6 +9355,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 is not None
             )
             assert (
+                first_receiver_active_custody_preprobe_risk is not None
+            )
+            assert (
                 first_receiver_active_custody_intervention_centering_direction
                 is not None
             )
@@ -9232,24 +9405,34 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         (
                             (
                                 "dranmar-receiver-active-custody-"
-                                "preemptive-retry-dataset-1.0"
+                                "preprobe-retry-dataset-1.0"
                             )
                             if (
                                 args.receiver_active_custody_intervention_profile
-                                == "preemptive_retry"
+                                == "preprobe_retry"
                             )
                             else (
                                 (
                                     "dranmar-receiver-active-custody-"
-                                    "release-delay-dataset-1.0"
+                                    "preemptive-retry-dataset-1.0"
                                 )
                                 if (
                                     args.receiver_active_custody_intervention_profile
-                                    == "release_delay"
+                                    == "preemptive_retry"
                                 )
                                 else (
-                                    "dranmar-receiver-active-custody-"
-                                    "intervention-dataset-1.0"
+                                    (
+                                        "dranmar-receiver-active-custody-"
+                                        "release-delay-dataset-1.0"
+                                    )
+                                    if (
+                                        args.receiver_active_custody_intervention_profile
+                                        == "release_delay"
+                                    )
+                                    else (
+                                        "dranmar-receiver-active-custody-"
+                                        "intervention-dataset-1.0"
+                                    )
                                 )
                             )
                         )
@@ -9281,7 +9464,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "contact_force_scale_n": 0.2,
                     "probe_frames": 1,
                     "probe_intervention": (
-                        "giver_gripper_open_pulse"
+                        (
+                            "randomized_preprobe_retry_or_"
+                            "giver_gripper_open_pulse"
+                        )
+                        if (
+                            args.receiver_active_custody_intervention_profile
+                            == "preprobe_retry"
+                        )
+                        else "giver_gripper_open_pulse"
                     ),
                     "environment_index": environment_index[
                         probe_mask
@@ -9329,6 +9520,75 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 }
             if args.receiver_active_custody_intervention:
                 if (
+                    args.receiver_active_custody_intervention_profile
+                    == "preprobe_retry"
+                ):
+                    preprobe_checkpoint_path = (
+                        Path(
+                            args
+                            .receiver_active_custody_preprobe_risk_checkpoint
+                        )
+                        .expanduser()
+                        .resolve()
+                    )
+                    probe_payload.update(
+                        {
+                            "randomization": (
+                                "seeded_hash_uniform_two_arm_high_risk"
+                            ),
+                            "randomization_seed": (
+                                active_custody_intervention_seed
+                            ),
+                            "intervention_profile": (
+                                "preprobe_risk_gated_retry"
+                            ),
+                            "preprobe_risk_checkpoint_sha256": (
+                                _sha256(preprobe_checkpoint_path)
+                            ),
+                            "preprobe_risk_threshold": (
+                                receiver_preprobe_risk_threshold
+                            ),
+                            "predicted_preprobe_risk": (
+                                first_receiver_active_custody_preprobe_risk[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "assigned_retry_decision": (
+                                first_receiver_active_custody_intervention_action_id[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "assigned_action_probability": (
+                                first_receiver_active_custody_intervention_probability[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "retry_decision_semantics": {
+                                "0": (
+                                    "normal_probe_then_immediate_release"
+                                ),
+                                "1": (
+                                    "existing_bounded_retry_before_probe"
+                                ),
+                            },
+                            "probe_attempted": (
+                                first_receiver_active_custody_probe_attempted[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "applied_receiver_action": (
+                                first_receiver_active_custody_intervention_action[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "applied_giver_action": (
+                                first_receiver_active_custody_intervention_giver_action[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                        }
+                    )
+                elif (
                     args.receiver_active_custody_intervention_profile
                     == "release_delay"
                 ):
@@ -9488,7 +9748,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         (0, 1)
                         if (
                             args.receiver_active_custody_intervention_profile
-                            == "preemptive_retry"
+                            in {
+                                "preemptive_retry",
+                                "preprobe_retry",
+                            }
                         )
                         else (-1, 0, 1)
                     )
@@ -10907,8 +11170,12 @@ def _parser() -> argparse.ArgumentParser:
             "symmetric_pulse",
             "release_delay",
             "preemptive_retry",
+            "preprobe_retry",
         ),
         default="symmetric_pulse",
+    )
+    play.add_argument(
+        "--receiver_active_custody_preprobe_risk_checkpoint"
     )
     play.add_argument(
         "--receiver_active_custody_intervention_seed",

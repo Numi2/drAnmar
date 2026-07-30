@@ -111,6 +111,7 @@ def test_launcher_exposes_temporal_probe_signal_audit() -> None:
     assert "receiver-custody-interventions)" in launcher
     assert "receiver-custody-delay-interventions)" in launcher
     assert "receiver-custody-retry-interventions)" in launcher
+    assert "receiver-custody-preprobe-interventions)" in launcher
     assert "DR_ANMAR_PROMOTED_ALLOW_CUSTODY_RETRY_INTERVENTION=1" in launcher
     assert "receiver-custody-delay-gate)" in launcher
     assert "receiver-custody-preprobe-risk)" in launcher
@@ -124,9 +125,11 @@ def test_launcher_exposes_temporal_probe_signal_audit() -> None:
     assert '"intervention-dataset-1.0"' in benchmark
     assert '"release-delay-dataset-1.0"' in benchmark
     assert '"preemptive-retry-dataset-1.0"' in benchmark
+    assert '"preprobe-retry-dataset-1.0"' in benchmark
     assert '"assigned_action_probability"' in benchmark
     assert '"assigned_release_delay_frames"' in benchmark
     assert '"applied_delay_frames"' in benchmark
     assert '"assigned_retry_decision"' in benchmark
+    assert '"predicted_preprobe_risk"' in benchmark
     assert "evaluate_dranmar_release_delay_gate.py" in launcher
     assert "train_dranmar_preprobe_risk_model.py" in launcher

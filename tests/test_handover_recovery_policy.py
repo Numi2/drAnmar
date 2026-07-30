@@ -552,6 +552,89 @@ def test_active_custody_preemptive_retry_randomizes_binary_decision() -> None:
     )
 
 
+def test_preprobe_risk_trial_randomizes_before_giver_probe() -> None:
+    policy = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        enable_retries=False,
+        active_custody_verification=True,
+        active_custody_intervention=True,
+        active_custody_intervention_profile="preprobe_retry",
+        active_custody_preprobe_risk_feature_mean=torch.zeros(89),
+        active_custody_preprobe_risk_feature_std=torch.ones(89),
+        active_custody_preprobe_risk_weight=torch.zeros(89),
+        active_custody_preprobe_risk_bias=-5.0,
+        active_custody_preprobe_risk_threshold=0.5,
+        active_custody_intervention_seed=4_104_736,
+    )
+    observation = _observation(batch_size=10)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 80] = 1.0
+    raw[:, 66:68] = 0.01
+    raw[:, 68:70] = 0.01
+
+    action = None
+    for _ in range(4):
+        action = policy(observation)
+        if bool(policy.active_custody_intervention_assigned.all()):
+            break
+
+    assert action is not None
+    decision = policy.active_custody_intervention_action_id
+    treatment = decision == 1
+    control = decision == 0
+    assert set(decision.tolist()) == {0, 1}
+    assert torch.allclose(
+        policy.active_custody_intervention_probability,
+        torch.full((10,), 0.5),
+    )
+    assert bool(
+        (
+            policy.active_custody_preprobe_risk
+            > policy.active_custody_preprobe_risk_threshold
+        ).all()
+    )
+    assert bool(policy.active_custody_probe_attempted[control].all())
+    assert not bool(
+        policy.active_custody_probe_attempted[treatment].any()
+    )
+    assert bool(policy.first_attempt_failed[treatment].all())
+    assert not bool(policy.first_attempt_failed[control].any())
+    assert bool(
+        (policy.retry_state[treatment] == policy.state_reopening).all()
+    )
+    assert torch.equal(
+        policy.active_custody_intervention_action[treatment, 6],
+        torch.ones_like(
+            policy.active_custody_intervention_action[treatment, 6]
+        ),
+    )
+    assert torch.equal(
+        policy.active_custody_intervention_giver_action[treatment, 6],
+        -torch.ones_like(
+            policy.active_custody_intervention_giver_action[treatment, 6]
+        ),
+    )
+    assert torch.equal(
+        policy.active_custody_intervention_action[control],
+        torch.zeros_like(
+            policy.active_custody_intervention_action[control]
+        ),
+    )
+    assert bool(
+        (
+            policy.last_receiver_action_owner[treatment]
+            == policy._RECEIVER_OWNER_RESET_OPEN
+        ).all()
+    )
+    assert bool(
+        (
+            policy.last_giver_action_owner[treatment]
+            == policy._GIVER_OWNER_HOLD
+        ).all()
+    )
+
+
 def test_retry_retreat_budget_is_cumulative_across_contact_flicker() -> None:
     policy = HandoverReceiverRecoveryPolicy(
         _FixedBasePolicy(),
