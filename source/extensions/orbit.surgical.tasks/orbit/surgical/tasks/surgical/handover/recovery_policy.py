@@ -1191,6 +1191,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
 
     _GIVER_OWNER_HOLD = 1
     _GIVER_OWNER_LOAD_PROBE = 2
+    _GIVER_OWNER_RELEASE_DELAY = 3
     _RECEIVER_OWNER_FAILED_OPEN = 1
     _RECEIVER_OWNER_RESET_OPEN = 2
     _RECEIVER_OWNER_RESET_RETREAT = 3
@@ -1248,6 +1249,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         retry_force_centering: bool = False,
         active_custody_verification: bool = False,
         active_custody_intervention: bool = False,
+        active_custody_intervention_profile: str = "symmetric_pulse",
         active_custody_intervention_seed: int = 0,
         active_custody_intervention_action_limit: float = 0.0025,
         receiver_retention_contact_centering: bool = False,
@@ -1305,6 +1307,14 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if active_custody_intervention and not active_custody_verification:
             raise ValueError(
                 "active-custody intervention requires verification"
+            )
+        if active_custody_intervention_profile not in {
+            "symmetric_pulse",
+            "release_delay",
+        }:
+            raise ValueError(
+                "active-custody intervention profile must be "
+                "symmetric_pulse or release_delay"
             )
         if not 0 <= active_custody_intervention_seed < 2**31:
             raise ValueError(
@@ -1713,6 +1723,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_intervention = bool(
             active_custody_intervention
         )
+        self.active_custody_intervention_profile = (
+            active_custody_intervention_profile
+        )
         self.active_custody_intervention_seed = int(
             active_custody_intervention_seed
         )
@@ -1889,8 +1902,19 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.active_custody_intervention_probability = torch.empty(0)
         self.active_custody_intervention_action = torch.empty((0, 7))
+        self.active_custody_intervention_giver_action = torch.empty(
+            (0, 7)
+        )
         self.active_custody_intervention_centering_direction = torch.empty(
             0
+        )
+        self.active_custody_intervention_delay_remaining = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.active_custody_intervention_applied_frames = torch.empty(
+            0,
+            dtype=torch.long,
         )
         self.last_giver_action_owner = torch.empty(
             0,
@@ -2163,11 +2187,18 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dtype=raw.dtype,
             device=device,
         )
+        self.active_custody_intervention_giver_action = torch.zeros(
+            (batch_size, 7),
+            dtype=raw.dtype,
+            device=device,
+        )
         self.active_custody_intervention_centering_direction = torch.zeros(
             batch_size,
             dtype=raw.dtype,
             device=device,
         )
+        self.active_custody_intervention_delay_remaining = torch.zeros_like(self.retry_count)
+        self.active_custody_intervention_applied_frames = torch.zeros_like(self.retry_count)
         self.last_giver_action_owner = torch.zeros_like(self.retry_count)
         self.last_receiver_action_owner = torch.zeros_like(
             self.retry_count
@@ -3222,6 +3253,21 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         randomized_intervention_id = (
             self._randomized_active_custody_action_id()
         )
+        release_delay_profile = (
+            self.active_custody_intervention
+            and self.active_custody_intervention_profile
+            == "release_delay"
+        )
+        if release_delay_profile:
+            randomized_intervention_id = torch.where(
+                randomized_intervention_id < 0,
+                torch.zeros_like(randomized_intervention_id),
+                torch.where(
+                    randomized_intervention_id == 0,
+                    torch.ones_like(randomized_intervention_id),
+                    torch.full_like(randomized_intervention_id, 3),
+                ),
+            )
         centering_direction = torch.where(
             receiver_force_imbalance >= 0.0,
             torch.ones_like(receiver_force_imbalance),
@@ -3238,14 +3284,54 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_intervention_probability[
             active_custody_intervention_now
         ] = 1.0 / 3.0
-        self.active_custody_intervention_centering_direction[
-            active_custody_intervention_now
-        ] = centering_direction[active_custody_intervention_now]
-        release_authorized_now = (
-            probe_survived
-            if self.active_custody_verification
-            else passive_release_authorized
-        )
+        if release_delay_profile:
+            self.active_custody_intervention_delay_remaining[
+                active_custody_intervention_now
+            ] = randomized_intervention_id[
+                active_custody_intervention_now
+            ]
+        else:
+            self.active_custody_intervention_centering_direction[
+                active_custody_intervention_now
+            ] = centering_direction[active_custody_intervention_now]
+        release_delay_active = torch.zeros_like(probe_survived)
+        release_delay_completed_now = torch.zeros_like(probe_survived)
+        if release_delay_profile:
+            release_delay_active = (
+                self.active_custody_intervention_assigned
+                & (
+                    self.active_custody_intervention_delay_remaining
+                    > 0
+                )
+                & (phase == 3)
+                & (self.retry_state == self.state_secure)
+                & ~self.giver_release_completed
+            )
+            self.active_custody_intervention_applied_frames += (
+                release_delay_active.to(
+                    self.active_custody_intervention_applied_frames.dtype
+                )
+            )
+            self.active_custody_intervention_delay_remaining[
+                release_delay_active
+            ] -= 1
+            release_delay_completed_now = (
+                release_delay_active
+                & (
+                    self.active_custody_intervention_delay_remaining
+                    == 0
+                )
+            )
+        if self.active_custody_verification:
+            if release_delay_profile:
+                release_authorized_now = (
+                    probe_survived
+                    & (randomized_intervention_id == 0)
+                ) | release_delay_completed_now
+            else:
+                release_authorized_now = probe_survived
+        else:
+            release_authorized_now = passive_release_authorized
         self.receiver_release_authorized |= release_authorized_now
         self.retry_release_authorized |= (
             release_authorized_now & retry_transfer
@@ -3878,23 +3964,69 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             )
         )
         active_custody_intervention_action = receiver_hold_closed.clone()
-        active_custody_intervention_action[:, 2] = (
-            randomized_intervention_id.to(receiver_hold_closed.dtype)
-            * centering_direction
-            * self.active_custody_intervention_action_limit
-        )
+        if not release_delay_profile:
+            active_custody_intervention_action[:, 2] = (
+                randomized_intervention_id.to(
+                    receiver_hold_closed.dtype
+                )
+                * centering_direction
+                * self.active_custody_intervention_action_limit
+            )
         self.active_custody_intervention_action[
             active_custody_intervention_now
         ] = active_custody_intervention_action[
             active_custody_intervention_now
         ].detach()
+        release_delay_giver_action = torch.where(
+            (randomized_intervention_id > 0).unsqueeze(-1),
+            giver_hold,
+            torch.zeros_like(giver_hold),
+        )
+        self.active_custody_intervention_giver_action[
+            active_custody_intervention_now
+        ] = release_delay_giver_action[
+            active_custody_intervention_now
+        ].detach()
+        giver_action, giver_action_priority, giver_action_owner = (
+            self._claim_action(
+                giver_action,
+                giver_action_priority,
+                giver_action_owner,
+                giver_hold,
+                release_delay_active,
+                claim_priority=(
+                    self._PRIORITY_ACTIVE_CUSTODY_INTERVENTION
+                ),
+                claim_owner=self._GIVER_OWNER_RELEASE_DELAY,
+            )
+        )
+        receiver_action, receiver_action_priority, receiver_action_owner = (
+            self._claim_action(
+                receiver_action,
+                receiver_action_priority,
+                receiver_action_owner,
+                receiver_hold_closed,
+                release_delay_active,
+                claim_priority=(
+                    self._PRIORITY_ACTIVE_CUSTODY_INTERVENTION
+                ),
+                claim_owner=(
+                    self._RECEIVER_OWNER_ACTIVE_CUSTODY_INTERVENTION
+                ),
+            )
+        )
+        symmetric_intervention_now = (
+            active_custody_intervention_now
+            if not release_delay_profile
+            else torch.zeros_like(active_custody_intervention_now)
+        )
         receiver_action, receiver_action_priority, receiver_action_owner = (
             self._claim_action(
                 receiver_action,
                 receiver_action_priority,
                 receiver_action_owner,
                 active_custody_intervention_action,
-                active_custody_intervention_now,
+                symmetric_intervention_now,
                 claim_priority=(
                     self._PRIORITY_ACTIVE_CUSTODY_INTERVENTION
                 ),
@@ -4089,7 +4221,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_intervention_action_id[mask] = -2
         self.active_custody_intervention_probability[mask] = 0.0
         self.active_custody_intervention_action[mask] = 0.0
+        self.active_custody_intervention_giver_action[mask] = 0.0
         self.active_custody_intervention_centering_direction[mask] = 0.0
+        self.active_custody_intervention_delay_remaining[mask] = 0
+        self.active_custody_intervention_applied_frames[mask] = 0
         self.last_giver_action_owner[mask] = 0
         self.last_receiver_action_owner[mask] = 0
         self.giver_release_completed[mask] = False

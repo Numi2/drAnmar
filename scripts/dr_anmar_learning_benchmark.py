@@ -3651,6 +3651,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "active-custody intervention requires an immutable dataset "
             "output"
         )
+    if (
+        args.receiver_active_custody_intervention_profile
+        != "symmetric_pulse"
+        and not args.receiver_active_custody_intervention
+    ):
+        return _fail(
+            "non-default active-custody intervention profile requires "
+            "the intervention flag"
+        )
     if not 0 <= active_custody_intervention_seed < 2**31:
         return _fail(
             "active-custody intervention seed must be in [0, 2^31)"
@@ -5216,6 +5225,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             active_custody_intervention=(
                 args.receiver_active_custody_intervention
             ),
+            active_custody_intervention_profile=(
+                args.receiver_active_custody_intervention_profile
+            ),
             active_custody_intervention_seed=(
                 active_custody_intervention_seed
             ),
@@ -5627,6 +5639,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         torch.zeros(
             (env.unwrapped.num_envs, 7),
             dtype=torch.float32,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_intervention_giver_action = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 7),
+            dtype=torch.float32,
+            device=first_unresolved.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_active_custody_intervention_applied_frames = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.long,
             device=first_unresolved.device,
         )
         if receiver_recovery_policy is not None
@@ -7097,6 +7127,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         is not None
                     )
                     assert (
+                        first_receiver_active_custody_intervention_giver_action
+                        is not None
+                    )
+                    assert (
+                        first_receiver_active_custody_intervention_applied_frames
+                        is not None
+                    )
+                    assert (
                         first_receiver_active_custody_intervention_centering_direction
                         is not None
                     )
@@ -7216,6 +7254,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ] = (
                         receiver_recovery_policy
                         .active_custody_intervention_action[first_dones]
+                    )
+                    first_receiver_active_custody_intervention_giver_action[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_intervention_giver_action[first_dones]
+                    )
+                    first_receiver_active_custody_intervention_applied_frames[
+                        first_dones
+                    ] = (
+                        receiver_recovery_policy
+                        .active_custody_intervention_applied_frames[first_dones]
                     )
                     first_receiver_active_custody_intervention_centering_direction[
                         first_dones
@@ -9127,6 +9177,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 is not None
             )
             assert (
+                first_receiver_active_custody_intervention_giver_action
+                is not None
+            )
+            assert (
+                first_receiver_active_custody_intervention_applied_frames
+                is not None
+            )
+            assert (
                 first_receiver_active_custody_intervention_centering_direction
                 is not None
             )
@@ -9171,8 +9229,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             probe_payload = {
                     "schema_version": (
-                        "dranmar-receiver-active-custody-"
-                        "intervention-dataset-1.0"
+                        (
+                            "dranmar-receiver-active-custody-"
+                            "release-delay-dataset-1.0"
+                            if (
+                                args.receiver_active_custody_intervention_profile
+                                == "release_delay"
+                            )
+                            else (
+                                "dranmar-receiver-active-custody-"
+                                "intervention-dataset-1.0"
+                            )
+                        )
                         if args.receiver_active_custody_intervention
                         else (
                             "dranmar-receiver-active-custody-"
@@ -9248,46 +9316,94 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                 }
             if args.receiver_active_custody_intervention:
-                probe_payload.update(
-                    {
-                        "randomization": (
-                            "seeded_hash_uniform_three_arm"
-                        ),
-                        "randomization_seed": (
-                            active_custody_intervention_seed
-                        ),
-                        "intervention_frames": 1,
-                        "intervention_action_limit": (
-                            args
-                            .receiver_active_custody_intervention_action_limit
-                        ),
-                        "intervention_action_semantics": {
-                            "-1": "opposite_force_centering_pulse",
-                            "0": "exact_no_op_hold_closed",
-                            "1": "force_centering_pulse",
-                        },
-                        "assigned_action_id": (
-                            first_receiver_active_custody_intervention_action_id[
-                                probe_mask
-                            ].cpu()
-                        ),
-                        "assigned_action_probability": (
-                            first_receiver_active_custody_intervention_probability[
-                                probe_mask
-                            ].cpu()
-                        ),
-                        "applied_receiver_action": (
-                            first_receiver_active_custody_intervention_action[
-                                probe_mask
-                            ].cpu()
-                        ),
-                        "force_centering_direction": (
-                            first_receiver_active_custody_intervention_centering_direction[
-                                probe_mask
-                            ].cpu()
-                        ),
-                    }
-                )
+                if (
+                    args.receiver_active_custody_intervention_profile
+                    == "release_delay"
+                ):
+                    probe_payload.update(
+                        {
+                            "randomization": (
+                                "seeded_hash_uniform_three_arm"
+                            ),
+                            "randomization_seed": (
+                                active_custody_intervention_seed
+                            ),
+                            "intervention_profile": (
+                                "post_probe_dual_grasp_release_delay"
+                            ),
+                            "assigned_release_delay_frames": (
+                                first_receiver_active_custody_intervention_action_id[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "assigned_action_probability": (
+                                first_receiver_active_custody_intervention_probability[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "release_delay_semantics": {
+                                "0": "immediate_release_after_probe",
+                                "1": "one_frame_reclose_then_release",
+                                "3": "three_frame_reclose_then_release",
+                            },
+                            "applied_delay_frames": (
+                                first_receiver_active_custody_intervention_applied_frames[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "applied_receiver_action": (
+                                first_receiver_active_custody_intervention_action[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "applied_giver_action": (
+                                first_receiver_active_custody_intervention_giver_action[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                        }
+                    )
+                else:
+                    probe_payload.update(
+                        {
+                            "randomization": (
+                                "seeded_hash_uniform_three_arm"
+                            ),
+                            "randomization_seed": (
+                                active_custody_intervention_seed
+                            ),
+                            "intervention_frames": 1,
+                            "intervention_action_limit": (
+                                args
+                                .receiver_active_custody_intervention_action_limit
+                            ),
+                            "intervention_action_semantics": {
+                                "-1": "opposite_force_centering_pulse",
+                                "0": "exact_no_op_hold_closed",
+                                "1": "force_centering_pulse",
+                            },
+                            "assigned_action_id": (
+                                first_receiver_active_custody_intervention_action_id[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "assigned_action_probability": (
+                                first_receiver_active_custody_intervention_probability[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "applied_receiver_action": (
+                                first_receiver_active_custody_intervention_action[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                            "force_centering_direction": (
+                                first_receiver_active_custody_intervention_centering_direction[
+                                    probe_mask
+                                ].cpu()
+                            ),
+                        }
+                    )
             torch.save(probe_payload, probe_dataset_path)
             receiver_active_custody_probe_dataset = {
                 "path": str(probe_dataset_path),
@@ -9307,6 +9423,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 action_id = (
                     first_receiver_active_custody_intervention_action_id
                 )
+                intervention_values = (
+                    (0, 1, 3)
+                    if (
+                        args.receiver_active_custody_intervention_profile
+                        == "release_delay"
+                    )
+                    else (-1, 0, 1)
+                )
                 receiver_active_custody_probe_dataset[
                     "randomization_seed"
                 ] = active_custody_intervention_seed
@@ -9316,7 +9440,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     str(value): int(
                         (probe_mask & (action_id == value)).sum().item()
                     )
-                    for value in (-1, 0, 1)
+                    for value in intervention_values
                 }
                 receiver_active_custody_probe_dataset[
                     "success_by_action"
@@ -9330,7 +9454,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .sum()
                         .item()
                     )
-                    for value in (-1, 0, 1)
+                    for value in intervention_values
                 }
         receiver_probe_force_response = None
         if (
@@ -10714,6 +10838,11 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--receiver_active_custody_intervention",
         action="store_true",
+    )
+    play.add_argument(
+        "--receiver_active_custody_intervention_profile",
+        choices=("symmetric_pulse", "release_delay"),
+        default="symmetric_pulse",
     )
     play.add_argument(
         "--receiver_active_custody_intervention_seed",

@@ -412,6 +412,67 @@ def test_active_custody_intervention_is_seeded_uniform_and_bounded() -> None:
     )
 
 
+def test_active_custody_release_delay_randomizes_zero_one_three_frames() -> None:
+    policy = HandoverReceiverRecoveryPolicy(
+        _FixedBasePolicy(),
+        active_custody_verification=True,
+        active_custody_intervention=True,
+        active_custody_intervention_profile="release_delay",
+        active_custody_intervention_seed=4_104_736,
+    )
+    observation = _observation(batch_size=9)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 80] = 1.0
+    raw[:, 66:68] = 0.01
+    raw[:, 68:70] = 0.01
+
+    for _ in range(3):
+        policy(observation)
+    randomized_bucket = policy._randomized_active_custody_action_id()
+    expected_delay = torch.where(
+        randomized_bucket < 0,
+        torch.zeros_like(randomized_bucket),
+        torch.where(
+            randomized_bucket == 0,
+            torch.ones_like(randomized_bucket),
+            torch.full_like(randomized_bucket, 3),
+        ),
+    )
+
+    policy(observation)
+
+    assert set(expected_delay.tolist()) == {0, 1, 3}
+    assert torch.equal(
+        policy.active_custody_intervention_action_id,
+        expected_delay,
+    )
+    assert torch.equal(
+        policy.active_custody_intervention_applied_frames,
+        (expected_delay > 0).long(),
+    )
+    delayed = expected_delay > 0
+    assert bool(
+        (policy.last_giver_action_owner[delayed] == policy._GIVER_OWNER_RELEASE_DELAY).all()
+    )
+    assert bool(
+        (
+            policy.last_receiver_action_owner[delayed]
+            == policy._RECEIVER_OWNER_ACTIVE_CUSTODY_INTERVENTION
+        ).all()
+    )
+
+    policy(observation)
+    policy(observation)
+
+    assert torch.equal(
+        policy.active_custody_intervention_applied_frames,
+        expected_delay,
+    )
+    assert bool((policy.active_custody_intervention_delay_remaining == 0).all())
+    assert bool(policy.receiver_release_authorized.all())
+
+
 def test_retry_retreat_budget_is_cumulative_across_contact_flicker() -> None:
     policy = HandoverReceiverRecoveryPolicy(
         _FixedBasePolicy(),
