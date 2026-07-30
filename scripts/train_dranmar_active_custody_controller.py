@@ -415,7 +415,7 @@ def _fit_outcome_network(
     std = features.std(dim=0).clamp_min(1.0e-6)
     normalized = (features - mean) / std
     if bool(target.all()) or not bool(target.any()):
-        constant = target.float().mean().clamp(1.0e-6, 1.0 - 1.0e-6)
+        constant = target.float().mean()
         state = {
             "feature_mean": mean.detach().clone(),
             "feature_std": std.detach().clone(),
@@ -423,11 +423,8 @@ def _fit_outcome_network(
                 (3, features.shape[-1]),
                 dtype=features.dtype,
             ),
-            "bias": torch.full(
-                (3,),
-                float(torch.logit(constant).item()),
-                dtype=features.dtype,
-            ),
+            "bias": torch.zeros(3, dtype=features.dtype),
+            "constant_probability": constant.detach().clone(),
         }
         return state, {
             "logged_action_brier": float(
@@ -492,6 +489,12 @@ def _outcome_probability(
     state: dict[str, torch.Tensor],
     features: torch.Tensor,
 ) -> torch.Tensor:
+    if "constant_probability" in state:
+        return torch.full(
+            (features.shape[0], 3),
+            float(state["constant_probability"].item()),
+            dtype=features.dtype,
+        )
     normalized = (features - state["feature_mean"]) / state["feature_std"]
     return torch.sigmoid(normalized @ state["weight"].transpose(0, 1) + state["bias"])
 
@@ -777,6 +780,10 @@ def _run(args: argparse.Namespace) -> int:
         features.shape[0],
         dtype=torch.long,
     )
+    cross_fit_replication_action = torch.empty(
+        features.shape[0],
+        dtype=torch.long,
+    )
     folds: dict[str, object] = {}
     for held_out_seed in sorted(DEVELOPMENT_SEEDS):
         test = seed_index == held_out_seed
@@ -825,9 +832,19 @@ def _run(args: argparse.Namespace) -> int:
             test_success_probability,
             advantage_threshold=threshold,
         )
+        replication_action = torch.where(
+            risk[test] >= train_cutpoints[2],
+            torch.zeros(int(test.sum()), dtype=torch.long),
+            torch.full(
+                (int(test.sum()),),
+                NO_OP_INDEX,
+                dtype=torch.long,
+            ),
+        )
         cross_fit_success_probability[test] = test_success_probability
         cross_fit_unsafe_probability[test] = test_unsafe_probability
         cross_fit_policy_action[test] = policy_action
+        cross_fit_replication_action[test] = replication_action
         folds[str(held_out_seed)] = {
             "train_samples": int(train.sum()),
             "test_samples": int(test.sum()),
@@ -845,12 +862,30 @@ def _run(args: argparse.Namespace) -> int:
                 success[test],
                 unsafe[test],
             ),
+            "constrained_replication_screen": _policy_evaluation(
+                test_success_probability,
+                test_unsafe_probability,
+                replication_action,
+                action_index[test],
+                propensity[test],
+                success[test],
+                unsafe[test],
+            ),
         }
 
     aggregate_evaluation = _policy_evaluation(
         cross_fit_success_probability,
         cross_fit_unsafe_probability,
         cross_fit_policy_action,
+        action_index,
+        propensity,
+        success,
+        unsafe,
+    )
+    replication_evaluation = _policy_evaluation(
+        cross_fit_success_probability,
+        cross_fit_unsafe_probability,
+        cross_fit_replication_action,
         action_index,
         propensity,
         success,
@@ -890,6 +925,36 @@ def _run(args: argparse.Namespace) -> int:
         and success_gate_passed
         and safety_gate_passed
         and activation_gate_passed
+    )
+    replication_safety_passed = bool(
+        replication_evaluation["unsafe_effect_vs_no_op"]["upper_one_sided_95"]
+        <= args.maximum_unsafe_ucb
+        and all(
+            fold["constrained_replication_screen"]["unsafe_effect_vs_no_op"]["upper_one_sided_95"]
+            <= args.maximum_unsafe_ucb
+            for fold in folds.values()
+        )
+    )
+    replication_strict_gate_passed = bool(
+        support_gate_passed
+        and replication_safety_passed
+        and replication_evaluation["success_effect_vs_no_op"]["lower_one_sided_95"]
+        > args.minimum_effect_lcb
+        and all(
+            fold["constrained_replication_screen"]["success_effect_vs_no_op"]["lower_one_sided_95"]
+            > args.minimum_effect_lcb
+            for fold in folds.values()
+        )
+    )
+    fresh_replication_authorized = bool(
+        support_gate_passed
+        and replication_safety_passed
+        and replication_evaluation["success_effect_vs_no_op"]["lower_one_sided_95"]
+        > args.minimum_effect_lcb
+        and all(
+            fold["constrained_replication_screen"]["success_effect_vs_no_op"]["estimate"] > 0.0
+            for fold in folds.values()
+        )
     )
 
     full_weights = _balanced_weights(
@@ -932,6 +997,17 @@ def _run(args: argparse.Namespace) -> int:
             "one-sided 95% success-effect lower bound on every development "
             "seed and in aggregate, with no upper-bound unsafe-event increase."
         )
+    elif fresh_replication_authorized:
+        status = "constrained_candidate_requires_fresh_replication"
+        disposition = "preserved_as_locked_fresh_replication_candidate"
+        reason = (
+            "The unconstrained learned controller missed its strict gate. "
+            "An exploratory constrained policy—opposite pulse only in the "
+            "highest calibrated-risk quartile—has a positive aggregate "
+            "one-sided 95% lower bound and a positive point estimate on every "
+            "seed. Lock it now and test it on fresh randomized streams before "
+            "any held-out policy rollout."
+        )
     else:
         status = "retained_not_authorized"
         disposition = "preserved_as_nonpromoted_research_candidate"
@@ -948,6 +1024,7 @@ def _run(args: argparse.Namespace) -> int:
         "disposition": disposition,
         "control_scope": "active_custody_bounded_residual_candidate",
         "heldout_physics_evaluation_authorized": gate_passed,
+        "fresh_randomized_replication_authorized": (fresh_replication_authorized),
         "main_policy_replacement_authorized": False,
         "real_robot_authorized": False,
         "base_checkpoint_sha256": base_hash,
@@ -982,6 +1059,16 @@ def _run(args: argparse.Namespace) -> int:
             "success_fit": final_success_fit,
             "unsafe_fit": final_unsafe_fit,
         },
+        "constrained_replication_candidate": {
+            "kind": "highest_risk_quartile_opposite_pulse_else_no_op",
+            "risk_threshold": float(pooled_risk_cutpoints[2].item()),
+            "active_action_id": -1,
+            "inactive_action_id": 0,
+            "derived_after_exploratory_action_outcomes": True,
+            "requires_fresh_randomized_replication": True,
+            "fresh_randomized_replication_authorized": (fresh_replication_authorized),
+            "strict_cross_seed_gate_passed": (replication_strict_gate_passed),
+        },
         "training_datasets": provenance,
         "cross_fit_gate": {
             "passed": gate_passed,
@@ -990,6 +1077,11 @@ def _run(args: argparse.Namespace) -> int:
             "safety_gate_passed": safety_gate_passed,
             "activation_gate_passed": activation_gate_passed,
             "aggregate_evaluation": aggregate_evaluation,
+        },
+        "constrained_replication_screen": {
+            "strict_cross_seed_gate_passed": (replication_strict_gate_passed),
+            "fresh_randomized_replication_authorized": (fresh_replication_authorized),
+            "aggregate_evaluation": replication_evaluation,
         },
     }
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1003,6 +1095,7 @@ def _run(args: argparse.Namespace) -> int:
             "gate_passed": gate_passed,
             "disposition": disposition,
             "heldout_physics_evaluation_authorized": gate_passed,
+            "fresh_randomized_replication_authorized": (fresh_replication_authorized),
             "main_policy_replacement_authorized": False,
             "real_robot_authorized": False,
             "reason": reason,
@@ -1036,6 +1129,7 @@ def _run(args: argparse.Namespace) -> int:
             "sha256": checkpoint_hash,
             "schema_version": CHECKPOINT_SCHEMA_VERSION,
             "heldout_physics_evaluation_authorized": gate_passed,
+            "fresh_randomized_replication_authorized": (fresh_replication_authorized),
         },
         "risk_checkpoint": {
             "path": str(risk_path),
@@ -1061,6 +1155,15 @@ def _run(args: argparse.Namespace) -> int:
         ),
         "folds": folds,
         "aggregate_evaluation": aggregate_evaluation,
+        "constrained_replication_candidate": {
+            "policy": ("opposite pulse in highest calibrated-risk quartile; exact no-op otherwise"),
+            "risk_threshold": float(pooled_risk_cutpoints[2].item()),
+            "derived_after_exploratory_action_outcomes": True,
+            "requires_fresh_randomized_replication": True,
+            "strict_cross_seed_gate_passed": (replication_strict_gate_passed),
+            "fresh_randomized_replication_authorized": (fresh_replication_authorized),
+            "aggregate_evaluation": replication_evaluation,
+        },
         "deployment_fit": {
             "success_fit": final_success_fit,
             "unsafe_fit": final_unsafe_fit,

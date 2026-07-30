@@ -144,3 +144,23 @@ def test_activation_threshold_caps_training_distribution() -> None:
 
     assert threshold == pytest.approx(0.07)
     assert int((actions != MODULE.NO_OP_INDEX).sum()) == 2
+
+
+def test_constant_outcome_network_is_exact() -> None:
+    features = torch.randn(12, 5)
+    action = torch.arange(12) % 3
+    target = torch.zeros(12, dtype=torch.bool)
+    weights = torch.ones(12)
+
+    state, fit = MODULE._fit_outcome_network(
+        features,
+        action,
+        target,
+        weights,
+        l2=1.0e-3,
+        max_iterations=20,
+    )
+    probability = MODULE._outcome_probability(state, features)
+
+    assert torch.equal(probability, torch.zeros_like(probability))
+    assert fit["logged_action_brier"] == 0.0
