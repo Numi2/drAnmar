@@ -21,6 +21,7 @@ import torch.nn.functional as functional
 TRACE_SCHEMA = "dranmar-handover-teacher-trace-1.0"
 DATASET_SCHEMA = "dranmar-handover-teacher-dataset-1.0"
 RECEIPT_SCHEMA = "dranmar-handover-teacher-receipt-1.0"
+ACTION_SCHEDULE_SCHEMA = "dranmar-handover-teacher-action-schedule-1.0"
 QUALIFICATION_SEEDS = {17, 2361, 4099}
 ALLOWED_TEACHERS = {
     "constrained_trajectory_optimizer",
@@ -206,6 +207,136 @@ def _validate_trace(path: Path, trace: dict[str, Any]) -> None:
         raise ValueError(f"trace lacks policy provenance: {path}")
 
 
+def propose_retention_schedule(args: argparse.Namespace) -> dict[str, Any]:
+    """Extend the last proven centering command across the custody transition."""
+
+    control_path = Path(args.control).expanduser().resolve()
+    control = _load_trace(control_path)
+    _validate_trace(control_path, control)
+    if control.get("role") != "control":
+        raise ValueError("retention schedule requires a frozen control trace")
+    if control["terminal"]["outcome"] != "receiver_retention_lost":
+        raise ValueError("retention schedule requires a receiver-retention failure")
+    if args.duration <= 0 or args.duration > 64:
+        raise ValueError("retention extension duration must be in [1, 64]")
+    if args.lookback <= 0 or args.lookback > 128:
+        raise ValueError("retention action lookback must be in [1, 128]")
+
+    phase_three = torch.nonzero(
+        control["phases"].long() == 3,
+        as_tuple=False,
+    ).flatten()
+    if phase_three.numel() == 0:
+        raise ValueError("control never reached receiver custody")
+    branch_frame = int(phase_three[0].item())
+    observation = control["observations"][branch_frame]
+    giver_is_robot_1 = bool(observation[82].item() > 0.5)
+    receiver_action_start = 7 if giver_is_robot_1 else 0
+    receiver_contact_start = 68 if giver_is_robot_1 else 66
+
+    search_start = max(0, branch_frame - int(args.lookback))
+    recent_translation = control["actions"][
+        search_start:branch_frame,
+        receiver_action_start : receiver_action_start + 3,
+    ]
+    active_rows = torch.nonzero(
+        recent_translation.abs().amax(dim=-1) > 1.0e-7,
+        as_tuple=False,
+    ).flatten()
+    if active_rows.numel() == 0:
+        raise ValueError("no causal pre-custody centering action was observed")
+    source_frame = search_start + int(active_rows[-1].item())
+    source_translation = control["actions"][
+        source_frame,
+        receiver_action_start : receiver_action_start + 3,
+    ]
+    axis = int(torch.argmax(source_translation.abs()).item())
+    value = float(source_translation[axis].item())
+    if not 0.0 < abs(value) <= 0.05:
+        raise ValueError("selected centering action is outside the teacher cap")
+
+    schedule_path = Path(args.output_schedule).expanduser().resolve()
+    receipt_path = Path(args.output_receipt).expanduser().resolve()
+    if schedule_path.exists() or receipt_path.exists():
+        raise ValueError("refusing to overwrite immutable teacher artifacts")
+    schedule = {
+        "schema_version": ACTION_SCHEDULE_SCHEMA,
+        "task": control["task"],
+        "seed": int(control["seed"]),
+        "pair_id": control["pair_id"],
+        "source_control": {
+            "path": str(control_path),
+            "sha256": _sha256(control_path),
+        },
+        "branch_frame": branch_frame,
+        "segments": [
+            {
+                "start_frame_inclusive": branch_frame,
+                "stop_frame_exclusive": branch_frame + int(args.duration),
+                "action_indices": [receiver_action_start + axis],
+                "values": [value],
+                "mode": "replace",
+            }
+        ],
+        "derivation": {
+            "kind": "extend_last_observed_receiver_centering_action",
+            "lookback_frames": int(args.lookback),
+            "source_frame": source_frame,
+            "receiver_action_axis": axis,
+            "receiver_contact_at_branch_n": (
+                observation[
+                    receiver_contact_start : receiver_contact_start + 2
+                ]
+                / 0.2
+            ).tolist(),
+        },
+    }
+    _atomic_json_save(schedule, schedule_path)
+    schedule_sha256 = _sha256(schedule_path)
+    receipt = {
+        "schema_version": RECEIPT_SCHEMA,
+        "task": control["task"],
+        "seed": int(control["seed"]),
+        "pair_id": control["pair_id"],
+        "teacher_kind": "constrained_trajectory_optimizer",
+        "optimizer": {
+            "algorithm": "deterministic_contact_retention_action_extension",
+            "objective": "terminal_success_without_any_safety_event",
+            "constraints": {
+                "single_environment_final_replay": True,
+                "environment_action_bound": 1.0,
+                "teacher_axis_action_cap": 0.05,
+                "maximum_extension_frames": 64,
+                "proposal_sources_are_not_training_labels": True,
+            },
+            "selected_parameters": {
+                "action_schedule_sha256": schedule_sha256,
+            },
+            "proposal_sources": [
+                {
+                    "path": str(control_path),
+                    "sha256": _sha256(control_path),
+                }
+            ],
+        },
+    }
+    _atomic_json_save(receipt, receipt_path)
+    return {
+        "schema_version": ACTION_SCHEDULE_SCHEMA,
+        "schedule": str(schedule_path),
+        "schedule_sha256": schedule_sha256,
+        "receipt": str(receipt_path),
+        "receipt_sha256": _sha256(receipt_path),
+        "pair_id": control["pair_id"],
+        "seed": int(control["seed"]),
+        "branch_frame": branch_frame,
+        "source_frame": source_frame,
+        "action_index": receiver_action_start + axis,
+        "action_value": value,
+        "duration": int(args.duration),
+    }
+
+
 def _same_contract(left: dict[str, Any], right: dict[str, Any]) -> bool:
     left_source = left["runtime"]["source"]
     right_source = right["runtime"]["source"]
@@ -273,21 +404,61 @@ def accept_teacher_pair(
     receipt = teacher.get("teacher_receipt")
     if not isinstance(receipt, dict) or not receipt.get("sha256"):
         raise ValueError("teacher trace lacks its immutable optimizer or teleoperation receipt")
+    selected_schedule = None
+    schedule_metadata = None
+    schedule_branch_frame = None
+    schedule_segment_start = None
     if teacher.get("teacher_kind") == "constrained_trajectory_optimizer":
-        selected = receipt.get("selected_parameters", {}).get(
+        selected_parameters = receipt.get("selected_parameters", {})
+        selected_schedule = selected_parameters.get("action_schedule_sha256")
+        schedule_metadata = teacher.get("teacher_action_schedule")
+        recorded_schedule = teacher["policy"].get(
+            "teacher_action_schedule_sha256"
+        )
+        selected = selected_parameters.get(
             "receiver_recovery_fixed_correction"
         )
         recorded = teacher["policy"].get("receiver_recovery_fixed_correction")
-        if not isinstance(selected, list) or len(selected) != 6 or not recorded:
+        if selected_schedule:
+            schedule_segments = (
+                schedule_metadata.get("segments")
+                if isinstance(schedule_metadata, dict)
+                else None
+            )
+            if (
+                not isinstance(schedule_metadata, dict)
+                or not isinstance(schedule_segments, list)
+                or not schedule_segments
+                or not isinstance(schedule_segments[0], dict)
+                or selected_schedule != schedule_metadata.get("sha256")
+                or selected_schedule != recorded_schedule
+            ):
+                raise ValueError(
+                    "optimizer receipt does not match the recorded action schedule"
+                )
+            schedule_branch_frame = int(
+                schedule_metadata.get("branch_frame", -1)
+            )
+            schedule_segment_start = int(
+                schedule_segments[0].get("start_frame_inclusive", -1)
+            )
+        elif not isinstance(selected, list) or len(selected) != 6 or not recorded:
             raise ValueError("optimizer receipt and trace lack one selected correction")
-        recorded_values = [
-            float(value.strip()) for value in recorded.split(",")
-        ]
-        if len(recorded_values) != 6 or any(
-            abs(float(expected) - actual) > 1.0e-12
-            for expected, actual in zip(selected, recorded_values, strict=True)
-        ):
-            raise ValueError("optimizer receipt does not match the recorded policy")
+        else:
+            recorded_values = [
+                float(value.strip()) for value in recorded.split(",")
+            ]
+            if len(recorded_values) != 6 or any(
+                abs(float(expected) - actual) > 1.0e-12
+                for expected, actual in zip(
+                    selected,
+                    recorded_values,
+                    strict=True,
+                )
+            ):
+                raise ValueError(
+                    "optimizer receipt does not match the recorded policy"
+                )
 
     contract_match = _same_contract(control_a, control_b) and _same_contract(control_a, teacher)
     control_replay = _exact_control_replay(control_a, control_b)
@@ -306,6 +477,13 @@ def accept_teacher_pair(
     if divergent.numel() == 0:
         raise ValueError("teacher never branches from the frozen control")
     branch_frame = int(divergent[0].item())
+    if selected_schedule and (
+        schedule_branch_frame != branch_frame
+        or schedule_segment_start != branch_frame
+    ):
+        raise ValueError(
+            "recorded action schedule does not match the observed branch"
+        )
     prebranch_observation_parity = torch.equal(
         teacher["observations"][: branch_frame + 1],
         control_a["observations"][: branch_frame + 1],
@@ -728,6 +906,16 @@ def _parser() -> argparse.ArgumentParser:
     receipt.add_argument("--proposal_source", action="append", required=True)
     receipt.add_argument("--output", required=True)
 
+    retention = subparsers.add_parser(
+        "propose-retention",
+        help="derive a bounded post-acquisition action schedule from a control",
+    )
+    retention.add_argument("--control", required=True)
+    retention.add_argument("--duration", type=int, default=12)
+    retention.add_argument("--lookback", type=int, default=16)
+    retention.add_argument("--output_schedule", required=True)
+    retention.add_argument("--output_receipt", required=True)
+
     accept = subparsers.add_parser(
         "accept",
         help="accept one isolated control/control/teacher episode triplet",
@@ -763,6 +951,8 @@ def main(argv: list[str]) -> int:
     args = _parser().parse_args(argv)
     if args.command == "receipt":
         result = create_optimizer_receipt(args)
+    elif args.command == "propose-retention":
+        result = propose_retention_schedule(args)
     elif args.command == "accept":
         output = Path(args.output).expanduser().resolve()
         payload = accept_teacher_pair(

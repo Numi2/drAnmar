@@ -672,6 +672,12 @@ case "${command}" in
                     "${DR_ANMAR_HANDOVER_TEACHER_RECEIPT}"
                 )
             fi
+            if [[ -n "${DR_ANMAR_HANDOVER_TEACHER_ACTION_SCHEDULE:-}" ]]; then
+                handover_teacher_args+=(
+                    --handover_teacher_action_schedule
+                    "${DR_ANMAR_HANDOVER_TEACHER_ACTION_SCHEDULE}"
+                )
+            fi
         fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \

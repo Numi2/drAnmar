@@ -28,6 +28,9 @@ from typing import Any
 RECOVERY_QUALIFICATION_SEEDS = {17, 2361, 4099}
 HANDOVER_TEACHER_TRACE_SCHEMA = "dranmar-handover-teacher-trace-1.0"
 HANDOVER_TEACHER_RECEIPT_SCHEMA = "dranmar-handover-teacher-receipt-1.0"
+HANDOVER_TEACHER_ACTION_SCHEDULE_SCHEMA = (
+    "dranmar-handover-teacher-action-schedule-1.0"
+)
 HANDOVER_TEACHER_KINDS = {
     "constrained_trajectory_optimizer",
     "clinician_teleoperation",
@@ -247,6 +250,7 @@ def _load_handover_teacher_receipt(
     pair_id: str,
     teacher_kind: str,
     receiver_fixed_correction: str | None,
+    action_schedule_sha256: str | None,
 ) -> dict[str, Any]:
     receipt = json.loads(path.read_text())
     if receipt.get("schema_version") != HANDOVER_TEACHER_RECEIPT_SCHEMA:
@@ -269,29 +273,47 @@ def _load_handover_teacher_receipt(
             raise ValueError("trajectory teacher receipt lacks action constraints")
         if not optimizer.get("selected_parameters"):
             raise ValueError("trajectory teacher receipt lacks selected parameters")
-        selected = optimizer["selected_parameters"].get(
+        selected_parameters = optimizer["selected_parameters"]
+        selected_schedule = selected_parameters.get(
+            "action_schedule_sha256"
+        )
+        selected = selected_parameters.get(
             "receiver_recovery_fixed_correction"
         )
-        if not isinstance(selected, list) or len(selected) != 6:
-            raise ValueError("trajectory teacher receipt lacks a receiver correction")
-        if not receiver_fixed_correction:
-            raise ValueError("trajectory teacher rollout lacks its selected correction")
-        actual = [
-            float(value.strip())
-            for value in receiver_fixed_correction.split(",")
-        ]
-        if len(actual) != 6 or any(
-            not math.isclose(
-                float(expected),
-                observed,
-                rel_tol=0.0,
-                abs_tol=1.0e-12,
-            )
-            for expected, observed in zip(selected, actual, strict=True)
-        ):
-            raise ValueError(
-                "trajectory teacher correction does not match its receipt"
-            )
+        if selected_schedule:
+            if selected_schedule != action_schedule_sha256:
+                raise ValueError(
+                    "trajectory teacher schedule does not match its receipt"
+                )
+        else:
+            if not isinstance(selected, list) or len(selected) != 6:
+                raise ValueError(
+                    "trajectory teacher receipt lacks a receiver correction"
+                )
+            if not receiver_fixed_correction:
+                raise ValueError(
+                    "trajectory teacher rollout lacks its selected correction"
+                )
+            actual = [
+                float(value.strip())
+                for value in receiver_fixed_correction.split(",")
+            ]
+            if len(actual) != 6 or any(
+                not math.isclose(
+                    float(expected),
+                    observed,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-12,
+                )
+                for expected, observed in zip(
+                    selected,
+                    actual,
+                    strict=True,
+                )
+            ):
+                raise ValueError(
+                    "trajectory teacher correction does not match its receipt"
+                )
     elif teacher_kind == "clinician_teleoperation":
         teleoperation = receipt.get("teleoperation")
         if not isinstance(teleoperation, dict):
@@ -305,6 +327,93 @@ def _load_handover_teacher_receipt(
         "selected_parameters": (
             receipt.get("optimizer", {}).get("selected_parameters")
         ),
+    }
+
+
+def _load_handover_teacher_action_schedule(
+    path: Path,
+    *,
+    task: str,
+    seed: int,
+    pair_id: str,
+    maximum_frame: int,
+) -> dict[str, Any]:
+    schedule = json.loads(path.read_text())
+    if (
+        schedule.get("schema_version")
+        != HANDOVER_TEACHER_ACTION_SCHEDULE_SCHEMA
+    ):
+        raise ValueError("unsupported handover teacher action schedule")
+    if schedule.get("task") != task:
+        raise ValueError("teacher action schedule task does not match rollout")
+    if int(schedule.get("seed", -1)) != seed:
+        raise ValueError("teacher action schedule seed does not match rollout")
+    if schedule.get("pair_id") != pair_id:
+        raise ValueError("teacher action schedule pair id does not match rollout")
+    source_control = schedule.get("source_control")
+    if not isinstance(source_control, dict):
+        raise ValueError("teacher action schedule lacks its source control")
+    source_control_path = Path(
+        str(source_control.get("path", ""))
+    ).expanduser().resolve()
+    if not source_control_path.is_file():
+        raise ValueError("teacher action schedule source control is unavailable")
+    if source_control.get("sha256") != _sha256(source_control_path):
+        raise ValueError("teacher action schedule source control hash drifted")
+    branch_frame = int(schedule.get("branch_frame", -1))
+    if not 0 <= branch_frame < maximum_frame:
+        raise ValueError("teacher action schedule branch frame is invalid")
+    segments = schedule.get("segments")
+    if not isinstance(segments, list) or not segments:
+        raise ValueError("teacher action schedule lacks segments")
+    normalized_segments = []
+    previous_stop = -1
+    for segment in segments:
+        if not isinstance(segment, dict) or segment.get("mode") != "replace":
+            raise ValueError("teacher action schedule only supports replacement")
+        start = int(segment.get("start_frame_inclusive", -1))
+        stop = int(segment.get("stop_frame_exclusive", -1))
+        indices = segment.get("action_indices")
+        values = segment.get("values")
+        if not 0 <= start < stop <= maximum_frame:
+            raise ValueError("teacher action schedule frame range is invalid")
+        if start < previous_stop:
+            raise ValueError("teacher action schedule segments overlap")
+        if (
+            not isinstance(indices, list)
+            or not isinstance(values, list)
+            or not indices
+            or len(indices) != len(values)
+            or len(set(indices)) != len(indices)
+            or any(not 0 <= int(index) < 14 for index in indices)
+            or any(
+                not math.isfinite(float(value))
+                or abs(float(value)) > 1.0
+                for value in values
+            )
+        ):
+            raise ValueError("teacher action schedule action contract is invalid")
+        normalized_segments.append(
+            {
+                "start_frame_inclusive": start,
+                "stop_frame_exclusive": stop,
+                "action_indices": [int(index) for index in indices],
+                "values": [float(value) for value in values],
+            }
+        )
+        previous_stop = stop
+    if normalized_segments[0]["start_frame_inclusive"] != branch_frame:
+        raise ValueError("teacher action schedule does not start at its branch")
+    return {
+        "path": str(path),
+        "sha256": _sha256(path),
+        "schema_version": schedule["schema_version"],
+        "branch_frame": branch_frame,
+        "source_control": {
+            "path": str(source_control_path),
+            "sha256": source_control["sha256"],
+        },
+        "segments": normalized_segments,
     }
 
 
@@ -3475,6 +3584,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
 
     handover_teacher_trace_path = None
     handover_teacher_receipt = None
+    handover_teacher_action_schedule = None
+    if (
+        args.handover_teacher_action_schedule
+        and not args.handover_teacher_trace
+    ):
+        return _fail("teacher action schedules require teacher trace capture")
     if args.handover_teacher_trace:
         handover_teacher_trace_path = (
             Path(args.handover_teacher_trace).expanduser().resolve()
@@ -3507,6 +3622,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 return _fail("control traces must identify the frozen baseline")
             if args.handover_teacher_receipt:
                 return _fail("control traces cannot claim a teacher receipt")
+            if args.handover_teacher_action_schedule:
+                return _fail("control traces cannot apply a teacher action schedule")
         else:
             if args.handover_teacher_kind not in HANDOVER_TEACHER_KINDS:
                 return _fail(
@@ -3515,6 +3632,40 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
             if not args.handover_teacher_receipt:
                 return _fail("teacher trace requires an immutable teacher receipt")
+            if args.handover_teacher_action_schedule:
+                if (
+                    args.handover_teacher_kind
+                    != "constrained_trajectory_optimizer"
+                ):
+                    return _fail(
+                        "teacher action schedules require a trajectory optimizer"
+                    )
+                schedule_path = (
+                    Path(args.handover_teacher_action_schedule)
+                    .expanduser()
+                    .resolve()
+                )
+                if not schedule_path.is_file():
+                    return _fail(
+                        f"teacher action schedule not found: {schedule_path}"
+                    )
+                try:
+                    handover_teacher_action_schedule = (
+                        _load_handover_teacher_action_schedule(
+                            schedule_path,
+                            task=args.task,
+                            seed=args.seed,
+                            pair_id=args.handover_teacher_pair_id,
+                            maximum_frame=args.num_frames,
+                        )
+                    )
+                except (
+                    OSError,
+                    ValueError,
+                    TypeError,
+                    json.JSONDecodeError,
+                ) as error:
+                    return _fail(str(error))
             receipt_path = (
                 Path(args.handover_teacher_receipt).expanduser().resolve()
             )
@@ -3529,6 +3680,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     teacher_kind=args.handover_teacher_kind,
                     receiver_fixed_correction=(
                         args.receiver_recovery_fixed_correction
+                    ),
+                    action_schedule_sha256=(
+                        handover_teacher_action_schedule["sha256"]
+                        if handover_teacher_action_schedule is not None
+                        else None
                     ),
                 )
             except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
@@ -5626,6 +5782,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             if handover_successor_checkpoint is not None
             else None
         ),
+        "teacher_action_schedule_sha256": (
+            handover_teacher_action_schedule["sha256"]
+            if handover_teacher_action_schedule is not None
+            else None
+        ),
         "residual_scale": args.residual_scale,
         "pickup_recovery": bool(pickup_recovery_policy is not None),
         "pickup_recovery_checkpoint_sha256": (
@@ -6051,6 +6212,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .cpu()
                     )
                 actions = policy(obs)
+                if handover_teacher_action_schedule is not None:
+                    for segment in handover_teacher_action_schedule[
+                        "segments"
+                    ]:
+                        if (
+                            segment["start_frame_inclusive"]
+                            <= frame_index
+                            < segment["stop_frame_exclusive"]
+                        ):
+                            actions = actions.clone()
+                            actions[
+                                0,
+                                segment["action_indices"],
+                            ] = torch.tensor(
+                                segment["values"],
+                                dtype=actions.dtype,
+                                device=actions.device,
+                            )
                 if handover_teacher_actions is not None:
                     handover_teacher_actions.append(
                         actions[0].detach().cpu().clone()
@@ -8107,6 +8286,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "role": args.handover_teacher_role,
                 "teacher_kind": args.handover_teacher_kind,
                 "teacher_receipt": handover_teacher_receipt,
+                "teacher_action_schedule": (
+                    handover_teacher_action_schedule
+                ),
                 "pair_id": args.handover_teacher_pair_id,
                 "task": args.task,
                 "seed": args.seed,
@@ -9005,6 +9187,7 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     play.add_argument("--handover_teacher_receipt")
+    play.add_argument("--handover_teacher_action_schedule")
     play.add_argument(
         "--recovery_demo_rotation_deg",
         type=float,
