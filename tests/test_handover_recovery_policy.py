@@ -634,6 +634,17 @@ def test_preprobe_risk_trial_randomizes_before_giver_probe() -> None:
         ).all()
     )
 
+    policy(observation)
+
+    assert bool(
+        (policy.retry_state[treatment] == policy.state_reopening).all()
+    )
+    assert bool(
+        policy.active_custody_preprobe_retry_in_progress[
+            treatment
+        ].all()
+    )
+
 
 def test_retry_retreat_budget_is_cumulative_across_contact_flicker() -> None:
     policy = HandoverReceiverRecoveryPolicy(

@@ -2019,6 +2019,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dtype=torch.long,
         )
         self.active_custody_preprobe_risk = torch.empty(0)
+        self.active_custody_preprobe_retry_in_progress = torch.empty(
+            0,
+            dtype=torch.bool,
+        )
         self.last_giver_action_owner = torch.empty(
             0,
             dtype=torch.long,
@@ -2306,6 +2310,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             batch_size,
             dtype=raw.dtype,
             device=device,
+        )
+        self.active_custody_preprobe_retry_in_progress = (
+            torch.zeros_like(self.first_attempt_failed)
         )
         self.last_giver_action_owner = torch.zeros_like(self.retry_count)
         self.last_receiver_action_owner = torch.zeros_like(
@@ -3345,11 +3352,23 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             & bilateral_qualified
             & bilateral_live
         )
+        scoped_retry_reacquired = (
+            secure_now
+            & self.active_custody_preprobe_retry_in_progress
+            & (self.retry_state == self.state_learned_retry)
+        )
+        secure_now &= (
+            ~self.active_custody_preprobe_retry_in_progress
+            | (self.retry_state == self.state_learned_retry)
+        )
         self.first_attempt_candidate_active[secure_now] = False
         self.recovered_acquisition |= (
             secure_now & (self.retry_count > 0)
         )
         self.retry_state[secure_now] = self.state_secure
+        self.active_custody_preprobe_retry_in_progress[
+            scoped_retry_reacquired
+        ] = False
         self.close_dwell[secure_now] = 0
         self.acquisition_dwell[secure_now] = 0
         custody_guard_active = (
@@ -3459,6 +3478,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             preprobe_retry_now = (
                 preprobe_intervention_now
                 & (randomized_preprobe_decision == 1)
+            )
+            self.active_custody_preprobe_retry_in_progress |= (
+                preprobe_retry_now
             )
         probe_pending = self.active_custody_probe_pending.clone()
         probe_survived = (
@@ -4550,6 +4572,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.active_custody_intervention_delay_remaining[mask] = 0
         self.active_custody_intervention_applied_frames[mask] = 0
         self.active_custody_preprobe_risk[mask] = 0.0
+        self.active_custody_preprobe_retry_in_progress[mask] = False
         self.last_giver_action_owner[mask] = 0
         self.last_receiver_action_owner[mask] = 0
         self.giver_release_completed[mask] = False
