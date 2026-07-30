@@ -1,0 +1,378 @@
+{
+  "schema_version": "dranmar-receiver-attempt-learning-report-1.0",
+  "created_at": "2026-07-30",
+  "scope": "simulation_only",
+  "status": "completed_no_promotion",
+  "question_answered": {
+    "can_the_promoted_policy_be_used_to_train_a_neural_network": true,
+    "method": "Keep the promoted base and receiver candidate-value policy frozen. Test a bounded six-dimensional receiver correction as a one-decision contextual-bandit PPO residual, then instrument the active-custody transition and train a calibrated temporal risk network.",
+    "result": "Neither motion-residual checkpoint passed the multi-seed policy-promotion gate. The temporal risk network did pass nested cross-seed ranking and calibration gates and is preserved for risk stratification."
+  },
+  "incumbent": {
+    "lock": "docs/handover_recovery_80/promoted_policy.lock.json",
+    "development_episodes": 1800,
+    "development_successful": 1292,
+    "development_success_rate": 0.7177777777777777,
+    "qualification_claimed": false,
+    "changed_by_this_experiment": false
+  },
+  "runtime_contract": {
+    "controller_revision": "6c113734c87ebf85c9413ee0188f2e5ef31f833f",
+    "attempt_policy_source_revision": "fff93a56d5463bbdb2de4fd2c015448975e018ed",
+    "asset_revision": "ac20fb02ba2e8541a6243ec4884e51db35c0a202",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
+    "control_frames_per_environment": 2000
+  },
+  "first_update": {
+    "checkpoint": {
+      "path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/update-004270-source-bound.pt",
+      "sha256": "7552b316b1d5aca9d6a36a1fcebcff7e6d408913c3567767310985d7f4988d3b",
+      "source_revision": "fff93a56d5463bbdb2de4fd2c015448975e018ed",
+      "policy_weights_equal_to_unbound_checkpoint": true
+    },
+    "training": {
+      "decisions": 4270,
+      "successful": 3138,
+      "success_rate": 0.7348946332931519,
+      "epochs_completed": 6,
+      "approximate_kl": 0.0024391761980950832
+    },
+    "development_screen": {
+      "environments_per_seed": 600,
+      "seeds": {
+        "104729": {
+          "successful": 440,
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/screen-004270-seed104729/dranmar_play_20260729T112701Z.json",
+          "evidence_sha256": "32b0228f6ddd601a971081d2eb29558e43def9784cb72fef15cfc9535c1b2892"
+        },
+        "130363": {
+          "successful": 453,
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/screen-004270-seed130363/dranmar_play_20260729T112848Z.json",
+          "evidence_sha256": "63397c81633174f8df974652b64a7148c264202afda1ab59fc3060009d223b76"
+        },
+        "196613": {
+          "successful": 407,
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/screen-004270-seed196613/dranmar_play_20260729T113036Z.json",
+          "evidence_sha256": "200a26a4dc69b28e340c2fe6ae0cc7cd6b23018113d08cbd151d3a6ca22f2648"
+        }
+      },
+      "aggregate": {
+        "episodes": 1800,
+        "successful": 1300,
+        "success_rate": 0.7222222222222222,
+        "delta_successful_vs_promoted": 8
+      }
+    },
+    "held_out_gate": {
+      "environments_per_seed": 1200,
+      "seeds": {
+        "17": {
+          "incumbent_successful": 871,
+          "challenger_successful": 876,
+          "delta": 5,
+          "incumbent_evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/heldout-004270/champion-seed17/dranmar_play_20260729T231808Z.json",
+          "incumbent_evidence_sha256": "abb5a588e53dcbc6377ac67af3f6fefd8a2e657044267c2a622b9d8dfaa73aed",
+          "challenger_evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/heldout-004270/challenger-seed17/dranmar_play_20260729T232027Z.json",
+          "challenger_evidence_sha256": "67f082f2d3717335c48bc1584866a82934b692fb3fd2975e2f93cb04e4d1a626"
+        },
+        "2361": {
+          "incumbent_successful": 876,
+          "challenger_successful": 886,
+          "delta": 10,
+          "incumbent_evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/heldout-004270/champion-seed2361/dranmar_play_20260729T232247Z.json",
+          "incumbent_evidence_sha256": "742cdde1ad13db4834b5df049dd02a37e8c33436d7eedeae7ad24e16eb6a3bca",
+          "challenger_evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/heldout-004270/challenger-seed2361/dranmar_play_20260729T232507Z.json",
+          "challenger_evidence_sha256": "c52ba2fc8fe168a2a779fc2e576cb5d6a0c58b94575afce530be9bcd503c17ee"
+        },
+        "4099": {
+          "incumbent_successful": 842,
+          "challenger_successful": 830,
+          "delta": -12,
+          "incumbent_evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/heldout-004270/champion-seed4099/dranmar_play_20260729T232726Z.json",
+          "incumbent_evidence_sha256": "d92d016856eb8f0cc1220de4aecaac2a7f05b1cedfbc68ccb84edb811b9c576d",
+          "challenger_evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/heldout-004270/challenger-seed4099/dranmar_play_20260729T232947Z.json",
+          "challenger_evidence_sha256": "580f505b6c16d2f44140a4941cf2860099030acddef40aacc2417729cb7454da"
+        }
+      },
+      "aggregate": {
+        "episodes": 3600,
+        "incumbent_successful": 2589,
+        "challenger_successful": 2592,
+        "delta_successful": 3,
+        "incumbent_success_rate": 0.7191666666666666,
+        "challenger_success_rate": 0.72
+      },
+      "decision": "rejected",
+      "reason": "The aggregate gain was only 3 of 3600 episodes and seed 4099 regressed by 12."
+    }
+  },
+  "precontact_context_gate": {
+    "paired_exact_contexts": 1471,
+    "policy_disagreements": 223,
+    "challenger_wins": 116,
+    "challenger_losses": 107,
+    "linear_cross_fit_gate_passed": false,
+    "small_mlp_cross_fit_gate_passed": false,
+    "decision": "rejected",
+    "reason": "No cross-fitted threshold produced positive worst-seed uplift. The small MLP overfit seed 130363 and regressed seed 196613."
+  },
+  "balanced_fresh_stream_update": {
+    "data_collection": {
+      "seed_stream_offset": 1000003,
+      "stochastic_behavior_checkpoint_sha256": "7552b316b1d5aca9d6a36a1fcebcff7e6d408913c3567767310985d7f4988d3b",
+      "rollouts": {
+        "104729": {
+          "runtime_seed": 1104732,
+          "decisions": 1073,
+          "successful": 804,
+          "dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/rollout-004270-seed104729-offset1000003.pt",
+          "dataset_sha256": "9b50e0ef22a7d6d30218f7311b91ad9388f296dc944a8de9776208fa397d7eb1",
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/stochastic-seed104729-offset1000003/dranmar_play_20260729T234027Z.json",
+          "evidence_sha256": "c9cf5db7eb7fa5f021305f4f2789794c68dadbbda0898b211921dd5f16f178c2"
+        },
+        "130363": {
+          "runtime_seed": 1130366,
+          "decisions": 1043,
+          "successful": 781,
+          "dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/rollout-004270-seed130363-offset1000003.pt",
+          "dataset_sha256": "9c0e4abf726f9fde35002d4e22c625f1790ccfa485b31f82609080a19d40777e",
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/stochastic-seed130363-offset1000003/dranmar_play_20260729T234255Z.json",
+          "evidence_sha256": "8fd48857a32d73ab52eb71af04b3de0360946481b14962d8be04f45e145f21ad"
+        },
+        "196613": {
+          "runtime_seed": 1196616,
+          "decisions": 1067,
+          "successful": 797,
+          "dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/rollout-004270-seed196613-offset1000003.pt",
+          "dataset_sha256": "3c31c49226e5e91b70c02a942324f234bf4e9870129da08935614e7e3d46780e",
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/stochastic-seed196613-offset1000003/dranmar_play_20260729T234523Z.json",
+          "evidence_sha256": "eb90dd197bc3e25b669a945bc53778afad16620e17eb81da39603f4c82ac0c3a"
+        }
+      },
+      "aggregate": {
+        "decisions": 3183,
+        "successful": 2382,
+        "success_rate": 0.7483506126295947
+      }
+    },
+    "training": {
+      "checkpoint_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/update-007453-balanced-stream1000003-lr5e5-provenance.pt",
+      "checkpoint_sha256": "7d4e7dc05cd96fddf9ca84df2b64b3d8c0c48510b6703c8d72abaa163269fef3",
+      "report_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/update-007453-balanced-stream1000003-lr5e5-provenance.json",
+      "report_sha256": "95409a54fee046cc054c6fefd5267e02d64374acc5ddd8f2170f3538828a26cb",
+      "learning_rate": 0.00005,
+      "clip": 0.1,
+      "target_kl": 0.0075,
+      "epochs_requested": 6,
+      "epochs_completed": 6,
+      "approximate_kl": 0.0014148697955533862
+    },
+    "development_screen": {
+      "environments_per_seed": 600,
+      "seeds": {
+        "104729": {
+          "parent_successful": 440,
+          "challenger_successful": 433,
+          "delta": -7,
+          "protected_surface_force": 0,
+          "excessive_object_force": 0,
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/screen-original-seed104729/dranmar_play_20260729T234903Z.json",
+          "evidence_sha256": "679251152b85884df48c85ccb9bde6fdad59509c0913faba7e4b47870e96b8fc"
+        },
+        "130363": {
+          "parent_successful": 453,
+          "challenger_successful": 429,
+          "delta": -24,
+          "protected_surface_force": 1,
+          "excessive_object_force": 0,
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/screen-original-seed130363/dranmar_play_20260729T235057Z.json",
+          "evidence_sha256": "6955caeebd82883abf9f36b543edb95b739e82a9da5a45dc28184c25673b7d72"
+        },
+        "196613": {
+          "parent_successful": 407,
+          "challenger_successful": 428,
+          "delta": 21,
+          "protected_surface_force": 0,
+          "excessive_object_force": 0,
+          "success_termination_flags": 429,
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/attempt-ppo/stream-update-2/screen-original-seed196613/dranmar_play_20260729T235250Z.json",
+          "evidence_sha256": "888baa297da7beacccbc9c651b1e6cc75866be4a7944807fd44490dc2c492742"
+        }
+      },
+      "aggregate": {
+        "episodes": 1800,
+        "parent_successful": 1300,
+        "challenger_successful": 1290,
+        "promoted_successful": 1292,
+        "delta_successful_vs_parent": -10,
+        "delta_successful_vs_promoted": -2,
+        "challenger_success_rate": 0.7166666666666667,
+        "protected_surface_force": 1,
+        "excessive_object_force": 0
+      },
+      "decision": "rejected_before_held_out_gate",
+      "reason": "The balanced update regressed two development seeds and lost both to its parent and to the promoted incumbent in aggregate."
+    }
+  },
+  "active_custody_temporal_probe": {
+    "instrumentation": {
+      "schema_version": "dranmar-receiver-active-custody-probe-dataset-1.0",
+      "intervention": "one_frame_giver_gripper_open_load_probe",
+      "features": "causal role-invariant pre-probe observation plus post-minus-pre transition",
+      "raw_observation_dimension_per_frame": 98,
+      "control_changed_by_exporter": false,
+      "evidence_runtime_file_sha256": {
+        "dr_anmar_learning.sh": "9bfed4e667c94542a49b0c1ab0a0b2f138cabcb419049d75721a3fc502a7b893",
+        "scripts/dr_anmar_learning_benchmark.py": "7f2f49c12e8a57f46901a8d265f459dbd9f30e58276d581243fbe72e012664c6",
+        "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks/surgical/handover/recovery_policy.py": "b4196d7882370eeb0f627bf9f0434f212e0ccee34977434ec6c0f2121d6701c8"
+      }
+    },
+    "gpu_smoke": {
+      "seed": 104729,
+      "seed_stream_offset": 3000003,
+      "environments": 256,
+      "samples": 153,
+      "unique_environment_indices": 153,
+      "finite_tensor_check_passed": true,
+      "pre_observation_shape": [
+        153,
+        98
+      ],
+      "post_observation_shape": [
+        153,
+        98
+      ],
+      "dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/probe-seed104729-offset3000003.pt",
+      "dataset_sha256": "a7936fa25057784251108e4ee5fad05098ec1cc3f4d61a3b8d53ac8fc639bee2",
+      "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/smoke-seed104729-offset3000003/dranmar_play_20260730T000213Z.json",
+      "evidence_sha256": "6313b12e2fce73e5e30b3e84245e1e59a3738b812f97b62302e27784b7554c01"
+    },
+    "balanced_cohorts": {
+      "seed_stream_offset": 4000007,
+      "environments_per_seed": 1200,
+      "seeds": {
+        "104729": {
+          "runtime_seed": 4104736,
+          "samples": 543,
+          "successful": 493,
+          "dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/probe-seed104729-offset4000007.pt",
+          "dataset_sha256": "962bfa751412c70d3d0963c47333df58d12014f8d75f11543f91ff4e14111b81",
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/cohort-seed104729-offset4000007/dranmar_play_20260730T000522Z.json",
+          "evidence_sha256": "adaba5abe52b28d704b17779016cd901a77fc3ce290ab61ece56f96307009a38"
+        },
+        "130363": {
+          "runtime_seed": 4130370,
+          "samples": 574,
+          "successful": 530,
+          "dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/probe-seed130363-offset4000007.pt",
+          "dataset_sha256": "8cf255a7c29594b52591179fec219827cae0d4846bc8f05fe4ae7e29ab17e7da",
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/cohort-seed130363-offset4000007/dranmar_play_20260730T000749Z.json",
+          "evidence_sha256": "54a8e39a169b5bc43540cd71598e4913e272d372cd1d6d03256230208cc85442"
+        },
+        "196613": {
+          "runtime_seed": 4196620,
+          "samples": 547,
+          "successful": 494,
+          "dataset_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/probe-seed196613-offset4000007.pt",
+          "dataset_sha256": "684e33573ede309858b2672c1cfed29fb54e81061545b33a991f03eea3489500",
+          "evidence_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/cohort-seed196613-offset4000007/dranmar_play_20260730T001023Z.json",
+          "evidence_sha256": "fc1f3b432d5db4fd71796c28ec422c265671e905b0c2ff56127107f1a58c1409"
+        }
+      },
+      "aggregate": {
+        "samples": 1664,
+        "successful": 1517,
+        "failures": 147,
+        "success_rate": 0.9116586538461539
+      }
+    },
+    "leave_one_seed_out_signal_audit": {
+      "model": "l2_regularized_logistic_risk_network_with_nested_positive_slope_platt_calibration",
+      "feature_dimension": 171,
+      "future_information_used": false,
+      "analysis_source_revision": "677ac13147f2baaf885bae8eea30993f2cbf9eca",
+      "analysis_script_sha256": "627cfb076bbbe7644f904a11d8ccb850d40f34c338772b9757dd696a02a31045",
+      "report_schema_version": "dranmar-active-custody-signal-audit-1.1",
+      "report_path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/signal-audit-offset4000007-calibrated-677ac13.json",
+      "report_sha256": "8e95b46f410a24935bab3376e151a574d4fc00bedcc12571b52baa94d9462160",
+      "risk_checkpoint": {
+        "schema_version": "dranmar-active-custody-risk-model-1.0",
+        "path": "DR_ANMAR_RUNTIME_ROOT/repro/recovery80/receiver-active-custody-temporal-v1/signal-audit-offset4000007-calibrated-677ac13.pt",
+        "sha256": "bd1e63a9c9e09aa47af63b3740d356cf7f3d8bf1cd023c5e02157c262f6cfb3c",
+        "source_revision": "677ac13147f2baaf885bae8eea30993f2cbf9eca",
+        "control_scope": "risk_stratification_only",
+        "contract_validation_passed": true
+      },
+      "calibration_protocol": "For each outer held-out physics seed, generate out-of-fold logits inside the other two seeds, fit a positive-slope Platt calibrator only on those inner out-of-fold logits, then evaluate the untouched outer seed.",
+      "raw_aggregate": {
+        "roc_auc": 0.746566116809845,
+        "brier": 0.07891830056905746,
+        "baseline_brier": 0.08063463121652603,
+        "failure_capture_rate_in_highest_risk_20_percent": 0.5374149659863946
+      },
+      "calibrated_aggregate": {
+        "roc_auc": 0.7417432069778442,
+        "brier": 0.07455459237098694,
+        "baseline_brier": 0.08063463121652603,
+        "log_loss": 0.2742721438407898,
+        "failures_captured_in_highest_risk_20_percent": 82,
+        "total_failures": 147,
+        "failure_capture_rate_in_highest_risk_20_percent": 0.5578231292517006
+      },
+      "seed_roc_auc": {
+        "104729": 0.7529817223548889,
+        "130363": 0.703687846660614,
+        "196613": 0.7761821150779724
+      },
+      "seed_calibrated_brier": {
+        "104729": {
+          "model": 0.076888307929039,
+          "base_rate": 0.0836329311132431
+        },
+        "130363": {
+          "model": 0.06565415114164352,
+          "base_rate": 0.07109732925891876,
+          "raw_before_calibration": 0.07552260905504227
+        },
+        "196613": {
+          "model": 0.08157771080732346,
+          "base_rate": 0.08766632527112961
+        }
+      },
+      "ranking_gate_passed": true,
+      "calibration_gate_passed": true,
+      "signal_gate_passed": true,
+      "model_disposition": "preserved_as_leading_custody_risk_model",
+      "risk_model_authorized_for_stratification": true,
+      "motion_control_authorized": false,
+      "control_policy_authorized": false,
+      "decision": "The small raw calibration miss on seed 130363 was corrected without using that seed in its calibrator. All three seeds now beat their cross-fitted base-rate Brier scores, so preserve and use this checkpoint for risk-stratified data collection. It is a risk model, not a motion policy."
+    }
+  },
+  "decision": {
+    "promote_checkpoint": false,
+    "main_policy_changed": false,
+    "continue_one_shot_attempt_ppo_updates": false,
+    "preserve_temporal_risk_checkpoint": true,
+    "reason": "The first motion update was only marginal on held-out episodes, while the fresh-stream second update shifted wins between seeds and reduced aggregate success. The temporal transition did support a cross-seed calibrated risk network, which is preserved to organize the next causal action dataset."
+  },
+  "next_step": {
+    "name": "randomized_active_custody_intervention_dataset",
+    "principle": "The calibrated load-probe model now estimates failure risk across seeds, but observational outcomes cannot identify which corrective action will help. Use it to balance a causal action dataset before training control.",
+    "keep_frozen": [
+      "promoted base policy",
+      "pickup fixed correction",
+      "receiver candidate-value first-attempt correction"
+    ],
+    "stratification_only": "Use calibrated risk quantiles to balance easy and difficult custody states. Do not let the risk score itself choose or scale motion.",
+    "first_intervention": "Within each risk stratum, randomize an exact no-op and symmetric tiny receiver contact-centering pulses bounded by the existing contact-centering action limit. Record the assigned action and known behavior probability.",
+    "learning_method": "Contextual-bandit or short-horizon recurrent residual policy with conservative off-policy evaluation; do not fine-tune the frozen 98-observation base actor.",
+    "promotion_gate": [
+      "positive aggregate uplift on development streams",
+      "no development seed regression beyond the declared tolerance",
+      "positive aggregate uplift on untouched held-out seeds",
+      "no increase in excessive-object-force or protected-surface-force events"
+    ]
+  }
+}
