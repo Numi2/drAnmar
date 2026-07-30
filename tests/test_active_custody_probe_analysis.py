@@ -110,6 +110,7 @@ def test_launcher_exposes_temporal_probe_signal_audit() -> None:
     assert "receiver-custody-audit)" in launcher
     assert "receiver-custody-interventions)" in launcher
     assert "receiver-custody-delay-interventions)" in launcher
+    assert "receiver-custody-delay-gate)" in launcher
     assert "receiver-custody-controller)" in launcher
     assert "receiver-custody-replicate)" in launcher
     assert "analyze_dranmar_active_custody_probe.py" in launcher
@@ -122,3 +123,4 @@ def test_launcher_exposes_temporal_probe_signal_audit() -> None:
     assert '"assigned_action_probability"' in benchmark
     assert '"assigned_release_delay_frames"' in benchmark
     assert '"applied_delay_frames"' in benchmark
+    assert "evaluate_dranmar_release_delay_gate.py" in launcher
