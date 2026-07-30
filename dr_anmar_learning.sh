@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-attempt-risk-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-delay-interventions|receiver-custody-retry-interventions|receiver-custody-preprobe-interventions|receiver-custody-delay-gate|receiver-custody-preprobe-risk|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|receiver-trajectory-handover|attempt-risk-handover|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-attempt-risk-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-delay-interventions|receiver-custody-retry-interventions|receiver-custody-preprobe-interventions|receiver-custody-delay-gate|receiver-custody-preprobe-risk|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-risk-handover|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -41,7 +41,6 @@ usage() {
     echo "  receiver-retry-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-candidate INDEX DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-retry-portfolio BASE CANDIDATE OUTPUT DATASET..."
-    echo "  receiver-trajectory-handover SCALES RISK_CHECKPOINT DATASET [num_envs] [frames] [output] [task] [stream_offset] [dataset_id]"
     echo "  attempt-risk-handover ATTEMPT_CHECKPOINT RISK_CHECKPOINT DATASET [num_envs] [frames] [output] [task] [seed_stream_offset]"
     echo "  attempt-handover ATTEMPT_CHECKPOINT [num_envs] [frames] [output] [task] [seed_stream_offset]"
     echo "  selector-handover SELECTOR_CHECKPOINT [num_envs] [frames] [output] [task]"
@@ -665,28 +664,6 @@ case "${command}" in
             "${5:-${DR_ANMAR_LEARNING_OUTPUT}/portfolio-handover}" \
             "${6:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
         ;;
-    receiver-trajectory-handover)
-        trajectory_scales="${2:-}"
-        risk_checkpoint="${3:-}"
-        trajectory_dataset="${4:-}"
-        if [[ -z "${trajectory_scales}" || -z "${risk_checkpoint}" || -z "${trajectory_dataset}" ]]; then
-            usage
-            exit 2
-        fi
-        exec env \
-            DR_ANMAR_PROMOTED_ALLOW_APPROACH_TRAJECTORY=1 \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_SCALES="${trajectory_scales}" \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_DATASET="${trajectory_dataset}" \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_ID="${10:-receiver-approach-trajectory-v1}" \
-            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT="${risk_checkpoint}" \
-            DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_MONITOR=1 \
-            DR_ANMAR_SEED_STREAM_OFFSET="${9:-0}" \
-            "${BASH_SOURCE[0]}" promoted-handover \
-            "${5:-600}" \
-            "${6:-2000}" \
-            "${7:-${DR_ANMAR_LEARNING_OUTPUT}/receiver-trajectory-handover}" \
-            "${8:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
-        ;;
     promoted-handover)
         require_runtime
         base_sha256="f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad"
@@ -718,12 +695,6 @@ case "${command}" in
         attempt_dataset_env=""
         preprobe_risk_checkpoint_env="${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT:-}"
         preprobe_risk_monitor_env="${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_MONITOR:-0}"
-        approach_trajectory_scales_env=""
-        approach_trajectory_dataset_env=""
-        approach_trajectory_id_env=""
-        approach_trajectory_start_distance_env=""
-        approach_trajectory_end_distance_env=""
-        approach_trajectory_barrier_release_frame_env=""
         selector_checkpoint_env=""
         retry_portfolio_checkpoint_env=""
         custody_confirmation_steps_env=0
@@ -766,18 +737,6 @@ case "${command}" in
             receiver_recovery_dataset_env="${DR_ANMAR_RECEIVER_RECOVERY_DATASET:-}"
             if [[ -z "${retry_portfolio_checkpoint_env}" ]]; then
                 echo "error: portfolio-handover requires a portfolio checkpoint" >&2
-                exit 2
-            fi
-        fi
-        if [[ "${DR_ANMAR_PROMOTED_ALLOW_APPROACH_TRAJECTORY:-0}" == "1" ]]; then
-            approach_trajectory_scales_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_SCALES:-}"
-            approach_trajectory_dataset_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_DATASET:-}"
-            approach_trajectory_id_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_ID:-receiver-approach-trajectory-v1}"
-            approach_trajectory_start_distance_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_START_DISTANCE_M:-0.004}"
-            approach_trajectory_end_distance_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_END_DISTANCE_M:-0.001}"
-            approach_trajectory_barrier_release_frame_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_BARRIER_RELEASE_FRAME:-1200}"
-            if [[ -z "${approach_trajectory_scales_env}" || -z "${approach_trajectory_dataset_env}" || -z "${preprobe_risk_checkpoint_env}" || "${preprobe_risk_monitor_env}" != "1" ]]; then
-                echo "error: receiver trajectory replay requires scales, dataset, and the risk monitor" >&2
                 exit 2
             fi
         fi
@@ -868,12 +827,6 @@ case "${command}" in
             DR_ANMAR_RECEIVER_ATTEMPT_DATASET="${attempt_dataset_env}" \
             DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M=0.001 \
             DR_ANMAR_RECEIVER_ATTEMPT_ORIENTATION_CAP_DEG=1.0 \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_SCALES="${approach_trajectory_scales_env}" \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_DATASET="${approach_trajectory_dataset_env}" \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_ID="${approach_trajectory_id_env}" \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_START_DISTANCE_M="${approach_trajectory_start_distance_env}" \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_END_DISTANCE_M="${approach_trajectory_end_distance_env}" \
-            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_BARRIER_RELEASE_FRAME="${approach_trajectory_barrier_release_frame_env}" \
             DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT="${preprobe_risk_checkpoint_env}" \
             DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_MONITOR="${preprobe_risk_monitor_env}" \
             DR_ANMAR_RECEIVER_CONTEXT_SELECTOR_CHECKPOINT="${selector_checkpoint_env}" \
@@ -1211,42 +1164,6 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_attempt_dataset
                 "${DR_ANMAR_RECEIVER_ATTEMPT_DATASET}"
-            )
-        fi
-        if [[ -n "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_SCALES:-}" ]]; then
-            pickup_recovery_args+=(
-                --receiver_approach_trajectory_scales
-                "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_SCALES}"
-            )
-        fi
-        if [[ -n "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_DATASET:-}" ]]; then
-            pickup_recovery_args+=(
-                --receiver_approach_trajectory_dataset
-                "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_DATASET}"
-            )
-        fi
-        if [[ -n "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_ID:-}" ]]; then
-            pickup_recovery_args+=(
-                --receiver_approach_trajectory_id
-                "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_ID}"
-            )
-        fi
-        if [[ -n "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_START_DISTANCE_M:-}" ]]; then
-            pickup_recovery_args+=(
-                --receiver_approach_trajectory_start_distance_m
-                "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_START_DISTANCE_M}"
-            )
-        fi
-        if [[ -n "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_END_DISTANCE_M:-}" ]]; then
-            pickup_recovery_args+=(
-                --receiver_approach_trajectory_end_distance_m
-                "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_END_DISTANCE_M}"
-            )
-        fi
-        if [[ -n "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_BARRIER_RELEASE_FRAME:-}" ]]; then
-            pickup_recovery_args+=(
-                --receiver_approach_trajectory_barrier_release_frame
-                "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_BARRIER_RELEASE_FRAME}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M:-}" ]]; then

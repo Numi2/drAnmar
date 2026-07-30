@@ -658,16 +658,21 @@
   },
   "next_step": {
     "name": "independent_teacher_supervision_at_receiver_retention_boundary",
-    "principle": "The incumbent and its risk critic can identify hard states, but neither supplies a better action. Obtain physically grounded action targets from an independent teacher before training again.",
-    "keep_frozen": [
-      "promoted composite policy",
-      "preprobe risk checkpoint",
-      "analytic gripper wrist release pickup and post-contact behavior"
+    "principle": "The incumbent and its risk critic can identify hard states, but neither supplies a better action. Obtain physically grounded action targets from an independent teacher, then replace the hand-authored motion composition instead of adding another permanent layer.",
+    "baseline_only": [
+      "promoted composite checkpoint and lock for regression comparison",
+      "preprobe risk checkpoint as a read-only collection sampler"
+    ],
+    "do_not_carry_into_successor": [
+      "fixed pickup correction",
+      "hand-authored receiver retry and retention variants",
+      "hand-authored release timing and trajectory scaling",
+      "stacked policy arbitration for rejected experiments"
     ],
     "stage_1": "Collect independent single-environment executions at risk-ranked acquisition-to-retention boundaries. Preserve complete contact, jaw, object-pose, relative-velocity, force, and termination traces; do not treat vectorized PhysX clones as isolated counterfactuals.",
     "stage_2": "Generate candidate actions with a constrained trajectory optimizer or clinician teleoperation teacher. Focus on receiver grasp pose, orientation, symmetric jaw capture, and post-contact load stabilization; do not revisit global approach-speed scaling.",
     "stage_3": "Accept a teacher target only after a source-locked isolated replay beats no-op on retained transfer without adding a hard safety event. Failed or numerically coupled comparisons remain diagnostics, not labels.",
-    "learning_method": "Once enough verified teacher wins exist, train a short-horizon residual by advantage-weighted behavior cloning with incumbent no-op distillation and explicit abstention outside teacher-supported states. Do not resume PPO or behavior cloning before that label gate is positive.",
+    "learning_method": "Once enough verified teacher wins exist, train one compact phase-conditioned action policy by advantage-weighted behavior cloning with explicit abstention outside teacher-supported states. Use the incumbent only as a regression baseline, not as a stack of runtime sub-policies. Do not resume PPO or behavior cloning before that label gate is positive.",
     "promotion_gate": [
       "positive aggregate uplift on development streams",
       "no development seed regression",

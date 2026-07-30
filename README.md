@@ -214,8 +214,9 @@ The incumbent therefore remains frozen. The next learning stage is independent
 teacher supervision at the acquisition-to-retention boundary: use the risk
 critic to allocate collection, obtain better actions from constrained
 trajectory optimization or clinician teleoperation in isolated
-single-environment executions, and train a short-horizon residual only from
-verified safe wins. See the
+single-environment executions, and train one compact phase-conditioned policy
+only from verified safe wins. The hand-authored recovery composition is a
+regression baseline, not part of the successor architecture. See the
 [attempt-learning report](docs/handover_recovery_80/attempt_policy_learning_report.json)
 for checkpoint hashes, evidence paths, and stop decisions.
 
