@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-controller|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -28,6 +28,7 @@ usage() {
     echo "  receiver-custody-audit OUTPUT PROBE_DATASET... (also writes OUTPUT stem .pt)"
     echo "  receiver-custody-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-custody-controller RISK_CHECKPOINT OUTPUT CHECKPOINT INTERVENTION_DATASET..."
+    echo "  receiver-custody-replicate CANDIDATE RISK_CHECKPOINT OUTPUT INTERVENTION_DATASET..."
     echo "  receiver-selector-bootstrap BASE CANDIDATE OUTPUT DATASET..."
     echo "  receiver-selector-update CHECKPOINT OUTPUT DATASET..."
     echo "  receiver-selector-sweep DATASET [num_envs] [frames] [output] [task] [stream_offset]"
@@ -310,6 +311,27 @@ case "${command}" in
             --risk_checkpoint "${risk_checkpoint}" \
             --output "${output}" \
             --checkpoint "${controller_checkpoint}" \
+            "${dataset_args[@]}"
+        ;;
+    receiver-custody-replicate)
+        require_runtime
+        controller_checkpoint="${2:-}"
+        risk_checkpoint="${3:-}"
+        output="${4:-}"
+        if [[ -z "${controller_checkpoint}" || -z "${risk_checkpoint}" || -z "${output}" || "$#" -lt 7 ]]; then
+            usage
+            exit 2
+        fi
+        shift 4
+        dataset_args=()
+        for dataset in "$@"; do
+            dataset_args+=(--dataset "${dataset}")
+        done
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/evaluate_dranmar_active_custody_replication.py" \
+            --candidate "${controller_checkpoint}" \
+            --risk_checkpoint "${risk_checkpoint}" \
+            --output "${output}" \
             "${dataset_args[@]}"
         ;;
     receiver-selector-bootstrap)

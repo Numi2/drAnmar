@@ -110,8 +110,10 @@ def test_launcher_exposes_temporal_probe_signal_audit() -> None:
     assert "receiver-custody-audit)" in launcher
     assert "receiver-custody-interventions)" in launcher
     assert "receiver-custody-controller)" in launcher
+    assert "receiver-custody-replicate)" in launcher
     assert "analyze_dranmar_active_custody_probe.py" in launcher
     assert "train_dranmar_active_custody_controller.py" in launcher
+    assert "evaluate_dranmar_active_custody_replication.py" in launcher
     assert "--receiver_active_custody_probe_dataset" in launcher
     assert "--receiver_active_custody_intervention" in launcher
     assert '"intervention-dataset-1.0"' in benchmark
