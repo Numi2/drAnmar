@@ -76,6 +76,14 @@ def _noop_dataset(path: Path) -> None:
                 ],
                 "candidate_lanes": replicas,
                 "candidate_scales": [1.0] * replicas,
+                "start_distance_m": 0.004,
+                "end_distance_m": 0.001,
+                "barrier_release_frame": 1200,
+                "barrier_contract": (
+                    "hold_ready_receiver_translation_then_release_"
+                    "all_qualified_environments_simultaneously"
+                ),
+                "profile": "minimum_jerk_translation_scale",
                 "modified_action_channels": (
                     "receiver_translation_xyz_only"
                 ),
@@ -100,6 +108,11 @@ def _noop_dataset(path: Path) -> None:
             "active_frames": torch.full((count,), 3),
             "modified_frames": torch.zeros(count, dtype=torch.long),
             "minimum_multiplier": torch.ones(count),
+            "barrier_hold_frames": torch.full(
+                (count,),
+                100,
+                dtype=torch.long,
+            ),
             "receiver_candidate_correction": correction,
             "full_success": success,
             "maximum_phase": phase,
@@ -199,7 +212,7 @@ def test_launcher_exposes_source_locked_trajectory_replay() -> None:
     assert "_RECEIVER_OWNER_CORRECTED_APPROACH" in policy
     assert "minimum_jerk" in policy
     assert (
-        "dranmar-receiver-approach-trajectory-replay-1.1"
+        "dranmar-receiver-approach-trajectory-replay-1.2"
         in benchmark
     )
     assert (

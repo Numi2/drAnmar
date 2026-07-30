@@ -723,6 +723,7 @@ case "${command}" in
         approach_trajectory_id_env=""
         approach_trajectory_start_distance_env=""
         approach_trajectory_end_distance_env=""
+        approach_trajectory_barrier_release_frame_env=""
         selector_checkpoint_env=""
         retry_portfolio_checkpoint_env=""
         custody_confirmation_steps_env=0
@@ -774,6 +775,7 @@ case "${command}" in
             approach_trajectory_id_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_ID:-receiver-approach-trajectory-v1}"
             approach_trajectory_start_distance_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_START_DISTANCE_M:-0.004}"
             approach_trajectory_end_distance_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_END_DISTANCE_M:-0.001}"
+            approach_trajectory_barrier_release_frame_env="${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_BARRIER_RELEASE_FRAME:-1200}"
             if [[ -z "${approach_trajectory_scales_env}" || -z "${approach_trajectory_dataset_env}" || -z "${preprobe_risk_checkpoint_env}" || "${preprobe_risk_monitor_env}" != "1" ]]; then
                 echo "error: receiver trajectory replay requires scales, dataset, and the risk monitor" >&2
                 exit 2
@@ -871,6 +873,7 @@ case "${command}" in
             DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_ID="${approach_trajectory_id_env}" \
             DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_START_DISTANCE_M="${approach_trajectory_start_distance_env}" \
             DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_END_DISTANCE_M="${approach_trajectory_end_distance_env}" \
+            DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_BARRIER_RELEASE_FRAME="${approach_trajectory_barrier_release_frame_env}" \
             DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_CHECKPOINT="${preprobe_risk_checkpoint_env}" \
             DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_PREPROBE_RISK_MONITOR="${preprobe_risk_monitor_env}" \
             DR_ANMAR_RECEIVER_CONTEXT_SELECTOR_CHECKPOINT="${selector_checkpoint_env}" \
@@ -1238,6 +1241,12 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_approach_trajectory_end_distance_m
                 "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_END_DISTANCE_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_BARRIER_RELEASE_FRAME:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_approach_trajectory_barrier_release_frame
+                "${DR_ANMAR_RECEIVER_APPROACH_TRAJECTORY_BARRIER_RELEASE_FRAME}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_ATTEMPT_POSITION_CAP_M:-}" ]]; then

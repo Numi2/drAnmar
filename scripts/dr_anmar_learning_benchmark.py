@@ -3504,6 +3504,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "0 < end < start <= 0.01 metres"
             )
         if not (
+            0
+            < args.receiver_approach_trajectory_barrier_release_frame
+            < args.num_frames
+        ):
+            return _fail(
+                "receiver approach trajectory barrier release frame must be "
+                "inside the first episode"
+            )
+        if not (
             args.receiver_active_custody_preprobe_risk_checkpoint
             and args.receiver_active_custody_preprobe_risk_monitor
         ):
@@ -5768,6 +5777,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         args
                         .receiver_approach_trajectory_end_distance_m
                     ),
+                    barrier_release_frame=(
+                        args
+                        .receiver_approach_trajectory_barrier_release_frame
+                    ),
                 ).to(env.unwrapped.device)
             )
             receiver_approach_trajectory_policy.eval()
@@ -6228,6 +6241,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         torch.ones(
             env.unwrapped.num_envs,
             dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_barrier_hold_frames = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.long,
             device=env.unwrapped.device,
         )
         if receiver_approach_trajectory_policy is not None
@@ -7835,6 +7857,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_receiver_approach_trajectory_minimum_multiplier
                         is not None
                     )
+                    assert (
+                        first_receiver_approach_trajectory_barrier_hold_frames
+                        is not None
+                    )
                     first_receiver_approach_trajectory_active_frames[
                         first_dones
                     ] = (
@@ -7854,6 +7880,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ] = (
                         receiver_approach_trajectory_policy
                         .minimum_multiplier[first_dones]
+                    )
+                    first_receiver_approach_trajectory_barrier_hold_frames[
+                        first_dones
+                    ] = (
+                        receiver_approach_trajectory_policy
+                        .barrier_hold_frames[first_dones]
                     )
                 first_outcome_success |= first_successes
                 if first_handover_max_phase is not None:
@@ -9784,6 +9816,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 is not None
             )
             assert (
+                first_receiver_approach_trajectory_barrier_hold_frames
+                is not None
+            )
+            assert (
                 first_receiver_active_custody_preprobe_risk is not None
             )
             assert (
@@ -9849,7 +9885,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             torch.save(
                 {
                     "schema_version": (
-                        "dranmar-receiver-approach-trajectory-replay-1.1"
+                        "dranmar-receiver-approach-trajectory-replay-1.2"
                     ),
                     "dataset_id": args.receiver_approach_trajectory_id,
                     "task": args.task,
@@ -9897,6 +9933,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             args
                             .receiver_approach_trajectory_end_distance_m
                         ),
+                        "barrier_release_frame": (
+                            args
+                            .receiver_approach_trajectory_barrier_release_frame
+                        ),
+                        "barrier_contract": (
+                            "hold_ready_receiver_translation_then_release_"
+                            "all_qualified_environments_simultaneously"
+                        ),
                         "profile": "minimum_jerk_translation_scale",
                         "modified_action_channels": (
                             "receiver_translation_xyz_only"
@@ -9942,6 +9986,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "minimum_multiplier": (
                         first_receiver_approach_trajectory_minimum_multiplier
+                        .cpu()
+                    ),
+                    "barrier_hold_frames": (
+                        first_receiver_approach_trajectory_barrier_hold_frames
                         .cpu()
                     ),
                     "receiver_candidate_correction": (
@@ -11819,6 +11867,11 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_approach_trajectory_end_distance_m",
         type=float,
         default=0.001,
+    )
+    play.add_argument(
+        "--receiver_approach_trajectory_barrier_release_frame",
+        type=int,
+        default=0,
     )
     play.add_argument(
         "--receiver_attempt_position_cap",

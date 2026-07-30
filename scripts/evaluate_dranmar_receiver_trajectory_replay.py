@@ -22,7 +22,7 @@ from typing import Any
 import torch
 
 
-SCHEMA_VERSION = "dranmar-receiver-approach-trajectory-replay-1.1"
+SCHEMA_VERSION = "dranmar-receiver-approach-trajectory-replay-1.2"
 REPORT_SCHEMA_VERSION = (
     "dranmar-receiver-approach-trajectory-paired-evaluation-1.0"
 )
@@ -92,6 +92,16 @@ def _load_dataset(path: Path) -> dict[str, Any]:
         != "receiver_translation_xyz_only"
         or replay_contract.get("risk_role")
         != "postbranch_retrospective_stratification_only"
+        or replay_contract.get("barrier_contract")
+        != (
+            "hold_ready_receiver_translation_then_release_"
+            "all_qualified_environments_simultaneously"
+        )
+        or not isinstance(
+            replay_contract.get("barrier_release_frame"),
+            int,
+        )
+        or replay_contract["barrier_release_frame"] <= 0
         or replay_contract.get("pairing_key")
         != [
             "source_revision",
@@ -252,6 +262,11 @@ def _load_dataset(path: Path) -> dict[str, Any]:
             "minimum_multiplier",
             length=num_envs,
         ).float(),
+        "barrier_hold_frames": _require_tensor(
+            payload,
+            "barrier_hold_frames",
+            length=num_envs,
+        ).long(),
     }
     if (
         tensors["context"].shape != (num_envs, 98)
@@ -340,7 +355,11 @@ def _candidate_result(
     candidate: dict[str, Any],
     lane: int,
 ) -> dict[str, Any]:
-    mask = candidate["candidate_index"] == lane
+    mask = (
+        (candidate["candidate_index"] == lane)
+        & control["activation_seen"]
+        & candidate["activation_seen"]
+    )
     control_success = control["success"][mask]
     candidate_success = candidate["success"][mask]
     control_safety = control["safety"][mask]
@@ -390,6 +409,19 @@ def _evaluate_pair(
             )
     if control["replicas"] != candidate["replicas"]:
         raise ValueError("paired datasets use different candidate lanes")
+    for field in (
+        "start_distance_m",
+        "end_distance_m",
+        "barrier_release_frame",
+        "barrier_contract",
+        "profile",
+    ):
+        if control["contract"].get(field) != candidate["contract"].get(
+            field
+        ):
+            raise ValueError(
+                f"paired replay contracts differ on {field}"
+            )
     if not all(
         math.isclose(
             scale,
@@ -413,6 +445,10 @@ def _evaluate_pair(
     activation_frame_parity = torch.equal(
         control["activation_frame"],
         candidate["activation_frame"],
+    )
+    barrier_hold_parity = torch.equal(
+        control["barrier_hold_frames"],
+        candidate["barrier_hold_frames"],
     )
     context_delta = _maximum_delta(
         control["context"][active],
@@ -450,6 +486,7 @@ def _evaluate_pair(
         resolved
         and activation_parity
         and activation_frame_parity
+        and barrier_hold_parity
         and context_delta <= context_atol
         and action_delta <= action_atol
         and correction_delta <= context_atol
@@ -485,12 +522,16 @@ def _evaluate_pair(
         "candidate_scales": candidate["scales"],
         "environments": candidate["payload"]["num_envs"],
         "activated_environments": int(active.sum().item()),
+        "barrier_release_frame": candidate["contract"][
+            "barrier_release_frame"
+        ],
         "all_candidate_noop": all_candidate_noop,
         "prebranch_parity": {
             "passed": prebranch_parity,
             "all_first_episodes_resolved": resolved,
             "activation_mask_exact": activation_parity,
             "activation_frame_exact": activation_frame_parity,
+            "barrier_hold_frames_exact": barrier_hold_parity,
             "maximum_context_delta": context_delta,
             "maximum_base_action_delta": action_delta,
             "maximum_candidate_correction_delta": correction_delta,

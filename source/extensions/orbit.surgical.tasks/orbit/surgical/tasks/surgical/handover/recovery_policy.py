@@ -4686,6 +4686,7 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
         *,
         start_distance_m: float = 0.004,
         end_distance_m: float = 0.001,
+        barrier_release_frame: int = 0,
     ) -> None:
         super().__init__()
         if (
@@ -4704,6 +4705,10 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
                 "receiver approach distances must satisfy "
                 "0 < end < start <= 0.01 metres"
             )
+        if barrier_release_frame < 0:
+            raise ValueError(
+                "receiver approach barrier release frame must be non-negative"
+            )
         self.base_policy = base_policy
         self.register_buffer(
             "candidate_scales",
@@ -4721,7 +4726,9 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
         )
         self.start_distance_m = float(start_distance_m)
         self.end_distance_m = float(end_distance_m)
+        self.barrier_release_frame = int(barrier_release_frame)
         self.normalized_contact_threshold = 0.002
+        self.rollout_frame = 0
         self._batch_size = 0
         self.candidate_index = torch.empty(0, dtype=torch.long)
         self.assigned_scale = torch.empty(0)
@@ -4735,6 +4742,9 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
         self.modified_frames = torch.empty(0, dtype=torch.long)
         self.minimum_multiplier = torch.empty(0)
         self.last_multiplier = torch.empty(0)
+        self.barrier_ready = torch.empty(0, dtype=torch.bool)
+        self.barrier_released = torch.empty(0, dtype=torch.bool)
+        self.barrier_hold_frames = torch.empty(0, dtype=torch.long)
 
     def _initialize_state(self, raw: torch.Tensor) -> None:
         batch_size = raw.shape[0]
@@ -4786,6 +4796,9 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
             device=device,
         )
         self.last_multiplier = torch.ones_like(self.minimum_multiplier)
+        self.barrier_ready = torch.zeros_like(self.activation_seen)
+        self.barrier_released = torch.zeros_like(self.activation_seen)
+        self.barrier_hold_frames = torch.zeros_like(self.active_frames)
 
     @staticmethod
     def _select_role(
@@ -4824,6 +4837,8 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
         raw = obs["policy"]
         if self._batch_size != raw.shape[0]:
             self._initialize_state(raw)
+        current_rollout_frame = self.rollout_frame
+        self.rollout_frame += 1
         base_action = self.base_policy(obs)
         giver_is_robot_1 = raw[:, 82] > 0.5
         receiver_is_robot_1 = ~giver_is_robot_1
@@ -4875,13 +4890,44 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
             self.base_policy.last_receiver_action_owner
             == self.base_policy._RECEIVER_OWNER_CORRECTED_APPROACH
         )
-        active = (
+        boundary_ready = (
             (phase == 2)
             & (self.base_policy.retry_count == 0)
             & native_corrected_approach
             & no_receiver_contact
             & (distance <= self.start_distance_m)
         )
+        barrier_hold = torch.zeros_like(boundary_ready)
+        if self.barrier_release_frame > 0:
+            before_release = (
+                current_rollout_frame < self.barrier_release_frame
+            )
+            if before_release:
+                self.barrier_ready |= boundary_ready
+                barrier_hold = (
+                    self.barrier_ready
+                    & (phase == 2)
+                    & (self.base_policy.retry_count == 0)
+                    & native_corrected_approach
+                    & no_receiver_contact
+                )
+            elif current_rollout_frame == self.barrier_release_frame:
+                self.barrier_released = (
+                    self.barrier_ready
+                    & (phase == 2)
+                    & (self.base_policy.retry_count == 0)
+                    & native_corrected_approach
+                    & no_receiver_contact
+                )
+            active = (
+                self.barrier_released
+                & (phase == 2)
+                & (self.base_policy.retry_count == 0)
+                & native_corrected_approach
+                & no_receiver_contact
+            )
+        else:
+            active = boundary_ready
         progress = (
             (self.start_distance_m - distance)
             / (self.start_distance_m - self.end_distance_m)
@@ -4902,6 +4948,11 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
             receiver_is_robot_1,
         ).clone()
         receiver_action[:, :3] *= multiplier.unsqueeze(-1)
+        receiver_action[:, :3] = torch.where(
+            barrier_hold.unsqueeze(-1),
+            torch.zeros_like(receiver_action[:, :3]),
+            receiver_action[:, :3],
+        )
         result = self._replace_receiver_action(
             base_action,
             receiver_action,
@@ -4927,6 +4978,9 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
         self.active_frames += active.to(self.active_frames.dtype)
         modified = active & (self.assigned_scale < 1.0)
         self.modified_frames += modified.to(self.modified_frames.dtype)
+        self.barrier_hold_frames += barrier_hold.to(
+            self.barrier_hold_frames.dtype
+        )
         self.minimum_multiplier = torch.where(
             active,
             torch.minimum(self.minimum_multiplier, multiplier),
@@ -4946,6 +5000,9 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
         self.modified_frames[mask] = 0
         self.minimum_multiplier[mask] = 1.0
         self.last_multiplier[mask] = 1.0
+        self.barrier_ready[mask] = False
+        self.barrier_released[mask] = False
+        self.barrier_hold_frames[mask] = 0
 
     def reset(
         self,
