@@ -4668,6 +4668,305 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         return _RecoveryTensorExport(self)
 
 
+class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
+    """Paired, receiver-only final-approach trajectory intervention.
+
+    The wrapped promoted policy remains authoritative for both robots.  This
+    eager-only data-collection wrapper changes only the receiver translation
+    during the first acquisition attempt, after the native corrected-approach
+    owner is active and before contact.  Environment index modulo the number
+    of candidate scales assigns simultaneous counterfactual replicas.
+    """
+
+    def __init__(
+        self,
+        base_policy: HandoverReceiverRecoveryPolicy,
+        candidate_scales: torch.Tensor,
+        *,
+        start_distance_m: float = 0.004,
+        end_distance_m: float = 0.001,
+    ) -> None:
+        super().__init__()
+        if (
+            candidate_scales.ndim != 1
+            or candidate_scales.numel() < 2
+            or not bool(torch.isfinite(candidate_scales).all())
+            or bool(torch.any(candidate_scales <= 0.0))
+            or bool(torch.any(candidate_scales > 1.0))
+        ):
+            raise ValueError(
+                "receiver approach scales must be a finite vector of at "
+                "least two values inside (0, 1]"
+            )
+        if not 0.0 < end_distance_m < start_distance_m <= 0.01:
+            raise ValueError(
+                "receiver approach distances must satisfy "
+                "0 < end < start <= 0.01 metres"
+            )
+        self.base_policy = base_policy
+        self.register_buffer(
+            "candidate_scales",
+            candidate_scales.detach().clone().float(),
+        )
+        self.register_buffer(
+            "canonical_grasp_offset",
+            torch.tensor(
+                (
+                    float(_RECEIVER_GRASP_OFFSET[0]),
+                    float(_RECEIVER_GRASP_OFFSET[1]),
+                    -0.0018,
+                )
+            ),
+        )
+        self.start_distance_m = float(start_distance_m)
+        self.end_distance_m = float(end_distance_m)
+        self.normalized_contact_threshold = 0.002
+        self._batch_size = 0
+        self.candidate_index = torch.empty(0, dtype=torch.long)
+        self.assigned_scale = torch.empty(0)
+        self.activation_seen = torch.empty(0, dtype=torch.bool)
+        self.last_activation_mask = torch.empty(0, dtype=torch.bool)
+        self.first_context = torch.empty((0, 98))
+        self.first_base_action = torch.empty((0, 14))
+        self.first_scaled_action = torch.empty((0, 14))
+        self.first_distance_m = torch.empty(0)
+        self.active_frames = torch.empty(0, dtype=torch.long)
+        self.modified_frames = torch.empty(0, dtype=torch.long)
+        self.minimum_multiplier = torch.empty(0)
+        self.last_multiplier = torch.empty(0)
+
+    def _initialize_state(self, raw: torch.Tensor) -> None:
+        batch_size = raw.shape[0]
+        device, dtype = raw.device, raw.dtype
+        replica_count = int(self.candidate_scales.numel())
+        if batch_size % replica_count != 0:
+            raise ValueError(
+                "receiver approach candidate count must divide policy batch"
+            )
+        self._batch_size = batch_size
+        self.candidate_index = (
+            torch.arange(batch_size, device=device) % replica_count
+        )
+        self.assigned_scale = self.candidate_scales.to(
+            device=device,
+            dtype=dtype,
+        )[self.candidate_index]
+        self.activation_seen = torch.zeros(
+            batch_size,
+            dtype=torch.bool,
+            device=device,
+        )
+        self.last_activation_mask = torch.zeros_like(self.activation_seen)
+        self.first_context = torch.zeros(
+            (batch_size, raw.shape[-1]),
+            dtype=dtype,
+            device=device,
+        )
+        self.first_base_action = torch.zeros(
+            (batch_size, 14),
+            dtype=dtype,
+            device=device,
+        )
+        self.first_scaled_action = torch.zeros_like(self.first_base_action)
+        self.first_distance_m = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
+        )
+        self.active_frames = torch.zeros(
+            batch_size,
+            dtype=torch.long,
+            device=device,
+        )
+        self.modified_frames = torch.zeros_like(self.active_frames)
+        self.minimum_multiplier = torch.ones(
+            batch_size,
+            dtype=dtype,
+            device=device,
+        )
+        self.last_multiplier = torch.ones_like(self.minimum_multiplier)
+
+    @staticmethod
+    def _select_role(
+        robot_1_value: torch.Tensor,
+        robot_2_value: torch.Tensor,
+        role_is_robot_1: torch.Tensor,
+    ) -> torch.Tensor:
+        return torch.where(
+            role_is_robot_1.unsqueeze(-1),
+            robot_1_value,
+            robot_2_value,
+        )
+
+    @staticmethod
+    def _replace_receiver_action(
+        base_action: torch.Tensor,
+        receiver_action: torch.Tensor,
+        receiver_is_robot_1: torch.Tensor,
+    ) -> torch.Tensor:
+        robot_1 = torch.where(
+            receiver_is_robot_1.unsqueeze(-1),
+            receiver_action,
+            base_action[:, :7],
+        )
+        robot_2 = torch.where(
+            receiver_is_robot_1.unsqueeze(-1),
+            base_action[:, 7:14],
+            receiver_action,
+        )
+        return torch.cat((robot_1, robot_2), dim=-1)
+
+    def forward(
+        self,
+        obs: dict[str, torch.Tensor],
+    ) -> torch.Tensor:
+        raw = obs["policy"]
+        if self._batch_size != raw.shape[0]:
+            self._initialize_state(raw)
+        base_action = self.base_policy(obs)
+        giver_is_robot_1 = raw[:, 82] > 0.5
+        receiver_is_robot_1 = ~giver_is_robot_1
+        phase = torch.argmax(raw[:, 77:82], dim=-1)
+        receiver_ee = self._select_role(
+            raw[:, 32:35],
+            raw[:, 39:42],
+            receiver_is_robot_1,
+        )
+        object_pose = self._select_role(
+            raw[:, 46:53],
+            raw[:, 53:60],
+            receiver_is_robot_1,
+        )
+        object_rotation = _quat_xyzw_to_matrix(object_pose[:, 3:7])
+        correction = self.base_policy.correction
+        if correction.shape != (raw.shape[0], 6):
+            correction = torch.zeros(
+                (raw.shape[0], 6),
+                dtype=raw.dtype,
+                device=raw.device,
+            )
+        correction_in_receiver = torch.matmul(
+            object_rotation,
+            correction[:, :3].unsqueeze(-1),
+        ).squeeze(-1)
+        grasp_position = (
+            object_pose[:, :3]
+            + self.canonical_grasp_offset.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            + correction_in_receiver
+        )
+        distance = torch.linalg.vector_norm(
+            grasp_position - receiver_ee,
+            dim=-1,
+        )
+        receiver_contacts = self._select_role(
+            raw[:, 66:68],
+            raw[:, 68:70],
+            receiver_is_robot_1,
+        )
+        no_receiver_contact = ~torch.any(
+            receiver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        native_corrected_approach = (
+            self.base_policy.last_receiver_action_owner
+            == self.base_policy._RECEIVER_OWNER_CORRECTED_APPROACH
+        )
+        active = (
+            (phase == 2)
+            & (self.base_policy.retry_count == 0)
+            & native_corrected_approach
+            & no_receiver_contact
+            & (distance <= self.start_distance_m)
+        )
+        progress = (
+            (self.start_distance_m - distance)
+            / (self.start_distance_m - self.end_distance_m)
+        ).clamp(0.0, 1.0)
+        minimum_jerk = progress.square() * (3.0 - 2.0 * progress)
+        multiplier = (
+            1.0
+            - (1.0 - self.assigned_scale) * minimum_jerk
+        )
+        multiplier = torch.where(
+            active,
+            multiplier,
+            torch.ones_like(multiplier),
+        )
+        receiver_action = self._select_role(
+            base_action[:, :7],
+            base_action[:, 7:14],
+            receiver_is_robot_1,
+        ).clone()
+        receiver_action[:, :3] *= multiplier.unsqueeze(-1)
+        result = self._replace_receiver_action(
+            base_action,
+            receiver_action,
+            receiver_is_robot_1,
+        )
+
+        first_activation = active & ~self.activation_seen
+        self.last_activation_mask = first_activation.detach().clone()
+        if bool(first_activation.any()):
+            self.first_context[first_activation] = raw[
+                first_activation
+            ].detach()
+            self.first_base_action[first_activation] = base_action[
+                first_activation
+            ].detach()
+            self.first_scaled_action[first_activation] = result[
+                first_activation
+            ].detach()
+            self.first_distance_m[first_activation] = distance[
+                first_activation
+            ].detach()
+        self.activation_seen |= active
+        self.active_frames += active.to(self.active_frames.dtype)
+        modified = active & (self.assigned_scale < 1.0)
+        self.modified_frames += modified.to(self.modified_frames.dtype)
+        self.minimum_multiplier = torch.where(
+            active,
+            torch.minimum(self.minimum_multiplier, multiplier),
+            self.minimum_multiplier,
+        )
+        self.last_multiplier = multiplier.detach()
+        return result.clamp(-1.0, 1.0)
+
+    def _clear_state(self, mask: torch.Tensor) -> None:
+        self.activation_seen[mask] = False
+        self.last_activation_mask[mask] = False
+        self.first_context[mask] = 0.0
+        self.first_base_action[mask] = 0.0
+        self.first_scaled_action[mask] = 0.0
+        self.first_distance_m[mask] = 0.0
+        self.active_frames[mask] = 0
+        self.modified_frames[mask] = 0
+        self.minimum_multiplier[mask] = 1.0
+        self.last_multiplier[mask] = 1.0
+
+    def reset(
+        self,
+        dones: torch.Tensor | None = None,
+        hidden_state: Any = None,
+    ) -> None:
+        self.base_policy.reset(dones, hidden_state)
+        if self._batch_size == 0:
+            return
+        if dones is None:
+            mask = torch.ones_like(
+                self.activation_seen,
+                dtype=torch.bool,
+            )
+        else:
+            mask = dones.to(
+                device=self.activation_seen.device,
+                dtype=torch.bool,
+            )
+        self._clear_state(mask)
+
+
 class _MappingTensorPolicy(nn.Module):
     """Adapt a stateless tensor-export policy to the eager observation map."""
 

@@ -3428,6 +3428,98 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "active-custody probe dataset already exists: "
             f"{active_custody_probe_dataset_path}"
         )
+    receiver_approach_trajectory_dataset_path = (
+        Path(args.receiver_approach_trajectory_dataset)
+        .expanduser()
+        .resolve()
+        if args.receiver_approach_trajectory_dataset
+        else None
+    )
+    if (
+        receiver_approach_trajectory_dataset_path is not None
+        and receiver_approach_trajectory_dataset_path.exists()
+    ):
+        return _fail(
+            "receiver approach trajectory dataset already exists: "
+            f"{receiver_approach_trajectory_dataset_path}"
+        )
+    receiver_approach_trajectory_scales: list[float] = []
+    if args.receiver_approach_trajectory_scales:
+        try:
+            receiver_approach_trajectory_scales = [
+                float(value.strip())
+                for value in args.receiver_approach_trajectory_scales.split(
+                    ","
+                )
+            ]
+        except ValueError:
+            return _fail(
+                "receiver approach trajectory scales must be comma-separated "
+                "numbers"
+            )
+    if bool(receiver_approach_trajectory_scales) != bool(
+        receiver_approach_trajectory_dataset_path
+    ):
+        return _fail(
+            "receiver approach trajectory scales and dataset are required "
+            "together"
+        )
+    receiver_approach_trajectory_replicas = len(
+        receiver_approach_trajectory_scales
+    )
+    if receiver_approach_trajectory_scales:
+        if (
+            receiver_approach_trajectory_replicas < 2
+            or not all(
+                math.isfinite(value) and 0.0 < value <= 1.0
+                for value in receiver_approach_trajectory_scales
+            )
+            or not math.isclose(
+                receiver_approach_trajectory_scales[0],
+                1.0,
+                rel_tol=0.0,
+                abs_tol=1.0e-9,
+            )
+        ):
+            return _fail(
+                "receiver approach trajectory requires at least two scales "
+                "inside (0, 1] with the no-op scale 1.0 first"
+            )
+        if not args.receiver_approach_trajectory_id:
+            return _fail(
+                "receiver approach trajectory requires a stable dataset id"
+            )
+        if args.num_envs % receiver_approach_trajectory_replicas != 0:
+            return _fail(
+                "receiver approach trajectory replicas must divide num_envs"
+            )
+        if not (
+            0.0
+            < args.receiver_approach_trajectory_end_distance_m
+            < args.receiver_approach_trajectory_start_distance_m
+            <= 0.01
+        ):
+            return _fail(
+                "receiver approach trajectory distances must satisfy "
+                "0 < end < start <= 0.01 metres"
+            )
+        if not (
+            args.receiver_active_custody_preprobe_risk_checkpoint
+            and args.receiver_active_custody_preprobe_risk_monitor
+        ):
+            return _fail(
+                "receiver approach trajectory collection requires the frozen "
+                "pre-probe risk monitor for retrospective stratification"
+            )
+        if not (
+            args.receiver_candidate_value_checkpoint
+            and args.receiver_candidate_first_attempt
+            and args.receiver_disable_retries
+        ):
+            return _fail(
+                "receiver approach trajectory replay requires the frozen "
+                "promoted first-attempt candidate policy with retries disabled"
+            )
 
     runtime_seed = args.seed + args.seed_stream_offset
     active_custody_intervention_seed = (
@@ -3626,6 +3718,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         env_cfg.events.reset_object_position.params["replicas"] = (
             args.receiver_recovery_sweep_replicas
         )
+    if receiver_approach_trajectory_scales:
+        if (
+            args.pickup_recovery_sweep_replicas > 1
+            or args.receiver_recovery_sweep_replicas > 1
+            or args.receiver_retry_candidate_sweep
+        ):
+            return _fail(
+                "receiver approach trajectory replay is exclusive with other "
+                "grouped intervention sweeps"
+            )
+        from orbit.surgical.tasks.surgical.handover.mdp import (
+            reset_root_state_uniform_grouped,
+        )
+
+        env_cfg.events.reset_object_position.func = (
+            reset_root_state_uniform_grouped
+        )
+        env_cfg.events.reset_object_position.params["replicas"] = (
+            receiver_approach_trajectory_replicas
+        )
     if args.receiver_retry_candidate_sweep and not (
         args.receiver_candidate_value_checkpoint
         and args.receiver_candidate_first_attempt
@@ -3720,14 +3832,20 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "pre-probe risk checkpoint requires the monitor or retry profile"
         )
     if args.receiver_active_custody_preprobe_risk_monitor and (
-        not args.receiver_attempt_checkpoint
-        or not args.receiver_attempt_dataset
+        not (
+            (
+                args.receiver_attempt_checkpoint
+                and args.receiver_attempt_dataset
+            )
+            or args.receiver_approach_trajectory_dataset
+        )
         or args.receiver_active_custody_intervention
         or args.receiver_active_custody_verification
     ):
         return _fail(
-            "pre-probe risk monitoring requires an attempt rollout dataset "
-            "and forbids custody probes or interventions"
+            "pre-probe risk monitoring requires an attempt rollout or "
+            "receiver trajectory dataset and forbids custody probes or "
+            "interventions"
         )
     if not 0 <= active_custody_intervention_seed < 2**31:
         return _fail(
@@ -3762,6 +3880,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_active_custody_intervention
         or args.receiver_retention_contact_centering
         or args.receiver_retention_servo
+        or receiver_approach_trajectory_scales
     ) and not (
         1
         <= args.receiver_recovery_acquisition_timeout_steps
@@ -3947,6 +4066,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_recovery_sobol_candidate is not None
         or args.receiver_recovery_local_sobol_candidate is not None
         or args.receiver_recovery_local_sweep
+        or receiver_approach_trajectory_scales
     ):
         return _fail(
             "first-attempt receiver correction requires a candidate-value "
@@ -3962,9 +4082,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     )
     receiver_retry_command_term = None
     receiver_retry_group_replicas = (
-        args.receiver_recovery_sweep_replicas
+        receiver_approach_trajectory_replicas
+        if receiver_approach_trajectory_scales
+        else args.receiver_recovery_sweep_replicas
     )
-    if args.receiver_retry_candidate_sweep:
+    if (
+        args.receiver_retry_candidate_sweep
+        or receiver_approach_trajectory_scales
+    ):
         receiver_retry_command_term = (
             env.unwrapped.command_manager.get_term("receiver_pose")
         )
@@ -4483,6 +4608,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         policy = runner.get_inference_policy(device=env.unwrapped.device)
 
     receiver_recovery_policy = None
+    receiver_approach_trajectory_policy = None
     if (
         sum(
             (
@@ -4521,6 +4647,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_recovery_local_sweep
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
+            HandoverReceiverApproachTrajectoryPolicy,
             HandoverReceiverRecoveryPolicy,
             ReceiverAttemptActorCritic,
             ReceiverCandidateValue,
@@ -5624,6 +5751,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             receiver_recovery_policy.set_fixed_correction(randomized)
         receiver_recovery_policy.eval()
         policy = receiver_recovery_policy
+        if receiver_approach_trajectory_scales:
+            receiver_approach_trajectory_policy = (
+                HandoverReceiverApproachTrajectoryPolicy(
+                    receiver_recovery_policy,
+                    torch.tensor(
+                        receiver_approach_trajectory_scales,
+                        dtype=torch.float32,
+                        device=env.unwrapped.device,
+                    ),
+                    start_distance_m=(
+                        args
+                        .receiver_approach_trajectory_start_distance_m
+                    ),
+                    end_distance_m=(
+                        args
+                        .receiver_approach_trajectory_end_distance_m
+                    ),
+                ).to(env.unwrapped.device)
+            )
+            receiver_approach_trajectory_policy.eval()
+            policy = receiver_approach_trajectory_policy
 
     rewards: list[float] = []
     done_count = 0
@@ -6005,6 +6153,84 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             device=env.unwrapped.device,
         )
         if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_activation_seen = (
+        torch.zeros_like(first_unresolved)
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_activation_frame = (
+        torch.full(
+            (env.unwrapped.num_envs,),
+            -1,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_context = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 98),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_base_action = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 14),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_scaled_action = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 14),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_distance_m = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_active_frames = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_modified_frames = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
+        else None
+    )
+    first_receiver_approach_trajectory_minimum_multiplier = (
+        torch.ones(
+            env.unwrapped.num_envs,
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_approach_trajectory_policy is not None
         else None
     )
     receiver_activation_events: list[dict[str, Any]] = []
@@ -6766,6 +6992,68 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                     )
                 actions = policy(obs)
+                if receiver_approach_trajectory_policy is not None:
+                    assert (
+                        first_receiver_approach_trajectory_activation_seen
+                        is not None
+                    )
+                    assert (
+                        first_receiver_approach_trajectory_activation_frame
+                        is not None
+                    )
+                    assert (
+                        first_receiver_approach_trajectory_context
+                        is not None
+                    )
+                    assert (
+                        first_receiver_approach_trajectory_base_action
+                        is not None
+                    )
+                    assert (
+                        first_receiver_approach_trajectory_scaled_action
+                        is not None
+                    )
+                    assert (
+                        first_receiver_approach_trajectory_distance_m
+                        is not None
+                    )
+                    trajectory_activation = (
+                        receiver_approach_trajectory_policy
+                        .last_activation_mask
+                        & was_first_unresolved
+                    )
+                    if bool(trajectory_activation.any()):
+                        first_receiver_approach_trajectory_activation_seen |= (
+                            trajectory_activation
+                        )
+                        first_receiver_approach_trajectory_activation_frame[
+                            trajectory_activation
+                        ] = frame_index
+                        first_receiver_approach_trajectory_context[
+                            trajectory_activation
+                        ] = (
+                            receiver_approach_trajectory_policy.first_context[
+                                trajectory_activation
+                            ]
+                        )
+                        first_receiver_approach_trajectory_base_action[
+                            trajectory_activation
+                        ] = (
+                            receiver_approach_trajectory_policy
+                            .first_base_action[trajectory_activation]
+                        )
+                        first_receiver_approach_trajectory_scaled_action[
+                            trajectory_activation
+                        ] = (
+                            receiver_approach_trajectory_policy
+                            .first_scaled_action[trajectory_activation]
+                        )
+                        first_receiver_approach_trajectory_distance_m[
+                            trajectory_activation
+                        ] = (
+                            receiver_approach_trajectory_policy
+                            .first_distance_m[trajectory_activation]
+                        )
                 if pickup_recovery_policy is not None:
                     assert first_pickup_context is not None
                     assert first_pickup_activation_correction is not None
@@ -7533,6 +7821,39 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                     first_receiver_correction[first_dones] = (
                         receiver_recovery_policy.correction[first_dones]
+                    )
+                if receiver_approach_trajectory_policy is not None:
+                    assert (
+                        first_receiver_approach_trajectory_active_frames
+                        is not None
+                    )
+                    assert (
+                        first_receiver_approach_trajectory_modified_frames
+                        is not None
+                    )
+                    assert (
+                        first_receiver_approach_trajectory_minimum_multiplier
+                        is not None
+                    )
+                    first_receiver_approach_trajectory_active_frames[
+                        first_dones
+                    ] = (
+                        receiver_approach_trajectory_policy.active_frames[
+                            first_dones
+                        ]
+                    )
+                    first_receiver_approach_trajectory_modified_frames[
+                        first_dones
+                    ] = (
+                        receiver_approach_trajectory_policy.modified_frames[
+                            first_dones
+                        ]
+                    )
+                    first_receiver_approach_trajectory_minimum_multiplier[
+                        first_dones
+                    ] = (
+                        receiver_approach_trajectory_policy
+                        .minimum_multiplier[first_dones]
                     )
                 first_outcome_success |= first_successes
                 if first_handover_max_phase is not None:
@@ -9429,6 +9750,229 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     else None
                 ),
             }
+        receiver_approach_trajectory_dataset = None
+        if receiver_approach_trajectory_dataset_path is not None:
+            assert receiver_approach_trajectory_policy is not None
+            assert receiver_recovery_policy is not None
+            assert first_handover_max_phase is not None
+            assert (
+                first_receiver_approach_trajectory_activation_seen
+                is not None
+            )
+            assert (
+                first_receiver_approach_trajectory_activation_frame
+                is not None
+            )
+            assert first_receiver_approach_trajectory_context is not None
+            assert (
+                first_receiver_approach_trajectory_base_action is not None
+            )
+            assert (
+                first_receiver_approach_trajectory_scaled_action is not None
+            )
+            assert (
+                first_receiver_approach_trajectory_distance_m is not None
+            )
+            assert (
+                first_receiver_approach_trajectory_active_frames is not None
+            )
+            assert (
+                first_receiver_approach_trajectory_modified_frames is not None
+            )
+            assert (
+                first_receiver_approach_trajectory_minimum_multiplier
+                is not None
+            )
+            assert (
+                first_receiver_active_custody_preprobe_risk is not None
+            )
+            assert (
+                first_receiver_active_custody_preprobe_risk_observed
+                is not None
+            )
+            source_revision = _command_output(
+                ["git", "rev-parse", "HEAD"],
+                repo_root,
+            )
+            if source_revision is None or len(source_revision) != 40:
+                env.close()
+                return _fail(
+                    "receiver approach trajectory source revision is "
+                    "unavailable"
+                )
+            candidate_checkpoint_path = (
+                Path(args.receiver_candidate_value_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            risk_checkpoint_path = (
+                Path(
+                    args.receiver_active_custody_preprobe_risk_checkpoint
+                )
+                .expanduser()
+                .resolve()
+            )
+            environment_index = torch.arange(
+                env.unwrapped.num_envs,
+                dtype=torch.long,
+                device=env.unwrapped.device,
+            )
+            candidate_index = (
+                environment_index
+                % receiver_approach_trajectory_replicas
+            )
+            assigned_scale = torch.tensor(
+                receiver_approach_trajectory_scales,
+                dtype=torch.float32,
+                device=env.unwrapped.device,
+            )[candidate_index]
+            receiver_safety_names = {
+                "excessive_object_force",
+                "needle_dropped_after_pickup",
+                "object_dropping",
+                "premature_giver_release",
+                "protected_surface_force",
+                "receiver_retention_lost",
+            }
+            receiver_safety_indices = [
+                termination_names.index(name)
+                for name in receiver_safety_names
+                if name in termination_names
+            ]
+            receiver_safety_failure = first_terminal_flags[
+                :, receiver_safety_indices
+            ].any(dim=-1)
+            receiver_approach_trajectory_dataset_path.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            torch.save(
+                {
+                    "schema_version": (
+                        "dranmar-receiver-approach-trajectory-replay-1.0"
+                    ),
+                    "dataset_id": args.receiver_approach_trajectory_id,
+                    "task": args.task,
+                    "seed": args.seed,
+                    "seed_stream_offset": args.seed_stream_offset,
+                    "runtime_seed": runtime_seed,
+                    "num_envs": env.unwrapped.num_envs,
+                    "num_frames": args.num_frames,
+                    "source_revision": source_revision,
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "receiver_candidate_checkpoint_sha256": _sha256(
+                        candidate_checkpoint_path
+                    ),
+                    "preprobe_risk_checkpoint_sha256": _sha256(
+                        risk_checkpoint_path
+                    ),
+                    "replay_contract": {
+                        "method": "simultaneous_grouped_clones",
+                        "identical_before_activation": True,
+                        "serialized_physx_restore": False,
+                        "group_replicas": (
+                            receiver_approach_trajectory_replicas
+                        ),
+                        "candidate_scales": (
+                            receiver_approach_trajectory_scales
+                        ),
+                        "control_candidate_index": 0,
+                        "start_distance_m": (
+                            args
+                            .receiver_approach_trajectory_start_distance_m
+                        ),
+                        "end_distance_m": (
+                            args
+                            .receiver_approach_trajectory_end_distance_m
+                        ),
+                        "profile": "minimum_jerk_translation_scale",
+                        "modified_action_channels": (
+                            "receiver_translation_xyz_only"
+                        ),
+                        "risk_role": (
+                            "postbranch_retrospective_stratification_only"
+                        ),
+                    },
+                    "environment_index": environment_index.cpu(),
+                    "group_index": (
+                        environment_index
+                        // receiver_approach_trajectory_replicas
+                    ).cpu(),
+                    "candidate_index": candidate_index.cpu(),
+                    "assigned_scale": assigned_scale.cpu(),
+                    "first_episode_resolved": (~first_unresolved).cpu(),
+                    "activation_seen": (
+                        first_receiver_approach_trajectory_activation_seen
+                        .cpu()
+                    ),
+                    "activation_frame": (
+                        first_receiver_approach_trajectory_activation_frame
+                        .cpu()
+                    ),
+                    "activation_context": (
+                        first_receiver_approach_trajectory_context.cpu()
+                    ),
+                    "base_action_at_activation": (
+                        first_receiver_approach_trajectory_base_action.cpu()
+                    ),
+                    "scaled_action_at_activation": (
+                        first_receiver_approach_trajectory_scaled_action.cpu()
+                    ),
+                    "distance_at_activation_m": (
+                        first_receiver_approach_trajectory_distance_m.cpu()
+                    ),
+                    "active_frames": (
+                        first_receiver_approach_trajectory_active_frames.cpu()
+                    ),
+                    "modified_frames": (
+                        first_receiver_approach_trajectory_modified_frames
+                        .cpu()
+                    ),
+                    "minimum_multiplier": (
+                        first_receiver_approach_trajectory_minimum_multiplier
+                        .cpu()
+                    ),
+                    "receiver_candidate_correction": (
+                        first_receiver_correction.cpu()
+                        if first_receiver_correction is not None
+                        else torch.zeros(
+                            (env.unwrapped.num_envs, 6),
+                            dtype=torch.float32,
+                        )
+                    ),
+                    "full_success": first_outcome_success.cpu(),
+                    "maximum_phase": first_handover_max_phase.cpu(),
+                    "termination_names": termination_names,
+                    "termination_flags": first_terminal_flags.cpu(),
+                    "receiver_safety_failure": (
+                        receiver_safety_failure.cpu()
+                    ),
+                    "postbranch_preprobe_risk_observed": (
+                        first_receiver_active_custody_preprobe_risk_observed
+                        .cpu()
+                    ),
+                    "postbranch_predicted_preprobe_risk": (
+                        first_receiver_active_custody_preprobe_risk.cpu()
+                    ),
+                },
+                receiver_approach_trajectory_dataset_path,
+            )
+            receiver_approach_trajectory_dataset = {
+                "path": str(receiver_approach_trajectory_dataset_path),
+                "sha256": _sha256(
+                    receiver_approach_trajectory_dataset_path
+                ),
+                "groups": (
+                    env.unwrapped.num_envs
+                    // receiver_approach_trajectory_replicas
+                ),
+                "replicas": receiver_approach_trajectory_replicas,
+                "activated": int(
+                    first_receiver_approach_trajectory_activation_seen
+                    .sum()
+                    .item()
+                ),
+            }
         receiver_active_custody_probe_dataset = None
         if args.receiver_active_custody_probe_dataset:
             assert receiver_recovery_policy is not None
@@ -10975,6 +11519,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "active_custody_probe_dataset": (
                         receiver_active_custody_probe_dataset
                     ),
+                    "approach_trajectory_replay": (
+                        receiver_approach_trajectory_dataset
+                    ),
                     "retry_release_aborted_episodes": int(
                         first_receiver_retry_release_aborted.sum().item()
                     ),
@@ -11242,6 +11789,25 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
     )
     play.add_argument("--receiver_attempt_dataset")
+    play.add_argument(
+        "--receiver_approach_trajectory_scales",
+        help=(
+            "comma-separated grouped receiver translation scales with "
+            "the no-op scale 1.0 first"
+        ),
+    )
+    play.add_argument("--receiver_approach_trajectory_dataset")
+    play.add_argument("--receiver_approach_trajectory_id")
+    play.add_argument(
+        "--receiver_approach_trajectory_start_distance_m",
+        type=float,
+        default=0.004,
+    )
+    play.add_argument(
+        "--receiver_approach_trajectory_end_distance_m",
+        type=float,
+        default=0.001,
+    )
     play.add_argument(
         "--receiver_attempt_position_cap",
         type=float,
