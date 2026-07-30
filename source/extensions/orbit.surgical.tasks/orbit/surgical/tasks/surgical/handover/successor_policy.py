@@ -71,6 +71,9 @@ class PhaseConditionedHandoverPolicy(nn.Module):
             )
             for _ in range(HANDOVER_PHASE_COUNT)
         )
+        for head in self.phase_heads:
+            nn.init.zeros_(head[-1].weight)
+            nn.init.zeros_(head[-1].bias)
 
     @staticmethod
     def _policy_observation(
@@ -128,7 +131,9 @@ def load_handover_successor_checkpoint(
     ]:
         raise ValueError("successor checkpoint phase contract drifted")
     if not payload.get("training_gate_passed"):
-        raise ValueError("successor checkpoint lacks an accepted teacher-data gate")
+        raise ValueError(
+            "successor checkpoint lacks an accepted demonstration-data gate"
+        )
 
     architecture = payload.get("architecture")
     if not isinstance(architecture, dict):

@@ -115,6 +115,7 @@ def _trace(
             "source": {
                 "dranmar_revision": "c" * 40,
                 "asset_revision": "d" * 40,
+                "asset_root": "/immutable/orbit.surgical.assets",
             }
         },
     }
@@ -205,6 +206,50 @@ def test_retention_schedule_extends_last_causal_centering_action(
     )
 
 
+def test_exact_safe_baseline_success_is_admitted_for_distillation(
+    tmp_path: Path,
+) -> None:
+    control = _trace(
+        role="control",
+        teacher_kind="frozen_baseline",
+        outcome="success",
+    )
+    phases = torch.tensor([0, 0, 1, 1, 2, 2, 2, 3, 3, 3])
+    control["phases"] = phases
+    control["observations"][:, 77:82] = 0.0
+    control["observations"][
+        torch.arange(phases.numel()),
+        77 + phases,
+    ] = 1.0
+    accepted = SUCCESSOR_TOOL.admit_baseline_pair(
+        _save(tmp_path / "control-a.pt", control),
+        _save(tmp_path / "control-b.pt", control),
+    )
+
+    assert accepted["accepted"] is True
+    assert all(accepted["gates"].values())
+    assert (
+        accepted["label_source"]
+        == SUCCESSOR_TOOL.BASELINE_LABEL_SOURCE
+    )
+    assert accepted["teacher_receipt"] is None
+    assert torch.equal(
+        accepted["episode"]["actions"],
+        control["actions"],
+    )
+
+    failed = _trace(
+        role="control",
+        teacher_kind="frozen_baseline",
+        outcome="receiver_retention_lost",
+    )
+    with pytest.raises(ValueError, match="successful episodes only"):
+        SUCCESSOR_TOOL.admit_baseline_pair(
+            _save(tmp_path / "failed-a.pt", failed),
+            _save(tmp_path / "failed-b.pt", failed),
+        )
+
+
 def test_isolated_teacher_acceptance_requires_exact_replay_and_safe_win(
     tmp_path: Path,
 ) -> None:
@@ -227,6 +272,7 @@ def test_isolated_teacher_acceptance_requires_exact_replay_and_safe_win(
 
     assert accepted["accepted"] is True
     assert all(accepted["gates"].values())
+    assert accepted["label_source"] == SUCCESSOR_TOOL.TEACHER_LABEL_SOURCE
     assert accepted["branch_frame"] == 5
     assert torch.equal(
         accepted["episode"]["actions"],
@@ -352,9 +398,21 @@ def test_full_action_successor_trains_with_episode_level_split(
             seed=seed,
             teacher_branch=5,
         )
+        phases = torch.tensor([0, 0, 1, 1, 2, 2, 2, 3, 3, 3])
+        trace["phases"] = phases
+        trace["observations"][:, 77:82] = 0.0
+        trace["observations"][
+            torch.arange(phases.numel()),
+            77 + phases,
+        ] = 1.0
         dataset = {
             "schema_version": SUCCESSOR_TOOL.DATASET_SCHEMA,
             "accepted": True,
+            "label_source": (
+                SUCCESSOR_TOOL.BASELINE_LABEL_SOURCE
+                if index < 4
+                else SUCCESSOR_TOOL.TEACHER_LABEL_SOURCE
+            ),
             "gates": {"isolated": True, "safe": True, "teacher_wins": True},
             "pair_id": trace["pair_id"],
             "task": trace["task"],
@@ -396,6 +454,11 @@ def test_full_action_successor_trains_with_episode_level_split(
     payload = torch.load(output, map_location="cpu", weights_only=False)
     assert payload["architecture"]["full_action_policy"] is True
     assert payload["architecture"]["runtime_heuristic_stack"] is False
+    assert payload["capability_scope"] == (
+        "incumbent_distillation_plus_teacher_rescues"
+    )
+    assert result["baseline_distillation_pairs"] == 4
+    assert result["teacher_rescue_pairs"] == 4
     assert set(payload["training"]["train_pair_ids"]).isdisjoint(
         payload["training"]["validation_pair_ids"]
     )
@@ -408,3 +471,9 @@ def test_full_action_successor_trains_with_episode_level_split(
     assert loaded["training_gate_passed"] is True
     assert action.shape == (2, 14)
     assert bool((action.abs() <= 1.0).all())
+    terminal_observation = torch.zeros(1, 98)
+    terminal_observation[:, 81] = 1.0
+    assert torch.equal(
+        model(terminal_observation),
+        torch.zeros(1, 14),
+    )

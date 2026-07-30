@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Accept isolated handover teachers and train the full-action successor."""
+"""Admit isolated handover demonstrations and train the full-action successor."""
 
 from __future__ import annotations
 
@@ -19,9 +19,15 @@ import torch.nn.functional as functional
 
 
 TRACE_SCHEMA = "dranmar-handover-teacher-trace-1.0"
-DATASET_SCHEMA = "dranmar-handover-teacher-dataset-1.0"
+DATASET_SCHEMA = "dranmar-handover-successor-dataset-1.0"
 RECEIPT_SCHEMA = "dranmar-handover-teacher-receipt-1.0"
 ACTION_SCHEDULE_SCHEMA = "dranmar-handover-teacher-action-schedule-1.0"
+BASELINE_LABEL_SOURCE = "frozen_baseline_success_distillation"
+TEACHER_LABEL_SOURCE = "independent_teacher_rescue"
+ALLOWED_LABEL_SOURCES = {
+    BASELINE_LABEL_SOURCE,
+    TEACHER_LABEL_SOURCE,
+}
 QUALIFICATION_SEEDS = {17, 2361, 4099}
 ALLOWED_TEACHERS = {
     "constrained_trajectory_optimizer",
@@ -200,6 +206,7 @@ def _validate_trace(path: Path, trace: dict[str, Any]) -> None:
         not isinstance(source, dict)
         or not source.get("dranmar_revision")
         or not source.get("asset_revision")
+        or not source.get("asset_root")
     ):
         raise ValueError(f"trace lacks source revisions: {path}")
     policy = trace.get("policy")
@@ -368,6 +375,98 @@ def _exact_control_replay(control_a: dict[str, Any], control_b: dict[str, Any]) 
     )
 
 
+def _episode_payload(trace: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "observations": trace["observations"].float().clone(),
+        "actions": trace["actions"].float().clone(),
+        "rewards": trace["rewards"].float().clone(),
+        "phases": trace["phases"].long().clone(),
+        "safety_events": trace["safety_events"].bool().clone(),
+        "frame_count": int(trace["observations"].shape[0]),
+    }
+
+
+def admit_baseline_pair(
+    control_a_path: Path,
+    control_b_path: Path,
+) -> dict[str, Any]:
+    """Admit one reproducible safe incumbent success for policy distillation."""
+
+    control_a = _load_trace(control_a_path)
+    control_b = _load_trace(control_b_path)
+    _validate_trace(control_a_path, control_a)
+    _validate_trace(control_b_path, control_b)
+    if control_a.get("role") != "control" or control_b.get("role") != "control":
+        raise ValueError("baseline demonstrations require two control traces")
+    if (
+        control_a.get("teacher_kind") != "frozen_baseline"
+        or control_b.get("teacher_kind") != "frozen_baseline"
+    ):
+        raise ValueError("baseline demonstrations must use the frozen incumbent")
+
+    contract_match = _same_contract(control_a, control_b)
+    control_replay = _exact_control_replay(control_a, control_b)
+    if not contract_match:
+        raise ValueError("baseline traces do not share one source and policy lock")
+    if not control_replay:
+        raise ValueError("baseline replay is not exact; this episode is inadmissible")
+    if control_a["terminal"]["outcome"] != "success":
+        raise ValueError("baseline distillation admits successful episodes only")
+    if bool(control_a["safety_events"].any()):
+        raise ValueError("baseline distillation rejects episodes with safety events")
+    phases = set(control_a["phases"].long().unique().tolist())
+    if not set(range(4)).issubset(phases):
+        raise ValueError(
+            "baseline success lacks an action-bearing handover phase"
+        )
+    if (
+        control_a.get("teacher_receipt")
+        or control_a.get("teacher_action_schedule")
+        or control_a["policy"].get("successor_checkpoint_sha256")
+        or control_a["policy"].get("teacher_action_schedule_sha256")
+    ):
+        raise ValueError("baseline demonstration contains a teacher or successor override")
+
+    gates = {
+        "single_environment_only": True,
+        "development_seed_only": True,
+        "source_and_checkpoint_match": contract_match,
+        "exact_replay": control_replay,
+        "safe_terminal_success": True,
+        "complete_action_phase_coverage": True,
+        "frozen_incumbent_only": True,
+    }
+    return {
+        "schema_version": DATASET_SCHEMA,
+        "accepted": True,
+        "label_source": BASELINE_LABEL_SOURCE,
+        "gates": gates,
+        "pair_id": control_a["pair_id"],
+        "task": control_a["task"],
+        "seed": int(control_a["seed"]),
+        "teacher_kind": "frozen_baseline",
+        "teacher_receipt": None,
+        "branch_frame": None,
+        "control_outcome": "success",
+        "teacher_outcome": None,
+        "source": copy.deepcopy(control_a["runtime"]["source"]),
+        "base_checkpoint_sha256": control_a["policy"][
+            "base_checkpoint_sha256"
+        ],
+        "trace_sources": {
+            "control_a": {
+                "path": str(control_a_path),
+                "sha256": _sha256(control_a_path),
+            },
+            "control_b": {
+                "path": str(control_b_path),
+                "sha256": _sha256(control_b_path),
+            },
+        },
+        "episode": _episode_payload(control_a),
+    }
+
+
 def accept_teacher_pair(
     control_a_path: Path,
     control_b_path: Path,
@@ -523,6 +622,7 @@ def accept_teacher_pair(
     return {
         "schema_version": DATASET_SCHEMA,
         "accepted": True,
+        "label_source": TEACHER_LABEL_SOURCE,
         "gates": gates,
         "pair_id": teacher["pair_id"],
         "task": teacher["task"],
@@ -548,23 +648,18 @@ def accept_teacher_pair(
                 "sha256": _sha256(teacher_path),
             },
         },
-        "episode": {
-            "observations": teacher["observations"].float().clone(),
-            "actions": teacher["actions"].float().clone(),
-            "rewards": teacher["rewards"].float().clone(),
-            "phases": teacher["phases"].long().clone(),
-            "safety_events": teacher["safety_events"].bool().clone(),
-            "frame_count": int(teacher["observations"].shape[0]),
-        },
+        "episode": _episode_payload(teacher),
     }
 
 
 def _load_accepted_dataset(path: Path) -> dict[str, Any]:
     payload = torch.load(path, map_location="cpu", weights_only=False)
     if not isinstance(payload, dict) or payload.get("schema_version") != DATASET_SCHEMA:
-        raise ValueError(f"unsupported accepted teacher dataset: {path}")
+        raise ValueError(f"unsupported accepted successor dataset: {path}")
     if not payload.get("accepted") or not all(payload.get("gates", {}).values()):
-        raise ValueError(f"teacher dataset did not pass every gate: {path}")
+        raise ValueError(f"successor dataset did not pass every gate: {path}")
+    if payload.get("label_source") not in ALLOWED_LABEL_SOURCES:
+        raise ValueError(f"successor dataset has an unsupported label source: {path}")
     episode = payload.get("episode")
     if not isinstance(episode, dict):
         raise ValueError(f"accepted dataset lacks an episode: {path}")
@@ -580,9 +675,9 @@ def _load_accepted_dataset(path: Path) -> dict[str, Any]:
     if phases.shape != (observations.shape[0],):
         raise ValueError(f"accepted phase contract drifted: {path}")
     if not torch.isfinite(observations).all() or not torch.isfinite(actions).all():
-        raise ValueError(f"accepted teacher data contains non-finite values: {path}")
+        raise ValueError(f"accepted successor data contains non-finite values: {path}")
     if bool((actions.abs() > 1.000001).any()):
-        raise ValueError(f"accepted teacher actions exceed the environment contract: {path}")
+        raise ValueError(f"accepted actions exceed the environment contract: {path}")
     return payload
 
 
@@ -639,19 +734,29 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     datasets = [_load_accepted_dataset(path) for path in paths]
     pair_ids = [str(payload["pair_id"]) for payload in datasets]
     if len(datasets) < 8 or len(set(pair_ids)) != len(pair_ids):
-        raise ValueError("training requires at least eight distinct accepted teacher pairs")
+        raise ValueError(
+            "training requires at least eight distinct accepted successor pairs"
+        )
     if len({int(payload["seed"]) for payload in datasets}) < 4:
         raise ValueError("training requires at least four distinct development seeds")
+    baseline_pair_count = sum(
+        payload["label_source"] == BASELINE_LABEL_SOURCE
+        for payload in datasets
+    )
+    teacher_pair_count = sum(
+        payload["label_source"] == TEACHER_LABEL_SOURCE
+        for payload in datasets
+    )
     tasks = {payload["task"] for payload in datasets}
     base_hashes = {payload["base_checkpoint_sha256"] for payload in datasets}
     source_revisions = {payload["source"]["dranmar_revision"] for payload in datasets}
     asset_revisions = {payload["source"]["asset_revision"] for payload in datasets}
     if len(tasks) != 1:
-        raise ValueError("accepted teachers do not share one task")
+        raise ValueError("accepted demonstrations do not share one task")
     if len(base_hashes) != 1:
-        raise ValueError("accepted teachers do not share one frozen baseline")
+        raise ValueError("accepted demonstrations do not share one baseline")
     if len(source_revisions) != 1 or len(asset_revisions) != 1:
-        raise ValueError("accepted teachers do not share one source lock")
+        raise ValueError("accepted demonstrations do not share one source lock")
 
     validation_ids = _stable_validation_pair_ids(pair_ids, args.validation_fraction)
     train_payloads = [
@@ -682,12 +787,23 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         [payload["episode"]["phases"].long() for payload in validation_payloads]
     )
     phase_counts = torch.bincount(train_phases, minlength=5)
-    if bool((phase_counts == 0).any()):
-        missing = torch.nonzero(phase_counts == 0, as_tuple=False).flatten().tolist()
-        raise ValueError(f"accepted teacher set lacks complete phase coverage: {missing}")
+    missing_action_phases = torch.nonzero(
+        phase_counts[:4] == 0,
+        as_tuple=False,
+    ).flatten()
+    if missing_action_phases.numel():
+        raise ValueError(
+            "accepted demonstration set lacks action-bearing phases: "
+            f"{missing_action_phases.tolist()}"
+        )
 
     observation_mean = train_observations.mean(dim=0)
     observation_std = train_observations.std(dim=0, unbiased=False).clamp_min(1.0e-6)
+    action_loss_scale = torch.quantile(
+        train_actions.abs(),
+        0.90,
+        dim=0,
+    ).clamp_min(0.01)
     hidden_dims = tuple(int(value) for value in args.hidden_dims.split(",") if value)
     if not hidden_dims:
         raise ValueError("at least one shared hidden dimension is required")
@@ -717,10 +833,16 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
     validation_observations = validation_observations.to(device)
     validation_actions = validation_actions.to(device)
     validation_phases = validation_phases.to(device)
+    action_loss_scale_device = action_loss_scale.to(device)
     phase_counts_device = phase_counts.to(device=device, dtype=torch.float32)
-    phase_weight = (
+    active_phase = phase_counts_device > 0
+    phase_weight = torch.zeros_like(phase_counts_device)
+    phase_weight[active_phase] = (
         phase_counts_device.sum()
-        / (5.0 * phase_counts_device)
+        / (
+            active_phase.sum()
+            * phase_counts_device[active_phase]
+        )
     )
     best_validation_loss = float("inf")
     best_epoch = -1
@@ -737,10 +859,10 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             indices = permutation[start : start + args.batch_size]
             predicted = model(train_observations[indices])
             per_frame = functional.smooth_l1_loss(
-                predicted,
-                train_actions[indices],
+                predicted / action_loss_scale_device,
+                train_actions[indices] / action_loss_scale_device,
                 reduction="none",
-                beta=0.05,
+                beta=0.1,
             ).mean(dim=-1)
             loss = (
                 per_frame * phase_weight[train_phases[indices]]
@@ -755,12 +877,19 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         model.eval()
         with torch.inference_mode():
             validation_prediction = model(validation_observations)
+            validation_per_frame = functional.smooth_l1_loss(
+                validation_prediction / action_loss_scale_device,
+                validation_actions / action_loss_scale_device,
+                reduction="none",
+                beta=0.1,
+            ).mean(dim=-1)
             validation_loss = float(
-                functional.smooth_l1_loss(
-                    validation_prediction,
-                    validation_actions,
-                    beta=0.05,
-                ).item()
+                (
+                    validation_per_frame
+                    * phase_weight[validation_phases]
+                )
+                .mean()
+                .item()
             )
             validation_mae = float(
                 (validation_prediction - validation_actions).abs().mean().item()
@@ -817,10 +946,18 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         }
 
     output = Path(args.output).expanduser().resolve()
+    if baseline_pair_count and teacher_pair_count:
+        capability_scope = "incumbent_distillation_plus_teacher_rescues"
+    elif teacher_pair_count:
+        capability_scope = "teacher_rescue_only"
+    else:
+        capability_scope = "incumbent_distillation_only"
     checkpoint = {
         "schema_version": SUCCESSOR_CHECKPOINT_SCHEMA,
         "deployment_status": "candidate_only",
         "training_gate_passed": True,
+        "capability_scope": capability_scope,
+        "improvement_labels_present": teacher_pair_count > 0,
         "task": next(iter(tasks)),
         "observation_dim": OBSERVATION_DIM,
         "action_dim": ACTION_DIM,
@@ -831,9 +968,11 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             "head_dim": int(args.head_dim),
             "full_action_policy": True,
             "runtime_heuristic_stack": False,
+            "terminal_phase_action": "zero_initialized_no_training_required",
         },
         "observation_mean": observation_mean.cpu(),
         "observation_std": observation_std.cpu(),
+        "action_loss_scale": action_loss_scale.cpu(),
         "model": best_state,
         "base_checkpoint_sha256": next(iter(base_hashes)),
         "source": {
@@ -847,6 +986,9 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             "batch_size": int(args.batch_size),
             "learning_rate": float(args.learning_rate),
             "weight_decay": float(args.weight_decay),
+            "loss": (
+                "phase_balanced_p90_action_scaled_smooth_l1_beta_0.1"
+            ),
             "phase_counts": phase_counts.tolist(),
             "train_frames": int(train_observations.shape[0]),
             "validation_frames": int(validation_observations.shape[0]),
@@ -856,14 +998,17 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
             "validation_action_mae": final_validation_mae,
             "validation_action_max_abs_error": final_max_abs_error,
             "validation_phase_mae": final_phase_mae,
+            "baseline_distillation_pairs": baseline_pair_count,
+            "teacher_rescue_pairs": teacher_pair_count,
             "history_tail": history[-10:],
         },
-        "teacher_datasets": [
+        "successor_datasets": [
             {
                 "path": str(path),
                 "sha256": _sha256(path),
                 "pair_id": payload["pair_id"],
                 "seed": int(payload["seed"]),
+                "label_source": payload["label_source"],
                 "teacher_kind": payload["teacher_kind"],
             }
             for path, payload in zip(paths, datasets, strict=True)
@@ -875,7 +1020,10 @@ def train_successor(args: argparse.Namespace) -> dict[str, Any]:
         "output": str(output),
         "sha256": _sha256(output),
         "deployment_status": "candidate_only",
-        "accepted_teacher_pairs": len(datasets),
+        "accepted_successor_pairs": len(datasets),
+        "baseline_distillation_pairs": baseline_pair_count,
+        "teacher_rescue_pairs": teacher_pair_count,
+        "capability_scope": capability_scope,
         "train_frames": int(train_observations.shape[0]),
         "validation_frames": int(validation_observations.shape[0]),
         "best_epoch": best_epoch,
@@ -925,9 +1073,17 @@ def _parser() -> argparse.ArgumentParser:
     accept.add_argument("--teacher", required=True)
     accept.add_argument("--output", required=True)
 
+    distill = subparsers.add_parser(
+        "admit-baseline",
+        help="admit one exact safe incumbent success for distillation",
+    )
+    distill.add_argument("--control_a", required=True)
+    distill.add_argument("--control_b", required=True)
+    distill.add_argument("--output", required=True)
+
     train = subparsers.add_parser(
         "train",
-        help="train one full-action policy from accepted teacher episodes",
+        help="train one full-action policy from accepted demonstrations",
     )
     train.add_argument("--dataset", action="append", required=True)
     train.add_argument("--output", required=True)
@@ -970,6 +1126,23 @@ def main(argv: list[str]) -> int:
             "seed": payload["seed"],
             "branch_frame": payload["branch_frame"],
             "teacher_kind": payload["teacher_kind"],
+            "frames": payload["episode"]["frame_count"],
+        }
+    elif args.command == "admit-baseline":
+        output = Path(args.output).expanduser().resolve()
+        payload = admit_baseline_pair(
+            Path(args.control_a).expanduser().resolve(),
+            Path(args.control_b).expanduser().resolve(),
+        )
+        _atomic_torch_save(payload, output)
+        result = {
+            "schema_version": DATASET_SCHEMA,
+            "accepted": True,
+            "output": str(output),
+            "sha256": _sha256(output),
+            "pair_id": payload["pair_id"],
+            "seed": payload["seed"],
+            "label_source": payload["label_source"],
             "frames": payload["episode"]["frame_count"],
         }
     else:

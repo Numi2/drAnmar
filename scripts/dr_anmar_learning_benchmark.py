@@ -82,6 +82,25 @@ def _command_output(args: list[str], cwd: Path | None = None) -> str | None:
         return None
 
 
+def _module_git_source(module_name: str) -> dict[str, str | None]:
+    module = sys.modules.get(module_name)
+    origin = getattr(module, "__file__", None) if module is not None else None
+    if not origin:
+        return {"root": None, "revision": None}
+    module_path = Path(origin).resolve()
+    root = _command_output(
+        ["git", "rev-parse", "--show-toplevel"],
+        module_path.parent,
+    )
+    if not root:
+        return {"root": None, "revision": None}
+    root_path = Path(root).resolve()
+    return {
+        "root": str(root_path),
+        "revision": _command_output(["git", "rev-parse", "HEAD"], root_path),
+    }
+
+
 def _free_gpu_memory_mib() -> int | None:
     output = _command_output(
         [
@@ -186,6 +205,7 @@ def _peak_process_memory_mib() -> float:
 def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
     import torch
 
+    asset_source = _module_git_source("orbit.surgical.assets")
     packages = {}
     for package in ("isaacsim", "isaaclab", "isaaclab-rl", "rsl-rl-lib", "torch"):
         try:
@@ -208,10 +228,8 @@ def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
         },
         "source": {
             "dranmar_revision": _command_output(["git", "rev-parse", "HEAD"], repo_root),
-            "asset_revision": _command_output(
-                ["git", "rev-parse", "HEAD"],
-                repo_root / "source/extensions/orbit.surgical.assets",
-            ),
+            "asset_revision": asset_source["revision"],
+            "asset_root": asset_source["root"],
         },
     }
 
@@ -3617,6 +3635,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
         if worktree_status is None or worktree_status:
             return _fail("teacher traces require a clean source worktree")
+        asset_source = _module_git_source("orbit.surgical.assets")
+        if not asset_source["root"] or not asset_source["revision"]:
+            return _fail("teacher traces require a source-locked asset package")
+        asset_status = _command_output(
+            ["git", "status", "--porcelain"],
+            Path(asset_source["root"]),
+        )
+        if asset_status is None or asset_status:
+            return _fail("teacher traces require a clean asset worktree")
         if args.handover_teacher_role == "control":
             if args.handover_teacher_kind != "frozen_baseline":
                 return _fail("control traces must identify the frozen baseline")

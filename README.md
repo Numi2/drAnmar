@@ -196,7 +196,7 @@ problems and are meant to compose, not replace one another:
 | One-decision receiver residual | Bounded motion correction | Not promoted. Its best held-out result was **+3 / 3,600** in aggregate while one seed regressed by 12; a fresh-stream update also lost to the incumbent on development seeds. |
 | Calibrated active-custody risk model | Failure probability | Preserved as the leading risk model. Across three left-out physics seeds, AUC was **0.704–0.776** and nested cross-fitted Brier score improved to **0.07455** from a **0.08063** base-rate reference. |
 | Counterfactual receiver trajectory | Bounded receiver XYZ scaling | Not promoted. Exact no-op replay passed, but uniform scale `0.6` reduced the activated cohort from **93 to 87** successes and added **4** receiver safety failures on the first prespecified seed. |
-| Phase-conditioned full-action successor | Complete 14-D dual-arm action | Candidate infrastructure is now on `main`; no policy is promoted yet. Training remains locked until at least eight accepted single-environment teacher rescues cover all five phases and four development seeds. |
+| Phase-conditioned full-action successor | Complete 14-D dual-arm action | Candidate infrastructure is on `main`; no policy is promoted yet. A neural clone may bootstrap from at least eight reproducible safe incumbent successes across four development seeds and all four action-bearing phases. The terminal fifth phase emits no further action. Only independently verified teacher rescues can raise its capability ceiling. |
 
 The actor still moves the robot. The risk model observes the one-frame
 active-custody transition and estimates whether retention is likely to fail; it
@@ -211,16 +211,21 @@ remains unchanged.
 
 The next learning stage is executable through
 [`dr_anmar_handover_successor.py`](scripts/dr_anmar_handover_successor.py).
-The risk model only allocates independent single-environment collection.
-Better actions must come from constrained trajectory optimization or clinician
+Bit-identical safe successes from the frozen incumbent can now be admitted as
+distillation demonstrations, which is how the hand-authored runtime is replaced
+by one network without treating failed incumbent actions as expertise. The risk
+model only allocates independent collection for failure states. Better actions
+there must come from constrained trajectory optimization or clinician
 teleoperation, then beat two bit-identical no-op controls without any safety
-event. Accepted complete episodes train one compact phase-conditioned network
-that emits the full 14-D action. Episode-level splitting prevents frame
-leakage, qualification seeds are forbidden from training, and every checkpoint
-is candidate-only until live seeded evaluation promotes it.
+event. Both kinds of accepted complete episode train one compact
+phase-conditioned network that emits the full 14-D action. Episode-level
+splitting prevents frame leakage, qualification seeds are forbidden from
+training, and every checkpoint is candidate-only until live seeded evaluation
+promotes it.
 
 ```text
-lock optimizer proposal → record control/control/teacher → accept episode
+record exact incumbent success twice → admit distillation demonstration
+or lock teacher proposal → record control/control/teacher → accept rescue
 → train full-action successor → compare against the frozen incumbent
 ```
 
