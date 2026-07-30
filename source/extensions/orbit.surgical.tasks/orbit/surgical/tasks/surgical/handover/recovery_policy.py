@@ -4675,8 +4675,9 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
     eager-only data-collection wrapper changes only the receiver translation
     during the first acquisition attempt, after the native corrected-approach
     owner is active and before contact.  Environment index modulo the number
-    of candidate scales assigns lanes that are paired to the same environment
-    indices in a separate all-no-op common-random-number run.
+    of candidate scales assigns diagnostic lanes.  A singleton scale applies
+    one uniform treatment to an entire process, paired to the same environment
+    indices in separate all-no-op common-random-number runs.
     """
 
     def __init__(
@@ -4691,14 +4692,14 @@ class HandoverReceiverApproachTrajectoryPolicy(nn.Module):
         super().__init__()
         if (
             candidate_scales.ndim != 1
-            or candidate_scales.numel() < 2
+            or candidate_scales.numel() < 1
             or not bool(torch.isfinite(candidate_scales).all())
             or bool(torch.any(candidate_scales <= 0.0))
             or bool(torch.any(candidate_scales > 1.0))
         ):
             raise ValueError(
                 "receiver approach scales must be a finite vector of at "
-                "least two values inside (0, 1]"
+                "least one value inside (0, 1]"
             )
         if not 0.0 < end_distance_m < start_distance_m <= 0.01:
             raise ValueError(

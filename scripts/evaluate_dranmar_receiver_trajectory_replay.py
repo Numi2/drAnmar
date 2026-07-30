@@ -22,7 +22,7 @@ from typing import Any
 import torch
 
 
-SCHEMA_VERSION = "dranmar-receiver-approach-trajectory-replay-1.2"
+SCHEMA_VERSION = "dranmar-receiver-approach-trajectory-replay-1.3"
 REPORT_SCHEMA_VERSION = (
     "dranmar-receiver-approach-trajectory-paired-evaluation-1.0"
 )
@@ -119,7 +119,7 @@ def _load_dataset(path: Path) -> dict[str, Any]:
         not isinstance(scales, list)
         or not isinstance(replicas, int)
         or replicas != len(scales)
-        or replicas < 2
+        or replicas < 1
         or not isinstance(num_envs, int)
         or num_envs <= 0
         or num_envs % replicas
@@ -129,14 +129,24 @@ def _load_dataset(path: Path) -> dict[str, Any]:
             and 0.0 < float(scale) <= 1.0
             for scale in scales
         )
-        or not math.isclose(
-            float(scales[0]),
-            1.0,
-            rel_tol=0.0,
-            abs_tol=1.0e-9,
+        or (
+            replicas > 1
+            and not math.isclose(
+                float(scales[0]),
+                1.0,
+                rel_tol=0.0,
+                abs_tol=1.0e-9,
+            )
         )
     ):
         raise ValueError(f"{path}: candidate lane contract drifted")
+    grouped_allocation = replay_contract.get(
+        "grouped_initial_condition_allocation"
+    )
+    if grouped_allocation is not (replicas > 1):
+        raise ValueError(
+            f"{path}: grouped initial-condition contract drifted"
+        )
     environment_index = _require_tensor(
         payload,
         "environment_index",

@@ -3469,21 +3469,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     )
     if receiver_approach_trajectory_scales:
         if (
-            receiver_approach_trajectory_replicas < 2
+            receiver_approach_trajectory_replicas < 1
             or not all(
                 math.isfinite(value) and 0.0 < value <= 1.0
                 for value in receiver_approach_trajectory_scales
             )
-            or not math.isclose(
-                receiver_approach_trajectory_scales[0],
-                1.0,
-                rel_tol=0.0,
-                abs_tol=1.0e-9,
+            or (
+                receiver_approach_trajectory_replicas > 1
+                and not math.isclose(
+                    receiver_approach_trajectory_scales[0],
+                    1.0,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                )
             )
         ):
             return _fail(
-                "receiver approach trajectory requires at least two scales "
-                "inside (0, 1] with the no-op scale 1.0 first"
+                "receiver approach trajectory requires scales inside "
+                "(0, 1]; multi-lane diagnostics require no-op scale 1.0 first"
             )
         if not args.receiver_approach_trajectory_id:
             return _fail(
@@ -9885,7 +9888,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             torch.save(
                 {
                     "schema_version": (
-                        "dranmar-receiver-approach-trajectory-replay-1.2"
+                        "dranmar-receiver-approach-trajectory-replay-1.3"
                     ),
                     "dataset_id": args.receiver_approach_trajectory_id,
                     "task": args.task,
@@ -9920,7 +9923,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "candidate_lanes": (
                             receiver_approach_trajectory_replicas
                         ),
-                        "grouped_initial_condition_allocation": True,
+                        "grouped_initial_condition_allocation": (
+                            receiver_approach_trajectory_replicas > 1
+                        ),
                         "candidate_scales": (
                             receiver_approach_trajectory_scales
                         ),
