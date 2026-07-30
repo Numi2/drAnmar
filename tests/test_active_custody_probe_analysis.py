@@ -111,6 +111,7 @@ def test_launcher_exposes_temporal_probe_signal_audit() -> None:
     assert "receiver-custody-interventions)" in launcher
     assert "receiver-custody-delay-interventions)" in launcher
     assert "receiver-custody-retry-interventions)" in launcher
+    assert "DR_ANMAR_PROMOTED_ALLOW_CUSTODY_RETRY_INTERVENTION=1" in launcher
     assert "receiver-custody-delay-gate)" in launcher
     assert "receiver-custody-controller)" in launcher
     assert "receiver-custody-replicate)" in launcher

@@ -511,6 +511,7 @@ case "${command}" in
             exit 2
         fi
         exec env \
+            DR_ANMAR_PROMOTED_ALLOW_CUSTODY_RETRY_INTERVENTION=1 \
             DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_VERIFICATION=1 \
             DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION=1 \
             DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_PROFILE=preemptive_retry \
@@ -611,6 +612,13 @@ case "${command}" in
         selector_seed_stream_offset_env="${DR_ANMAR_SEED_STREAM_OFFSET:-0}"
         retry_candidate_sweep_env=0
         retry_candidate_index_env=""
+        if [[ "${DR_ANMAR_PROMOTED_ALLOW_CUSTODY_RETRY_INTERVENTION:-0}" == "1" ]]; then
+            if [[ "${DR_ANMAR_RECEIVER_ACTIVE_CUSTODY_INTERVENTION_PROFILE:-}" != "preemptive_retry" ]]; then
+                echo "error: custody retry intervention requires the preemptive_retry profile" >&2
+                exit 2
+            fi
+            receiver_disable_retries_env=0
+        fi
         if [[ "${DR_ANMAR_PROMOTED_ALLOW_ATTEMPT:-0}" == "1" ]]; then
             attempt_checkpoint_env="${DR_ANMAR_RECEIVER_ATTEMPT_CHECKPOINT:-}"
             attempt_stochastic_env="${DR_ANMAR_RECEIVER_ATTEMPT_STOCHASTIC:-0}"
