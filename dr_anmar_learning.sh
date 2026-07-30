@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-delay-interventions|receiver-custody-retry-interventions|receiver-custody-delay-gate|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|receiver-attempt-bootstrap|receiver-attempt-update|receiver-custody-audit|receiver-custody-interventions|receiver-custody-delay-interventions|receiver-custody-retry-interventions|receiver-custody-delay-gate|receiver-custody-preprobe-risk|receiver-custody-controller|receiver-custody-replicate|receiver-selector-bootstrap|receiver-selector-update|receiver-selector-sweep|receiver-retry-sweep|receiver-retry-candidate|receiver-retry-portfolio|attempt-handover|selector-handover|portfolio-handover|promoted-handover|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
@@ -30,6 +30,7 @@ usage() {
     echo "  receiver-custody-delay-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-custody-retry-interventions DATASET [num_envs] [frames] [output] [task] [stream_offset]"
     echo "  receiver-custody-delay-gate RISK_CHECKPOINT OUTPUT DATASET..."
+    echo "  receiver-custody-preprobe-risk TEACHER OUTPUT CHECKPOINT DATASET..."
     echo "  receiver-custody-controller RISK_CHECKPOINT OUTPUT CHECKPOINT INTERVENTION_DATASET..."
     echo "  receiver-custody-replicate CANDIDATE RISK_CHECKPOINT OUTPUT INTERVENTION_DATASET..."
     echo "  receiver-selector-bootstrap BASE CANDIDATE OUTPUT DATASET..."
@@ -354,6 +355,27 @@ case "${command}" in
             "${REPO_ROOT}/scripts/evaluate_dranmar_release_delay_gate.py" \
             --risk_checkpoint "${risk_checkpoint}" \
             --output "${output}" \
+            "${dataset_args[@]}"
+        ;;
+    receiver-custody-preprobe-risk)
+        require_runtime
+        teacher_checkpoint="${2:-}"
+        output="${3:-}"
+        preprobe_checkpoint="${4:-}"
+        if [[ -z "${teacher_checkpoint}" || -z "${output}" || -z "${preprobe_checkpoint}" || "$#" -lt 7 ]]; then
+            usage
+            exit 2
+        fi
+        shift 4
+        dataset_args=()
+        for dataset in "$@"; do
+            dataset_args+=(--dataset "${dataset}")
+        done
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/train_dranmar_preprobe_risk_model.py" \
+            --teacher_checkpoint "${teacher_checkpoint}" \
+            --output "${output}" \
+            --checkpoint "${preprobe_checkpoint}" \
             "${dataset_args[@]}"
         ;;
     receiver-selector-bootstrap)
