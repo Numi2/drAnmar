@@ -407,3 +407,117 @@ class ThroughPunctureResidualGRUModel(PenetrationResidualGRUModel):
                 return self.distribution.sample()
             return self.distribution.deterministic_output(action_mean)
         return action_mean
+
+
+class PulloutAnalyticController(nn.Module):
+    """Compose giver passage with receiver acquisition, transfer, and pullout."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.through_controller = ThroughPunctureAnalyticController()
+        # The collision-enabled receiver needle has a tighter closed-loop
+        # response than the entry proxy. A 25 um normal increment prevents
+        # alternating across the 1.5 mm puncture indentation target.
+        self.through_controller.entry_controller.normal_advance_limit = 0.10
+
+    def forward(self, raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # Pullout expands the previous-action term from 6D to 14D. Rebuild the
+        # exact 77D through-puncture view consumed by the qualified controller.
+        through_raw = torch.cat(
+            (raw[..., :65], raw[..., 65:71], raw[..., 79:85]), dim=-1
+        )
+        # The pullout task uses the collision-enabled authored needle so the
+        # receiver can establish real bilateral jaw contact. Keep the giver at
+        # the 1 mm stand-off until lateral error is inside the entry tolerance;
+        # otherwise the curved shaft can touch tissue before the tip is valid.
+        entry_lateral_error = torch.linalg.vector_norm(
+            (raw[..., 23:26] - raw[..., 36:39])[..., :2], dim=-1
+        )
+        reported_phase = torch.argmax(through_raw[..., 58:65], dim=-1)
+        hold_standoff = (reported_phase <= 2) & (entry_lateral_error > 0.0009)
+        standoff_phase = torch.nn.functional.one_hot(
+            torch.zeros_like(reported_phase), num_classes=7
+        ).to(raw.dtype)
+        through_raw = through_raw.clone()
+        through_raw[..., 58:65] = torch.where(
+            hold_standoff.unsqueeze(-1), standoff_phase, through_raw[..., 58:65]
+        )
+        calibrated_entry = through_raw[..., 36:39] - 0.0007 * through_raw[..., 43:46]
+        apply_surface_calibration = (reported_phase == 2) & ~hold_standoff
+        through_raw[..., 36:39] = torch.where(
+            apply_surface_calibration.unsqueeze(-1),
+            calibrated_entry,
+            through_raw[..., 36:39],
+        )
+        giver_body, _, unsafe = self.through_controller(through_raw)
+        phase = torch.argmax(raw[..., 116:128], dim=-1)
+        # Giver contact loss is unsafe before transfer, but intentional after
+        # receiver custody. The environment separately hard-fails any receiver
+        # custody loss during pull/clear.
+        unsafe = unsafe & (phase < 9)
+        receiver_guidance = raw[..., 110:116].clamp(-1.0, 1.0)
+        receiver_active = phase >= 7
+        receiver_body = torch.where(
+            receiver_active.unsqueeze(-1),
+            receiver_guidance,
+            torch.zeros_like(receiver_guidance),
+        )
+        receiver_body = torch.where(
+            (phase >= 11).unsqueeze(-1), torch.zeros_like(receiver_body), receiver_body
+        )
+        giver_body = torch.where(
+            (phase >= 7).unsqueeze(-1), torch.zeros_like(giver_body), giver_body
+        )
+        giver_gripper = torch.where(
+            phase >= 9,
+            torch.ones_like(phase, dtype=raw.dtype),
+            -torch.ones_like(phase, dtype=raw.dtype),
+        ).unsqueeze(-1)
+        receiver_gripper = torch.where(
+            phase >= 8,
+            -torch.ones_like(phase, dtype=raw.dtype),
+            torch.ones_like(phase, dtype=raw.dtype),
+        ).unsqueeze(-1)
+        action = torch.cat(
+            (giver_body, giver_gripper, receiver_body, receiver_gripper), dim=-1
+        )
+        action = torch.where(unsafe.unsqueeze(-1), torch.zeros_like(action), action)
+        return action.clamp(-1.0, 1.0), phase, unsafe
+
+
+class PulloutResidualGRUModel(PenetrationResidualGRUModel):
+    """GRU residual whose gripper sequencing remains analytically owned."""
+
+    def __init__(self, *args, residual_scale: float = 0.15, **kwargs) -> None:
+        super().__init__(*args, residual_scale=residual_scale, **kwargs)
+        self.controller = PulloutAnalyticController()
+
+    def forward(
+        self,
+        obs,
+        masks: torch.Tensor | None = None,
+        hidden_state=None,
+        stochastic_output: bool = False,
+    ) -> torch.Tensor:
+        raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
+        latent = self.get_latent(obs, masks, hidden_state)
+        residual = torch.tanh(self.mlp(latent))
+        if masks is not None:
+            raw = unpad_trajectories(raw, masks)
+        base, _, unsafe = self.controller(raw)
+        body_mask = torch.tensor(
+            (1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0),
+            device=raw.device,
+            dtype=raw.dtype,
+        )
+        safe_residual = self.residual_scale * residual * body_mask
+        safe_residual = torch.where(
+            unsafe.unsqueeze(-1), torch.zeros_like(safe_residual), safe_residual
+        )
+        action_mean = (base + safe_residual).clamp(-1.0, 1.0)
+        if self.distribution is not None:
+            self.distribution.update(action_mean)
+            if stochastic_output:
+                return self.distribution.sample()
+            return self.distribution.deterministic_output(action_mean)
+        return action_mean

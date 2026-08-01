@@ -45,6 +45,16 @@ def _through_contract():
     return module
 
 
+def _pullout_contract():
+    name = "dranmar_test_pullout_contract"
+    spec = importlib.util.spec_from_file_location(name, TASK_ROOT / "pullout_contract.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def _through_backend():
     package_name = "dranmar_test_through_backend_package"
     package = types.ModuleType(package_name)
@@ -486,3 +496,88 @@ def test_through_puncture_benchmark_requires_a_grippable_twenty_percent_exit():
     assert acceptance["exposed_fraction_min"] == 0.2
     assert acceptance["exposed_arc_length_m_min"] == 0.0044
     assert "second_psm_pullout" in benchmark["excluded"]
+
+
+def test_pullout_requires_receiver_contact_transfer_and_complete_clearance():
+    module = _pullout_contract()
+    thresholds = module.PulloutThresholds()
+    state = module.PulloutGateState(
+        phase=module.PulloutPhase.RECEIVER_APPROACH,
+        entry_event_count=1,
+        exit_event_count=1,
+    )
+    values = {
+        "entry_error_m": 0.0005,
+        "exit_error_m": 0.0005,
+        "tangent_error_deg": 5.0,
+        "plane_error_deg": 5.0,
+        "indentation_m": 0.006,
+        "embedded_arc_length_m": 0.015,
+        "exposed_arc_length_m": 0.005,
+        "exposed_fraction": 0.22,
+        "normal_force_n": 1.5,
+        "accumulated_work_j": 0.01,
+        "bilateral_custody": True,
+        "giver_custody": True,
+        "receiver_distance_m": 0.003,
+        "receiver_bilateral_contact": False,
+        "receiver_custody": False,
+        "giver_released": False,
+        "target_region_valid": True,
+        "tissue_contact": True,
+        "backend_exit_count": 1,
+    }
+    measurement = module.PulloutMeasurement(**values)
+    module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
+    assert state.phase == module.PulloutPhase.RECEIVER_GRASP
+    for _ in range(thresholds.receiver_contact_steps):
+        values["receiver_bilateral_contact"] = True
+        measurement = module.PulloutMeasurement(**values)
+        module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
+    assert state.phase == module.PulloutPhase.TRANSFER
+    for _ in range(thresholds.transfer_release_steps):
+        values.update(
+            giver_custody=False,
+            receiver_custody=True,
+            giver_released=True,
+        )
+        measurement = module.PulloutMeasurement(**values)
+        module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
+    assert state.phase == module.PulloutPhase.PULL
+    values.update(
+        embedded_arc_length_m=0.0001,
+        exposed_arc_length_m=0.0218,
+        exposed_fraction=0.99,
+    )
+    measurement = module.PulloutMeasurement(**values)
+    module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
+    for _ in range(thresholds.clearance_steps - 1):
+        module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
+    assert module.pullout_success(state, measurement, thresholds)
+
+
+def test_pullout_task_has_dual_psm_controller_and_receipt_contract():
+    registration = (TASK_ROOT / "config/needle/__init__.py").read_text(encoding="utf-8")
+    scene = (TASK_ROOT / "pullout_env_cfg.py").read_text(encoding="utf-8")
+    controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
+    fields = _pullout_contract().PulloutReceipt.__dataclass_fields__
+    assert "DrAnmar-Puncture-Pullout-Tissue-Needle-PSM-IK-Rel-v0" in registration
+    assert 'asset_name="robot_receiver"' in scene
+    assert "receiver_jaw_1_needle_contact" in scene
+    assert "class PulloutAnalyticController" in controller
+    assert fields["custody_model"].default == (
+        "bilateral_force_or_calibrated_geometry_then_receiver_pose_coupling"
+    )
+
+
+def test_pullout_benchmark_requires_receiver_only_complete_clearance():
+    benchmark = json.loads(
+        (ROOT / "physics_next/benchmarks/needle-puncture-pullout-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    acceptance = benchmark["engineering_acceptance"]
+    assert acceptance["receiver_bilateral_contact_steps_min"] == 3
+    assert acceptance["embedded_arc_length_m_max"] == 0.0002
+    assert acceptance["exposed_fraction_min"] == 0.95
+    assert acceptance["giver_released"] is True

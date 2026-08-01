@@ -47,6 +47,7 @@ def _require_tissue_entry_gate() -> None:
     gated_tasks = {
         "DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-v0",
         "DrAnmar-Through-Puncture-Tissue-Needle-PSM-IK-Rel-v0",
+        "DrAnmar-Puncture-Pullout-Tissue-Needle-PSM-IK-Rel-v0",
     }
     if args_cli.task not in gated_tasks:
         return

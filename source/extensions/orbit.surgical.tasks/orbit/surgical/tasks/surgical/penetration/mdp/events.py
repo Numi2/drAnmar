@@ -17,6 +17,7 @@ from orbit.surgical.tasks.surgical import mdp_common
 
 from ..contract import PunctureGateState
 from ..through_contract import ThroughPunctureGateState
+from ..pullout_contract import PulloutGateState
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -103,12 +104,20 @@ def reset_penetration_evidence(
     if env_ids is None:
         env_ids = torch.arange(env.num_envs, device=env.device)
     through_puncture = bool(getattr(env.cfg, "through_puncture", False))
-    gate_factory = ThroughPunctureGateState if through_puncture else PunctureGateState
+    pullout = bool(getattr(env.cfg, "pullout", False))
+    gate_factory = (
+        PulloutGateState
+        if pullout
+        else ThroughPunctureGateState
+        if through_puncture
+        else PunctureGateState
+    )
     state = getattr(env, "_dr_anmar_penetration_state", None)
     if state is None:
         state = {
             "gates": [gate_factory() for _ in range(env.num_envs)],
             "through_puncture": through_puncture,
+            "pullout": pullout,
             "puncture_force_n": torch.full((env.num_envs,), 2.0, device=env.device),
             "shaft_drag_n_m": torch.full((env.num_envs,), 25.0, device=env.device),
             "wetness": torch.full((env.num_envs,), 0.45, device=env.device),
@@ -132,6 +141,18 @@ def reset_penetration_evidence(
                 NEEDLE_MID_GRASP_QUAT_XYZW, device=env.device
             ).repeat(env.num_envs, 1),
             "last_update_step": -1,
+            "custody_owner": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "receiver_contact_history": torch.zeros(
+                (env.num_envs, 5), dtype=torch.bool, device=env.device
+            ),
+            "receiver_grasp_local_position_m": torch.zeros(
+                (env.num_envs, 3), device=env.device
+            ),
+            "receiver_grasp_local_quaternion_xyzw": torch.zeros(
+                (env.num_envs, 4), device=env.device
+            ),
         }
         env._dr_anmar_penetration_state = state
     count = len(env_ids)
@@ -151,6 +172,10 @@ def reset_penetration_evidence(
     state["grasp_loss_steps"][env_ids] = 0
     state["bilateral_seen"][env_ids] = False
     state["grasp_attach_stage"][env_ids] = 0
+    state["custody_owner"][env_ids] = 0
+    state["receiver_contact_history"][env_ids] = False
+    state["receiver_grasp_local_position_m"][env_ids] = 0.0
+    state["receiver_grasp_local_quaternion_xyzw"][env_ids] = 0.0
     state["grasp_local_position_m"][env_ids] = torch.tensor(
         NEEDLE_MID_GRASP_POSITION_M, device=env.device
     )
@@ -169,4 +194,6 @@ def reset_penetration_evidence(
     state.pop("previous_exposed_fraction", None)
     state.pop("previous_tip_pos", None)
     state.pop("rewarded_phase", None)
+    state.pop("previous_receiver_distance", None)
+    state.pop("previous_embedded_arc_length", None)
     state["last_update_step"] = -1

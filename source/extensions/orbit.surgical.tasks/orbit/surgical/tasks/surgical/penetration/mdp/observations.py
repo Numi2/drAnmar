@@ -88,7 +88,9 @@ def penetration_phase(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 
 def through_puncture_phase(env: ManagerBasedRLEnv) -> torch.Tensor:
-    return functional.one_hot(penetration_state(env)["phase"], num_classes=7).float()
+    return functional.one_hot(
+        penetration_state(env)["phase"].clamp(max=6), num_classes=7
+    ).float()
 
 
 def through_puncture_progress(env: ManagerBasedRLEnv) -> torch.Tensor:
@@ -144,6 +146,44 @@ def privileged_through_puncture_state(env: ManagerBasedRLEnv) -> torch.Tensor:
             state["measurement"]["exposed_fraction"].unsqueeze(-1),
             state["measurement"]["exit_error"].unsqueeze(-1),
             state["exit_event_count"].float().unsqueeze(-1),
+        ),
+        dim=-1,
+    )
+
+
+def pullout_receiver_ee_pose(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return mdp_common.end_effector_pose_in_robot_root_frame(
+        env, SceneEntityCfg("receiver_frame"), SceneEntityCfg("robot_receiver")
+    )
+
+
+def pullout_receiver_contacts(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return penetration_state(env)["receiver_jaw_forces"].clamp(0.0, 5.0)
+
+
+def pullout_receiver_guidance(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return penetration_state(env)["receiver_guidance"]
+
+
+def pullout_phase(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return functional.one_hot(penetration_state(env)["phase"], num_classes=12).float()
+
+
+def pullout_custody(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return functional.one_hot(
+        penetration_state(env)["custody_owner"], num_classes=3
+    ).float()
+
+
+def privileged_pullout_state(env: ManagerBasedRLEnv) -> torch.Tensor:
+    state = penetration_state(env)
+    return torch.cat(
+        (
+            privileged_through_puncture_state(env),
+            state["receiver_distance"].unsqueeze(-1),
+            state["receiver_custody"].float().unsqueeze(-1),
+            state["giver_released"].float().unsqueeze(-1),
+            state["custody_owner"].float().unsqueeze(-1),
         ),
         dim=-1,
     )

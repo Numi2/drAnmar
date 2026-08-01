@@ -49,6 +49,29 @@ def successful_through_puncture(env: ManagerBasedRLEnv) -> torch.Tensor:
     return penetration_state(env)["success"].float()
 
 
+def bounded_receiver_progress(env: ManagerBasedRLEnv) -> torch.Tensor:
+    state = penetration_state(env)
+    distance = state["receiver_distance"]
+    previous = state.get("previous_receiver_distance", distance)
+    state["previous_receiver_distance"] = distance.clone()
+    active = (state["phase"] >= 7) & (state["phase"] <= 9)
+    return ((previous - distance) / 0.001).clamp(-0.1, 0.1) * active
+
+
+def bounded_clearance_progress(env: ManagerBasedRLEnv) -> torch.Tensor:
+    state = penetration_state(env)
+    embedded = state["measurement"]["embedded_arc_length"]
+    previous = state.get("previous_embedded_arc_length", embedded)
+    state["previous_embedded_arc_length"] = embedded.clone()
+    return ((previous - embedded) / 0.001).clamp(-0.1, 0.1) * (
+        state["phase"] >= 10
+    )
+
+
+def successful_pullout(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return penetration_state(env)["success"].float()
+
+
 def normalized_force_overshoot(env: ManagerBasedRLEnv) -> torch.Tensor:
     state = penetration_state(env)
     normalized = state["normal_force"] / state["puncture_force_n"].clamp_min(1.0e-6)

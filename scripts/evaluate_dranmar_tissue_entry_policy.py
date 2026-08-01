@@ -43,6 +43,7 @@ from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
 import orbit.surgical.tasks  # noqa: E402, F401
 from orbit.surgical.tasks.surgical.penetration.residual_model import (  # noqa: E402
     PenetrationAnalyticController,
+    PulloutAnalyticController,
     ThroughPunctureAnalyticController,
 )
 
@@ -89,11 +90,12 @@ def main() -> int:
     runner = None
     checkpoint = args.checkpoint.resolve() if args.checkpoint else None
     if checkpoint is None:
-        controller_type = (
-            ThroughPunctureAnalyticController
-            if "Through-Puncture" in args.task
-            else PenetrationAnalyticController
-        )
+        if "Puncture-Pullout" in args.task:
+            controller_type = PulloutAnalyticController
+        elif "Through-Puncture" in args.task:
+            controller_type = ThroughPunctureAnalyticController
+        else:
+            controller_type = PenetrationAnalyticController
         controller = controller_type().to(env.unwrapped.device)
 
         def policy(observation):
@@ -191,6 +193,20 @@ def main() -> int:
                                     "exit_position", torch.zeros((1, 3))
                                 )[0]
                             ],
+                            "receiver_distance_m": float(
+                                measurement.get(
+                                    "receiver_distance", torch.tensor([float("nan")])
+                                )[0]
+                            ),
+                            "receiver_contacts": [
+                                float(value)
+                                for value in measurement.get(
+                                    "receiver_jaw_forces", torch.zeros((1, 2))
+                                )[0]
+                            ],
+                            "custody_owner": int(
+                                state.get("custody_owner", torch.tensor([-1]))[0]
+                            ),
                             "action": [float(value) for value in actions[0]],
                         },
                         sort_keys=True,
@@ -202,12 +218,14 @@ def main() -> int:
             success_mask = termination_manager.get_term("success")
             hard_mask = termination_manager.get_term("hard_failure")
             timeout_mask = termination_manager.get_term("time_out")
+            pullout = "Puncture-Pullout" in args.task
             through_puncture = "Through-Puncture" in args.task
-            receipt_attribute = (
-                "_dr_anmar_last_successful_through_puncture"
-                if through_puncture
-                else "_dr_anmar_last_successful_entry"
-            )
+            if pullout:
+                receipt_attribute = "_dr_anmar_last_successful_pullout"
+            elif through_puncture:
+                receipt_attribute = "_dr_anmar_last_successful_through_puncture"
+            else:
+                receipt_attribute = "_dr_anmar_last_successful_entry"
             success_receipts = getattr(env.unwrapped, receipt_attribute, None)
             hard_receipts = getattr(
                 env.unwrapped, "_dr_anmar_last_hard_failures", None
@@ -226,7 +244,7 @@ def main() -> int:
                         float(
                             receipt[
                                 "embedded_arc_length_m"
-                                if through_puncture
+                                if through_puncture or pullout
                                 else "embedded_depth_m"
                             ]
                         )
@@ -237,7 +255,7 @@ def main() -> int:
                     )
                     backend_revisions.add(str(receipt["backend_revision"]))
                     backend_hashes.add(str(receipt["backend_implementation_sha256"]))
-                    if through_puncture:
+                    if through_puncture or pullout:
                         event_counts.append(int(receipt["entry_event_count"]))
                         exit_event_counts.append(int(receipt["exit_event_count"]))
                         exit_errors.append(float(receipt["exit_error_m"]))
@@ -300,7 +318,7 @@ def main() -> int:
                 next(iter(backend_hashes)) if len(backend_hashes) == 1 else None
             ),
         }
-        if "Through-Puncture" in args.task:
+        if "Through-Puncture" in args.task or "Puncture-Pullout" in args.task:
             report.update(
                 {
                     "schema": "dr.anmar.tissue-through-isolated-evaluation.v1",
@@ -317,6 +335,18 @@ def main() -> int:
                     ),
                     "exactly_one_exit_event_per_success": bool(exit_event_counts)
                     and all(count == 1 for count in exit_event_counts),
+                }
+            )
+        if "Puncture-Pullout" in args.task:
+            report.update(
+                {
+                    "schema": "dr.anmar.tissue-puncture-pullout-isolated-evaluation.v1",
+                    "custody_model": (
+                        "bilateral_force_or_calibrated_geometry_then_receiver_pose_coupling"
+                    ),
+                    "complete_clearance_per_success": bool(exposed_fractions)
+                    and all(value >= 0.95 for value in exposed_fractions)
+                    and all(value <= 0.0002 for value in embedded_depths),
                 }
             )
         args.report.parent.mkdir(parents=True, exist_ok=True)
