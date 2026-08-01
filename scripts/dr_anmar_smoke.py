@@ -30,13 +30,13 @@ if "Reach-ECM" in args_cli.task:
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
-import gymnasium as gym
-import torch
+import gymnasium as gym  # noqa: E402
+import torch  # noqa: E402
 
-import isaaclab_tasks  # noqa: F401
-from isaaclab_tasks.utils import parse_env_cfg
+import isaaclab_tasks  # noqa: E402, F401
+from isaaclab_tasks.utils import parse_env_cfg  # noqa: E402
 
-import orbit.surgical.tasks  # noqa: F401
+import orbit.surgical.tasks  # noqa: E402, F401
 
 
 def main() -> None:
@@ -61,18 +61,24 @@ def main() -> None:
     if not robot_names:
         raise RuntimeError(f"No supported robot entity was found in {args_cli.task}")
     completed_steps = 0
+    termination_count = 0
+    truncation_count = 0
     for completed_steps in range(1, args_cli.steps + 1):
         if not simulation_app.is_running():
             break
         with torch.inference_mode():
             actions = torch.zeros(env.action_space.shape, device=env.unwrapped.device)
-            env.step(actions)
+            _, _, terminated, truncated, _ = env.step(actions)
+            termination_count += int(terminated.sum().item())
+            truncation_count += int(truncated.sum().item())
 
     report = {
         "project": "Dr.Anmar",
         "task": args_cli.task,
         "num_envs": args_cli.num_envs,
         "completed_steps": completed_steps,
+        "termination_count": termination_count,
+        "truncation_count": truncation_count,
         "device": str(env.unwrapped.device),
         "robot_count": len(robots),
         "robots": [
@@ -95,6 +101,32 @@ def main() -> None:
         "joint_positions_finite": all(bool(torch.isfinite(robot.data.joint_pos).all().item()) for robot in robots),
         "joint_velocities_finite": all(bool(torch.isfinite(robot.data.joint_vel).all().item()) for robot in robots),
     }
+    penetration_state = getattr(env.unwrapped, "_dr_anmar_penetration_state", None)
+    if penetration_state is not None:
+        report["tissue_entry"] = {
+            "episode_length_steps": env.unwrapped.episode_length_buf.detach().cpu().tolist(),
+            "phase": penetration_state["phase"].detach().cpu().tolist(),
+            "event_count": penetration_state["event_count"].detach().cpu().tolist(),
+            "hard_failure": penetration_state["hard_failure"].detach().cpu().tolist(),
+            "jaw_forces_n": penetration_state["jaw_forces"].detach().cpu().tolist(),
+            "wrench_finite": bool(torch.isfinite(penetration_state["wrench"]).all().item()),
+            "entry_error_m": penetration_state["measurement"]["entry_error"].detach().cpu().tolist(),
+            "tip_position_w": penetration_state["measurement"]["tip_pos"].detach().cpu().tolist(),
+            "needle_quaternion_xyzw": penetration_state["measurement"]["tip_quat"]
+            .detach()
+            .cpu()
+            .tolist(),
+            "target_position_w": penetration_state["measurement"]["target"].detach().cpu().tolist(),
+            "indentation_m": penetration_state["measurement"]["indentation"].detach().cpu().tolist(),
+            "hard_failure_flags": [sorted(gate.hard_failures) for gate in penetration_state["gates"]],
+            "last_hard_failure_flags": getattr(
+                env.unwrapped, "_dr_anmar_last_hard_failures", None
+            ),
+            "termination_terms": {
+                name: env.unwrapped.termination_manager.get_term(name).detach().cpu().tolist()
+                for name in env.unwrapped.termination_manager.active_terms
+            },
+        }
     args_cli.report.parent.mkdir(parents=True, exist_ok=True)
     args_cli.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print("[DR_ANMAR_SMOKE] " + json.dumps(report, sort_keys=True))

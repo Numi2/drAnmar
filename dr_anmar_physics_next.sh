@@ -36,6 +36,9 @@ ISAACLAB_REPOSITORY="$(lock_value sources.isaaclab.repository)"
 ISAACLAB_COMMIT="$(lock_value sources.isaaclab.revision)"
 CRESSIM_REPOSITORY="$(lock_value sources.cressim_mpm.repository)"
 CRESSIM_COMMIT="$(lock_value sources.cressim_mpm.revision)"
+CRESSIM_LIBRARY_RELATIVE="$(lock_value builds.cressim_mpm.library_relative_path)"
+CRESSIM_BUILD_TYPE="$(lock_value builds.cressim_mpm.build_type)"
+CRESSIM_CUDA_ARCHITECTURES="$(lock_value builds.cressim_mpm.cuda_architectures)"
 PYTETWILD_VERSION="$(lock_value mesh_environment.pytetwild)"
 SCIPY_VERSION="$(lock_value mesh_environment.scipy)"
 ISAACLAB_INSTALL_PROFILE="$(lock_value dependency_policy.isaaclab_install_profile)"
@@ -45,6 +48,27 @@ TORCHVISION_VERSION="$(lock_value runtime_packages.torchvision)"
 TORCHAUDIO_VERSION="$(lock_value runtime_packages.torchaudio)"
 
 mkdir -p "${NEXT_ROOT}" "${LOG_ROOT}"
+
+find_eigen_include() {
+    local candidate
+    for candidate in \
+        /usr/include/eigen3 \
+        "${ENV_ROOT}/lib/python${PYTHON_VERSION}/site-packages/isaacsim/exts/isaacsim.ros1.bridge/noetic/include" \
+        "${DATA_ROOT}/sonogym/env_isaaclab/lib/python3.10/site-packages/isaacsim/exts/isaacsim.ros1.bridge/noetic/include"
+    do
+        [[ -f "${candidate}/Eigen/Dense" ]] && { echo "${candidate}"; return 0; }
+    done
+    find "${DATA_ROOT}" -path '*/Eigen/Dense' -type f -print -quit 2>/dev/null | sed 's#/Eigen/Dense$##'
+}
+
+find_glfw_library() {
+    find "${ENV_ROOT}" "${DATA_ROOT}" -name 'libglfw.so' -type f -print -quit 2>/dev/null
+}
+
+build_cressim() {
+    "${ENV_ROOT}/bin/python" "${REPOSITORY_ROOT}/scripts/build_dranmar_cressim.py" \
+        --root "${NEXT_ROOT}" --lock "${LOCK_PATH}"
+}
 
 install_running() {
     [[ -f "${PID_FILE}" ]] || return 1
@@ -116,6 +140,9 @@ install_runtime() {
         git fetch --depth 1 origin "${cressim_commit}"
         git checkout --detach "${cressim_commit}"
         [[ "$(git rev-parse HEAD)" == "${cressim_commit}" ]]
+        "${env_root}/bin/python" \
+            "${repository_root}/scripts/build_dranmar_cressim.py" \
+            --root "${next_root}" --lock "${lock_path}"
         dependency_check="${next_root}/dependency-check.json"
         "${env_root}/bin/python" \
             "${repository_root}/scripts/verify_dranmar_physics_next_environment.py" \
@@ -169,6 +196,12 @@ case "${1:-status}" in
     probe)
         [[ -x "${ENV_ROOT}/bin/python" ]] || { echo "physics-next environment is not installed" >&2; exit 1; }
         "${ENV_ROOT}/bin/python" "${REPOSITORY_ROOT}/scripts/dr_anmar_physics_next.py" status
+        ;;
+    build-cressim)
+        build_cressim
+        "${ENV_ROOT}/bin/python" \
+            "${REPOSITORY_ROOT}/scripts/write_dranmar_physics_next_receipt.py" \
+            --root "${NEXT_ROOT}" --lock "${LOCK_PATH}"
         ;;
     benchmark)
         backend="${2:-physx}"
@@ -259,7 +292,7 @@ case "${1:-status}" in
         "${ISAAC_PYTHON:-python3}" "${REPOSITORY_ROOT}/scripts/dr_anmar_physics_next_compare.py" "$@"
         ;;
     *)
-        echo "Usage: $0 {install|status|logs|probe|benchmark [physx|newton]|compare RESULT [...]|extract-liver SCENE [OUTPUT] [PRIM]|tetrahedralize-liver EXTRACTION [OUTPUT] [EDGE]|author-liver-usd TETRA_NPZ [OUTPUT_USD]|author-liver-physx SURFACE_OBJ [OUTPUT_USD] [ISAACLAB_ROOT]|patient-liver-smoke [TETRA_NPZ] [OUTPUT]}" >&2
+        echo "Usage: $0 {install|status|logs|probe|build-cressim|benchmark [physx|newton]|compare RESULT [...]|extract-liver SCENE [OUTPUT] [PRIM]|tetrahedralize-liver EXTRACTION [OUTPUT] [EDGE]|author-liver-usd TETRA_NPZ [OUTPUT_USD]|author-liver-physx SURFACE_OBJ [OUTPUT_USD] [ISAACLAB_ROOT]|patient-liver-smoke [TETRA_NPZ] [OUTPUT]}" >&2
         exit 2
         ;;
 esac

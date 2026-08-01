@@ -38,6 +38,16 @@
       "revision": "09aa5009b8580351f516b6df7660e87821fc5eb6"
     }
   },
+  "builds": {
+    "cressim_mpm": {
+      "library_relative_path": "CRESSim-MPM/build-dranmar/bin/libcrmpm_c_api.so",
+      "build_type": "Release",
+      "cuda_architectures": "89",
+      "engine_static": false,
+      "examples": false,
+      "tests": true
+    }
+  },
   "mesh_environment": {
     "pytetwild": "0.3.0",
     "scipy": "1.18.0"

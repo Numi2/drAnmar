@@ -1,0 +1,30 @@
+{
+  "project": "Dr.Anmar",
+  "task": "DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-Play-v0",
+  "num_envs": 1,
+  "completed_steps": 12,
+  "device": "cuda:0",
+  "robot_count": 1,
+  "robots": [
+    {
+      "name": "robot",
+      "joint_count": 8,
+      "body_count": 13,
+      "joint_positions_finite": true,
+      "joint_velocities_finite": true
+    }
+  ],
+  "joint_positions_finite": true,
+  "joint_velocities_finite": true,
+  "termination_count": 0,
+  "truncation_count": 0,
+  "tissue_entry": {
+    "episode_length_steps": 12,
+    "event_count": 0,
+    "hard_failure": false,
+    "jaw_forces_n": [0.13336649537086487, 0.13697406649589539],
+    "wrench_finite": true
+  },
+  "evidence_level": "simulator_engineering_only",
+  "clinical_validation": false
+}

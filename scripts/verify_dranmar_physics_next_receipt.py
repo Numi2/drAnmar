@@ -82,6 +82,18 @@ def verify(next_root: Path, lock_path: Path) -> list[str]:
             failures.append(f"{source_id} receipt revision mismatch")
         if _git_head(next_root / relative) != expected:
             failures.append(f"{source_id} checkout revision mismatch")
+    cressim_build = lock["builds"]["cressim_mpm"]
+    cressim_artifact = receipt.get("artifacts", {}).get("cressim_mpm_c_api", {})
+    cressim_library = next_root / cressim_build["library_relative_path"]
+    if not cressim_library.is_file():
+        failures.append("missing CRESSim shared C API library")
+    else:
+        if cressim_artifact.get("path") != cressim_build["library_relative_path"]:
+            failures.append("CRESSim artifact path mismatch")
+        if cressim_artifact.get("sha256") != _sha256(cressim_library):
+            failures.append("CRESSim shared library digest mismatch")
+        if cressim_artifact.get("build") != cressim_build:
+            failures.append("CRESSim build configuration mismatch")
     if ready_path.is_file():
         expected_ready = _sha256(receipt_path)
         if ready_path.read_text(encoding="utf-8").strip() != expected_ready:

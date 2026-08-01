@@ -1,0 +1,39 @@
+{
+  "schema": "dr.anmar.physics-benchmark.v1",
+  "id": "needle-entry-v1",
+  "scope": "single_force_gated_entry_only",
+  "backend": "dranmar_tissue_entry_backend",
+  "provider": "locked_cressim_mpm",
+  "phases": ["approach", "align", "indent", "puncture", "stabilize"],
+  "success": {
+    "puncture_event_count": 1,
+    "entry_error_m_max": 0.001,
+    "tangent_error_deg_max": 10.0,
+    "plane_error_deg_max": 10.0,
+    "embedded_depth_m": [0.0015, 0.0025],
+    "stabilization_control_steps": 10
+  },
+  "engineering_acceptance": {
+    "overall_success_rate_min": 0.8,
+    "per_seed_success_rate_min": 0.75,
+    "isolated_seeds": 3,
+    "episodes_per_seed": 256,
+    "hard_safety_failures_max": 0,
+    "unintended_surface_crossings_max": 0,
+    "force_overshoot_fraction_max": 0.25,
+    "physics_step_ms_p95_max": 20.0,
+    "replay_episodes": 16,
+    "replay_position_rmse_m_max": 0.0005,
+    "replay_event_sequence_identical": true
+  },
+  "excluded": [
+    "persistent_tract",
+    "needle_exit",
+    "thread_passage",
+    "cutting",
+    "topology_changing_suturing",
+    "bimanual_countertraction",
+    "clinical_validation"
+  ],
+  "clinical_validation": false
+}

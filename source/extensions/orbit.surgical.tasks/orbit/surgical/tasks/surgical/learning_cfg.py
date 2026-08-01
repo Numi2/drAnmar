@@ -11,7 +11,7 @@ Dr.Anmar task the same training-serving contract.
 
 from isaaclab.utils.configclass import configclass
 
-from isaaclab_rl.rsl_rl import RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
+from isaaclab_rl.rsl_rl import RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg, RslRlRNNModelCfg
 
 from orbit.surgical.tasks.surgical.lift.grasp_frames import (
     BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M,
@@ -93,6 +93,17 @@ class DrAnmarHandoverResidualModelCfg(RslRlMLPModelCfg):
         "HandoverResidualMLPModel"
     )
     residual_scale: float = 0.03
+
+
+@configclass
+class DrAnmarPenetrationResidualModelCfg(RslRlRNNModelCfg):
+    """Force-history GRU with a zero-initialized bounded residual head."""
+
+    class_name = (
+        "orbit.surgical.tasks.surgical.penetration.residual_model:"
+        "PenetrationResidualGRUModel"
+    )
+    residual_scale: float = 0.25
 
 
 def _actor(hidden_dims: list[int], *, initial_std: float = 1.0) -> RslRlMLPModelCfg:
@@ -267,4 +278,32 @@ class DrAnmarManipulationPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         gamma=0.985,
         learning_epochs=5,
         mini_batches=8,
+    )
+
+
+@configclass
+class DrAnmarPenetrationPPORunnerCfg(DrAnmarManipulationPPORunnerCfg):
+    """Asymmetric recurrent PPO for twelve MPM tissue-entry scenes."""
+
+    num_steps_per_env = 64
+    max_iterations = 3000
+    experiment_name = "dranmar_tissue_entry"
+    obs_groups = {"actor": ["policy"], "critic": ["critic"]}
+    actor = DrAnmarPenetrationResidualModelCfg(
+        hidden_dims=[128, 128],
+        activation="elu",
+        obs_normalization=True,
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(init_std=0.01),
+        rnn_type="gru",
+        rnn_hidden_dim=128,
+        rnn_num_layers=1,
+        residual_scale=0.25,
+    )
+    critic = _critic([256, 128, 64])
+    algorithm = _ppo(
+        entropy_coef=0.002,
+        learning_rate=2.5e-4,
+        gamma=0.99,
+        learning_epochs=5,
+        mini_batches=4,
     )

@@ -1,0 +1,22 @@
+{
+  "clinical_validation": false,
+  "completed_steps": 590,
+  "embedded_depth_m": 0.0,
+  "entry_error_m": 1.4915699466655497e-05,
+  "event_count": 0,
+  "evidence_level": "simulator_engineering_only",
+  "hard_failures": [],
+  "max_rotation_action": 0.20000000298023224,
+  "peak_force_n": 0.0,
+  "phase": 1,
+  "plane_error_deg": 2.6347765922546387,
+  "qualified_for_ppo": false,
+  "reset_rejections": 0,
+  "schema": "dr.anmar.tissue-entry-analytical-gate.v1",
+  "successful": false,
+  "tangent_error_deg": 93.93048858642578,
+  "task": "DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-Play-v0",
+  "terminated_by": [],
+  "warmup_steps": 1,
+  "wrench_finite": true
+}
