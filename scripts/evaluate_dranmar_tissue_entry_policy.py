@@ -25,8 +25,15 @@ parser.add_argument("--num_envs", type=int, default=12)
 parser.add_argument("--seed", type=int, required=True)
 parser.add_argument("--report", type=Path, required=True)
 parser.add_argument("--trace_interval", type=int, default=0)
+parser.add_argument("--video", action="store_true")
+parser.add_argument("--video_folder", type=Path)
+parser.add_argument("--video_length", type=int, default=1800)
+parser.add_argument("--video_width", type=int, default=960)
+parser.add_argument("--video_height", type=int, default=720)
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
+if args.video:
+    args.enable_cameras = True
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
 
@@ -85,7 +92,32 @@ def main() -> int:
         use_fabric=True,
     )
     env_cfg.seed = args.seed
-    gym_env = gym.make(args.task, cfg=env_cfg)
+    render_mode = "rgb_array" if args.video else None
+    if args.video:
+        if args.num_envs != 1:
+            raise ValueError("video recording requires --num_envs 1")
+        if args.video_length <= 0:
+            raise ValueError("video_length must be positive")
+        env_cfg.viewer.resolution = (args.video_width, args.video_height)
+        env_cfg.viewer.origin_type = "env"
+        env_cfg.viewer.env_index = 0
+        env_cfg.viewer.eye = (0.075, 0.16, 0.105)
+        env_cfg.viewer.lookat = (0.0, 0.0, 0.047)
+    gym_env = gym.make(args.task, cfg=env_cfg, render_mode=render_mode)
+    if args.video:
+        video_folder = (
+            args.video_folder
+            or args.report.resolve().parent / f"{args.report.stem}-video"
+        ).resolve()
+        video_folder.mkdir(parents=True, exist_ok=True)
+        gym_env = gym.wrappers.RecordVideo(
+            gym_env,
+            video_folder=str(video_folder),
+            step_trigger=lambda step: step == 0,
+            video_length=args.video_length,
+            name_prefix=f"{args.task}-seed{args.seed}",
+            disable_logger=True,
+        )
     env = RslRlVecEnvWrapper(gym_env)
     runner = None
     checkpoint = args.checkpoint.resolve() if args.checkpoint else None

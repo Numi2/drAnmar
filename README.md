@@ -183,6 +183,30 @@ minimizes **time to qualified task achievement**: wall-clock time from a frozen
 task contract to the first checkpoint that passes held-out competence, safety,
 and recovery gates.
 
+### Force-aware puncture and pullout
+
+![Successful DrAnmar needle puncture, receiver handover, and pullout](docs/media/dranmar-tissue-puncture-pullout-seed7001.gif)
+
+This is a rendered replay of a successful isolated simulator episode, not an
+illustration. The analytical controller for
+`DrAnmar-Puncture-Pullout-Tissue-Needle-PSM-IK-Rel-Play-v0` advances the curved
+needle through the native DrAnmar tissue interaction, exposes it beyond the
+exit surface, transfers custody to the receiver PSM, and pulls it clear.
+
+The recorded RTX 4090 seed `7001` produced exactly one entry event and one exit
+event, `0.429 mm` maximum entry error, `0.073 mm` maximum exit error, `99.22%`
+exposed needle arc, `1.008x` normalized peak puncture force, and zero hard safety
+failures. The matching typed
+[evaluation receipt](physics_next/receipts/tissue-puncture-pullout-analytical-rtx4090-seed7001.json)
+and [benchmark contract](physics_next/benchmarks/needle-puncture-pullout-v1.json)
+are committed with the task.
+
+Tissue forces, puncture/exit events, phase validity, and success remain
+environment-owned. Receiver custody uses bilateral force when available, with
+a calibrated sustained closed-jaw geometry fallback before receiver-pose
+coupling. These are simulator-engineering results only; they are not
+biomechanical, clinical, or autonomous-surgery validation.
+
 ### Current needle-handover learning status
 
 The frozen simulation incumbent completed 1,292 of 1,800 development episodes
