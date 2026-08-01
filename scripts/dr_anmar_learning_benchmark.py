@@ -26,6 +26,24 @@ from typing import Any
 
 
 RECOVERY_QUALIFICATION_SEEDS = {17, 2361, 4099}
+HANDOVER_TEACHER_TRACE_SCHEMA = "dranmar-handover-teacher-trace-1.0"
+HANDOVER_TEACHER_RECEIPT_SCHEMA = "dranmar-handover-teacher-receipt-1.0"
+HANDOVER_DAGGER_TRACE_SCHEMA = "dranmar-handover-dagger-trace-1.0"
+HANDOVER_TEACHER_ACTION_SCHEDULE_SCHEMA = (
+    "dranmar-handover-teacher-action-schedule-1.0"
+)
+HANDOVER_TEACHER_KINDS = {
+    "constrained_trajectory_optimizer",
+    "clinician_teleoperation",
+}
+HANDOVER_SAFETY_TERMS = (
+    "excessive_object_force",
+    "needle_dropped_after_pickup",
+    "object_dropping",
+    "premature_giver_release",
+    "protected_surface_force",
+    "receiver_retention_lost",
+)
 
 
 def _fail(message: str) -> int:
@@ -63,6 +81,25 @@ def _command_output(args: list[str], cwd: Path | None = None) -> str | None:
         ).stdout.strip()
     except (OSError, subprocess.SubprocessError):
         return None
+
+
+def _module_git_source(module_name: str) -> dict[str, str | None]:
+    module = sys.modules.get(module_name)
+    origin = getattr(module, "__file__", None) if module is not None else None
+    if not origin:
+        return {"root": None, "revision": None}
+    module_path = Path(origin).resolve()
+    root = _command_output(
+        ["git", "rev-parse", "--show-toplevel"],
+        module_path.parent,
+    )
+    if not root:
+        return {"root": None, "revision": None}
+    root_path = Path(root).resolve()
+    return {
+        "root": str(root_path),
+        "revision": _command_output(["git", "rev-parse", "HEAD"], root_path),
+    }
 
 
 def _free_gpu_memory_mib() -> int | None:
@@ -169,6 +206,7 @@ def _peak_process_memory_mib() -> float:
 def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
     import torch
 
+    asset_source = _module_git_source("orbit.surgical.assets")
     packages = {}
     for package in ("isaacsim", "isaaclab", "isaaclab-rl", "rsl-rl-lib", "torch"):
         try:
@@ -191,10 +229,8 @@ def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
         },
         "source": {
             "dranmar_revision": _command_output(["git", "rev-parse", "HEAD"], repo_root),
-            "asset_revision": _command_output(
-                ["git", "rev-parse", "HEAD"],
-                repo_root / "source/extensions/orbit.surgical.assets",
-            ),
+            "asset_revision": asset_source["revision"],
+            "asset_root": asset_source["root"],
         },
     }
 
@@ -206,6 +242,198 @@ def _write_evidence(output_dir: Path, prefix: str, evidence: dict[str, Any]) -> 
     path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
     print(f"[DrAnmar] Evidence: {path}")
     return path
+
+
+def _write_immutable_torch_artifact(path: Path, payload: dict[str, Any]) -> None:
+    """Atomically create a Torch artifact without replacing prior evidence."""
+
+    import torch
+
+    if path.exists():
+        raise ValueError(f"refusing to overwrite immutable artifact: {path}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        torch.save(payload, temporary)
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _load_handover_teacher_receipt(
+    path: Path,
+    *,
+    task: str,
+    seed: int,
+    pair_id: str,
+    teacher_kind: str,
+    receiver_fixed_correction: str | None,
+    action_schedule_sha256: str | None,
+) -> dict[str, Any]:
+    receipt = json.loads(path.read_text())
+    if receipt.get("schema_version") != HANDOVER_TEACHER_RECEIPT_SCHEMA:
+        raise ValueError("unsupported handover teacher receipt")
+    if receipt.get("task") != task:
+        raise ValueError("teacher receipt task does not match rollout")
+    if int(receipt.get("seed", -1)) != seed:
+        raise ValueError("teacher receipt seed does not match rollout")
+    if receipt.get("pair_id") != pair_id:
+        raise ValueError("teacher receipt pair id does not match rollout")
+    if receipt.get("teacher_kind") != teacher_kind:
+        raise ValueError("teacher receipt kind does not match rollout")
+    if teacher_kind == "constrained_trajectory_optimizer":
+        optimizer = receipt.get("optimizer")
+        if not isinstance(optimizer, dict):
+            raise ValueError("trajectory teacher receipt lacks optimizer metadata")
+        if not optimizer.get("algorithm") or not optimizer.get("objective"):
+            raise ValueError("trajectory teacher receipt lacks optimizer identity")
+        if not optimizer.get("constraints"):
+            raise ValueError("trajectory teacher receipt lacks action constraints")
+        if not optimizer.get("selected_parameters"):
+            raise ValueError("trajectory teacher receipt lacks selected parameters")
+        selected_parameters = optimizer["selected_parameters"]
+        selected_schedule = selected_parameters.get(
+            "action_schedule_sha256"
+        )
+        selected = selected_parameters.get(
+            "receiver_recovery_fixed_correction"
+        )
+        if selected_schedule:
+            if selected_schedule != action_schedule_sha256:
+                raise ValueError(
+                    "trajectory teacher schedule does not match its receipt"
+                )
+        else:
+            if not isinstance(selected, list) or len(selected) != 6:
+                raise ValueError(
+                    "trajectory teacher receipt lacks a receiver correction"
+                )
+            if not receiver_fixed_correction:
+                raise ValueError(
+                    "trajectory teacher rollout lacks its selected correction"
+                )
+            actual = [
+                float(value.strip())
+                for value in receiver_fixed_correction.split(",")
+            ]
+            if len(actual) != 6 or any(
+                not math.isclose(
+                    float(expected),
+                    observed,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-12,
+                )
+                for expected, observed in zip(
+                    selected,
+                    actual,
+                    strict=True,
+                )
+            ):
+                raise ValueError(
+                    "trajectory teacher correction does not match its receipt"
+                )
+    elif teacher_kind == "clinician_teleoperation":
+        teleoperation = receipt.get("teleoperation")
+        if not isinstance(teleoperation, dict):
+            raise ValueError("clinician teacher receipt lacks teleoperation metadata")
+        if not teleoperation.get("interface") or not teleoperation.get("operator_attestation"):
+            raise ValueError("clinician teacher receipt lacks operator attestation")
+    return {
+        "path": str(path),
+        "sha256": _sha256(path),
+        "schema_version": receipt["schema_version"],
+        "selected_parameters": (
+            receipt.get("optimizer", {}).get("selected_parameters")
+        ),
+    }
+
+
+def _load_handover_teacher_action_schedule(
+    path: Path,
+    *,
+    task: str,
+    seed: int,
+    pair_id: str,
+    maximum_frame: int,
+) -> dict[str, Any]:
+    schedule = json.loads(path.read_text())
+    if (
+        schedule.get("schema_version")
+        != HANDOVER_TEACHER_ACTION_SCHEDULE_SCHEMA
+    ):
+        raise ValueError("unsupported handover teacher action schedule")
+    if schedule.get("task") != task:
+        raise ValueError("teacher action schedule task does not match rollout")
+    if int(schedule.get("seed", -1)) != seed:
+        raise ValueError("teacher action schedule seed does not match rollout")
+    if schedule.get("pair_id") != pair_id:
+        raise ValueError("teacher action schedule pair id does not match rollout")
+    source_control = schedule.get("source_control")
+    if not isinstance(source_control, dict):
+        raise ValueError("teacher action schedule lacks its source control")
+    source_control_path = Path(
+        str(source_control.get("path", ""))
+    ).expanduser().resolve()
+    if not source_control_path.is_file():
+        raise ValueError("teacher action schedule source control is unavailable")
+    if source_control.get("sha256") != _sha256(source_control_path):
+        raise ValueError("teacher action schedule source control hash drifted")
+    branch_frame = int(schedule.get("branch_frame", -1))
+    if not 0 <= branch_frame < maximum_frame:
+        raise ValueError("teacher action schedule branch frame is invalid")
+    segments = schedule.get("segments")
+    if not isinstance(segments, list) or not segments:
+        raise ValueError("teacher action schedule lacks segments")
+    normalized_segments = []
+    previous_stop = -1
+    for segment in segments:
+        if not isinstance(segment, dict) or segment.get("mode") != "replace":
+            raise ValueError("teacher action schedule only supports replacement")
+        start = int(segment.get("start_frame_inclusive", -1))
+        stop = int(segment.get("stop_frame_exclusive", -1))
+        indices = segment.get("action_indices")
+        values = segment.get("values")
+        if not 0 <= start < stop <= maximum_frame:
+            raise ValueError("teacher action schedule frame range is invalid")
+        if start < previous_stop:
+            raise ValueError("teacher action schedule segments overlap")
+        if (
+            not isinstance(indices, list)
+            or not isinstance(values, list)
+            or not indices
+            or len(indices) != len(values)
+            or len(set(indices)) != len(indices)
+            or any(not 0 <= int(index) < 14 for index in indices)
+            or any(
+                not math.isfinite(float(value))
+                or abs(float(value)) > 1.0
+                for value in values
+            )
+        ):
+            raise ValueError("teacher action schedule action contract is invalid")
+        normalized_segments.append(
+            {
+                "start_frame_inclusive": start,
+                "stop_frame_exclusive": stop,
+                "action_indices": [int(index) for index in indices],
+                "values": [float(value) for value in values],
+            }
+        )
+        previous_stop = stop
+    if normalized_segments[0]["start_frame_inclusive"] != branch_frame:
+        raise ValueError("teacher action schedule does not start at its branch")
+    return {
+        "path": str(path),
+        "sha256": _sha256(path),
+        "schema_version": schedule["schema_version"],
+        "branch_frame": branch_frame,
+        "source_control": {
+            "path": str(source_control_path),
+            "sha256": source_control["sha256"],
+        },
+        "segments": normalized_segments,
+    }
 
 
 def _load_configs(task: str, num_envs: int, seed: int):
@@ -3440,6 +3668,199 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         args.num_envs,
         runtime_seed,
     )
+    handover_teacher_trace_path = None
+    handover_teacher_receipt = None
+    handover_teacher_action_schedule = None
+    handover_dagger_trace_path = None
+    if args.handover_dagger_trace:
+        handover_dagger_trace_path = (
+            Path(args.handover_dagger_trace).expanduser().resolve()
+        )
+        if args.handover_teacher_trace:
+            return _fail("teacher and DAgger traces are mutually exclusive")
+        if args.task != "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0":
+            return _fail("DAgger traces require the needle handover task")
+        if args.num_envs != 1 or not args.stop_after_first_episode:
+            return _fail(
+                "DAgger traces require --num_envs 1 and "
+                "--stop_after_first_episode"
+            )
+        if args.seed in RECOVERY_QUALIFICATION_SEEDS:
+            return _fail("qualification seeds cannot become DAgger data")
+        if not args.handover_dagger_pair_id:
+            return _fail("DAgger traces require a stable pair id")
+        if not args.handover_successor_checkpoint:
+            return _fail("DAgger traces require a successor checkpoint")
+        if not 0.5 <= args.handover_dagger_oracle_beta < 1.0:
+            return _fail("DAgger oracle beta must be in [0.5, 1.0)")
+        if handover_dagger_trace_path.exists():
+            return _fail(
+                "DAgger traces are immutable and cannot be overwritten: "
+                f"{handover_dagger_trace_path}"
+            )
+        worktree_status = _command_output(
+            ["git", "status", "--porcelain"],
+            repo_root,
+        )
+        if worktree_status is None or worktree_status:
+            return _fail("DAgger traces require a clean source worktree")
+        asset_source = _module_git_source("orbit.surgical.assets")
+        if not asset_source["root"] or not asset_source["revision"]:
+            return _fail("DAgger traces require a source-locked asset package")
+        asset_status = _command_output(
+            ["git", "status", "--porcelain"],
+            Path(asset_source["root"]),
+        )
+        if asset_status is None or asset_status:
+            return _fail("DAgger traces require a clean asset worktree")
+    if (
+        args.handover_teacher_action_schedule
+        and not args.handover_teacher_trace
+    ):
+        return _fail("teacher action schedules require teacher trace capture")
+    if args.handover_teacher_trace:
+        handover_teacher_trace_path = (
+            Path(args.handover_teacher_trace).expanduser().resolve()
+        )
+        if args.task != "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0":
+            return _fail("teacher traces are restricted to the qualified needle handover")
+        if args.num_envs != 1 or not args.stop_after_first_episode:
+            return _fail(
+                "teacher traces require --num_envs 1 and --stop_after_first_episode"
+            )
+        if args.seed in RECOVERY_QUALIFICATION_SEEDS:
+            return _fail("qualification seeds cannot become teacher data")
+        if not args.handover_teacher_pair_id:
+            return _fail("teacher traces require a stable pair id")
+        if args.handover_teacher_role not in {"control", "teacher"}:
+            return _fail("teacher trace role must be control or teacher")
+        if handover_teacher_trace_path.exists():
+            return _fail(
+                "teacher traces are immutable and cannot be overwritten: "
+                f"{handover_teacher_trace_path}"
+            )
+        worktree_status = _command_output(
+            ["git", "status", "--porcelain"],
+            repo_root,
+        )
+        if worktree_status is None or worktree_status:
+            return _fail("teacher traces require a clean source worktree")
+        asset_source = _module_git_source("orbit.surgical.assets")
+        if not asset_source["root"] or not asset_source["revision"]:
+            return _fail("teacher traces require a source-locked asset package")
+        asset_status = _command_output(
+            ["git", "status", "--porcelain"],
+            Path(asset_source["root"]),
+        )
+        if asset_status is None or asset_status:
+            return _fail("teacher traces require a clean asset worktree")
+        if args.handover_teacher_role == "control":
+            if args.handover_teacher_kind != "frozen_baseline":
+                return _fail("control traces must identify the frozen baseline")
+            if args.handover_teacher_receipt:
+                return _fail("control traces cannot claim a teacher receipt")
+            if args.handover_teacher_action_schedule:
+                return _fail("control traces cannot apply a teacher action schedule")
+        else:
+            if args.handover_teacher_kind not in HANDOVER_TEACHER_KINDS:
+                return _fail(
+                    "teacher trace must come from a constrained optimizer "
+                    "or clinician teleoperation"
+                )
+            if not args.handover_teacher_receipt:
+                return _fail("teacher trace requires an immutable teacher receipt")
+            if args.handover_teacher_action_schedule:
+                if (
+                    args.handover_teacher_kind
+                    != "constrained_trajectory_optimizer"
+                ):
+                    return _fail(
+                        "teacher action schedules require a trajectory optimizer"
+                    )
+                schedule_path = (
+                    Path(args.handover_teacher_action_schedule)
+                    .expanduser()
+                    .resolve()
+                )
+                if not schedule_path.is_file():
+                    return _fail(
+                        f"teacher action schedule not found: {schedule_path}"
+                    )
+                try:
+                    handover_teacher_action_schedule = (
+                        _load_handover_teacher_action_schedule(
+                            schedule_path,
+                            task=args.task,
+                            seed=args.seed,
+                            pair_id=args.handover_teacher_pair_id,
+                            maximum_frame=args.num_frames,
+                        )
+                    )
+                except (
+                    OSError,
+                    ValueError,
+                    TypeError,
+                    json.JSONDecodeError,
+                ) as error:
+                    return _fail(str(error))
+            receipt_path = (
+                Path(args.handover_teacher_receipt).expanduser().resolve()
+            )
+            if not receipt_path.is_file():
+                return _fail(f"teacher receipt not found: {receipt_path}")
+            try:
+                handover_teacher_receipt = _load_handover_teacher_receipt(
+                    receipt_path,
+                    task=args.task,
+                    seed=args.seed,
+                    pair_id=args.handover_teacher_pair_id,
+                    teacher_kind=args.handover_teacher_kind,
+                    receiver_fixed_correction=(
+                        args.receiver_recovery_fixed_correction
+                    ),
+                    action_schedule_sha256=(
+                        handover_teacher_action_schedule["sha256"]
+                        if handover_teacher_action_schedule is not None
+                        else None
+                    ),
+                )
+            except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
+                return _fail(str(error))
+
+    successor_incompatible = any(
+        (
+            args.pickup_recovery,
+            bool(args.pickup_recovery_checkpoint),
+            bool(args.pickup_recovery_fixed_correction),
+            bool(args.pickup_recovery_fixed_correction_after_first_retry),
+            bool(args.pickup_recovery_correction_candidates),
+            args.pickup_recovery_random_corrections,
+            args.pickup_recovery_sobol_candidate is not None,
+            args.pickup_recovery_local_sobol_candidate is not None,
+            args.receiver_recovery,
+            bool(args.receiver_recovery_checkpoint),
+            bool(args.receiver_retry_gate_checkpoint),
+            bool(args.receiver_stabilization_gate_checkpoint),
+            bool(args.receiver_candidate_value_checkpoint),
+            args.receiver_stabilize_giver_during_acquisition,
+            args.receiver_secure_settle_steps > 0,
+            args.receiver_retention_servo,
+            bool(args.receiver_recovery_fixed_correction),
+            args.receiver_recovery_random_corrections,
+            args.receiver_recovery_sobol_candidate is not None,
+            args.receiver_recovery_local_sobol_candidate is not None,
+            args.receiver_recovery_local_sweep,
+        )
+    )
+    if (
+        args.handover_successor_checkpoint
+        and successor_incompatible
+        and handover_dagger_trace_path is None
+    ):
+        return _fail(
+            "the full-action successor cannot be stacked with recovery policies"
+        )
+
     if args.recovery_demo_rotation_deg:
         if args.seed in RECOVERY_QUALIFICATION_SEEDS:
             return _fail(
@@ -5625,11 +6046,81 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_recovery_policy.eval()
         policy = receiver_recovery_policy
 
+    handover_dagger_oracle = (
+        policy if handover_dagger_trace_path is not None else None
+    )
+    handover_successor = None
+    handover_successor_payload = None
+    handover_successor_checkpoint = None
+    if args.handover_successor_checkpoint:
+        if args.task != "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0":
+            env.close()
+            return _fail("handover successor checkpoint requires the needle handover task")
+        handover_successor_checkpoint = (
+            Path(args.handover_successor_checkpoint).expanduser().resolve()
+        )
+        if not handover_successor_checkpoint.is_file():
+            env.close()
+            return _fail(
+                "handover successor checkpoint not found: "
+                f"{handover_successor_checkpoint}"
+            )
+        from orbit.surgical.tasks.surgical.handover.successor_policy import (
+            load_handover_successor_checkpoint,
+        )
+
+        try:
+            handover_successor, handover_successor_payload = (
+                load_handover_successor_checkpoint(
+                    str(handover_successor_checkpoint),
+                    device=env.unwrapped.device,
+                )
+            )
+        except (KeyError, RuntimeError, TypeError, ValueError) as error:
+            env.close()
+            return _fail(str(error))
+        if (
+            handover_successor_payload.get("base_checkpoint_sha256")
+            != _sha256(checkpoint)
+        ):
+            env.close()
+            return _fail("successor was trained from another frozen baseline")
+        expected_source = handover_successor_payload.get("source", {})
+        if expected_source.get("dranmar_revision") != _command_output(
+            ["git", "rev-parse", "HEAD"],
+            repo_root,
+        ):
+            env.close()
+            return _fail("successor source revision does not match this checkout")
+        current_asset_source = _module_git_source(
+            "orbit.surgical.assets"
+        )
+        if (
+            expected_source.get("asset_revision")
+            != current_asset_source["revision"]
+        ):
+            env.close()
+            return _fail("successor asset revision does not match this checkout")
+        policy = handover_successor
+
     rewards: list[float] = []
     done_count = 0
     success_count = 0
     termination_manager = env.unwrapped.termination_manager
     termination_names = list(termination_manager.active_terms)
+    if (
+        handover_teacher_trace_path is not None
+        or handover_dagger_trace_path is not None
+    ):
+        missing_safety_terms = sorted(
+            set(HANDOVER_SAFETY_TERMS) - set(termination_names)
+        )
+        if missing_safety_terms:
+            env.close()
+            return _fail(
+                "handover trace safety contract is incomplete: "
+                + ", ".join(missing_safety_terms)
+            )
     termination_counts = {name: 0 for name in termination_names}
     failure_names = [
         name for name in termination_names if name not in {"success", "time_out"}
@@ -6319,6 +6810,95 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "initial_object_xy": initial_object_xy,
             "initial_target_xy": initial_target_xy,
         }
+    handover_teacher_observations = (
+        [] if handover_teacher_trace_path is not None else None
+    )
+    handover_teacher_actions = (
+        [] if handover_teacher_trace_path is not None else None
+    )
+    handover_teacher_rewards = (
+        [] if handover_teacher_trace_path is not None else None
+    )
+    handover_teacher_phases = (
+        [] if handover_teacher_trace_path is not None else None
+    )
+    handover_teacher_safety_events = (
+        [] if handover_teacher_trace_path is not None else None
+    )
+    handover_teacher_terminal = None
+    handover_dagger_observations = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_student_actions = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_oracle_actions = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_executed_actions = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_rewards = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_phases = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_safety_events = (
+        [] if handover_dagger_trace_path is not None else None
+    )
+    handover_dagger_terminal = None
+    handover_teacher_policy = {
+        "base_checkpoint_sha256": _sha256(checkpoint),
+        "successor_checkpoint_sha256": (
+            _sha256(handover_successor_checkpoint)
+            if handover_successor_checkpoint is not None
+            else None
+        ),
+        "teacher_action_schedule_sha256": (
+            handover_teacher_action_schedule["sha256"]
+            if handover_teacher_action_schedule is not None
+            else None
+        ),
+        "residual_scale": args.residual_scale,
+        "pickup_recovery": bool(pickup_recovery_policy is not None),
+        "pickup_recovery_checkpoint_sha256": (
+            _sha256(Path(args.pickup_recovery_checkpoint).expanduser().resolve())
+            if args.pickup_recovery_checkpoint
+            else None
+        ),
+        "pickup_recovery_fixed_correction": (
+            args.pickup_recovery_fixed_correction
+        ),
+        "pickup_recovery_fixed_correction_after_first_retry": (
+            args.pickup_recovery_fixed_correction_after_first_retry
+        ),
+        "receiver_recovery": bool(receiver_recovery_policy is not None),
+        "receiver_recovery_checkpoint_sha256": (
+            _sha256(Path(args.receiver_recovery_checkpoint).expanduser().resolve())
+            if args.receiver_recovery_checkpoint
+            else None
+        ),
+        "receiver_candidate_value_checkpoint_sha256": (
+            _sha256(
+                Path(args.receiver_candidate_value_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            if args.receiver_candidate_value_checkpoint
+            else None
+        ),
+        "receiver_recovery_fixed_correction": (
+            args.receiver_recovery_fixed_correction
+        ),
+        "receiver_candidate_first_attempt": (
+            args.receiver_candidate_first_attempt
+        ),
+        "receiver_candidate_local_refinement": (
+            args.receiver_candidate_local_refinement
+        ),
+        "receiver_disable_retries": args.receiver_disable_retries,
+    }
     started = time.perf_counter()
     try:
         for frame_index in range(args.num_frames):
@@ -6765,7 +7345,73 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             ],
                         )
                     )
+                if handover_teacher_observations is not None:
+                    handover_teacher_observations.append(
+                        obs["policy"][0].detach().cpu().clone()
+                    )
+                    handover_teacher_phases.append(
+                        torch.argmax(
+                            obs["policy"][0, 77:82],
+                            dim=-1,
+                        )
+                        .detach()
+                        .cpu()
+                    )
+                if handover_dagger_observations is not None:
+                    handover_dagger_observations.append(
+                        obs["policy"][0].detach().cpu().clone()
+                    )
+                    handover_dagger_phases.append(
+                        torch.argmax(
+                            obs["policy"][0, 77:82],
+                            dim=-1,
+                        )
+                        .detach()
+                        .cpu()
+                    )
                 actions = policy(obs)
+                if handover_dagger_oracle is not None:
+                    student_actions = actions
+                    oracle_actions = handover_dagger_oracle(obs)
+                    actions = (
+                        args.handover_dagger_oracle_beta * oracle_actions
+                        + (1.0 - args.handover_dagger_oracle_beta)
+                        * student_actions
+                    )
+                    assert handover_dagger_student_actions is not None
+                    assert handover_dagger_oracle_actions is not None
+                    assert handover_dagger_executed_actions is not None
+                    handover_dagger_student_actions.append(
+                        student_actions[0].detach().cpu().clone()
+                    )
+                    handover_dagger_oracle_actions.append(
+                        oracle_actions[0].detach().cpu().clone()
+                    )
+                    handover_dagger_executed_actions.append(
+                        actions[0].detach().cpu().clone()
+                    )
+                if handover_teacher_action_schedule is not None:
+                    for segment in handover_teacher_action_schedule[
+                        "segments"
+                    ]:
+                        if (
+                            segment["start_frame_inclusive"]
+                            <= frame_index
+                            < segment["stop_frame_exclusive"]
+                        ):
+                            actions = actions.clone()
+                            actions[
+                                0,
+                                segment["action_indices"],
+                            ] = torch.tensor(
+                                segment["values"],
+                                dtype=actions.dtype,
+                                device=actions.device,
+                            )
+                if handover_teacher_actions is not None:
+                    handover_teacher_actions.append(
+                        actions[0].detach().cpu().clone()
+                    )
                 if pickup_recovery_policy is not None:
                     assert first_pickup_context is not None
                     assert first_pickup_activation_correction is not None
@@ -7188,6 +7834,83 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     if name != "time_out":
                         hard_failure |= term_values[name]
                 successes = term_values["success"] & ~hard_failure
+                if handover_teacher_rewards is not None:
+                    handover_teacher_rewards.append(
+                        reward[0].detach().cpu().float().clone()
+                    )
+                    handover_teacher_safety_events.append(
+                        torch.stack(
+                            [
+                                term_values[name][0].detach().cpu().bool()
+                                for name in HANDOVER_SAFETY_TERMS
+                            ]
+                        )
+                    )
+                    if bool(dones.bool()[0].item()):
+                        if bool(successes.bool()[0].item()):
+                            trace_outcome = "success"
+                        else:
+                            trace_outcome = next(
+                                (
+                                    name
+                                    for name in failure_names
+                                    if bool(
+                                        term_values[name].bool()[0].item()
+                                    )
+                                ),
+                                "unclassified",
+                            )
+                        handover_teacher_terminal = {
+                            "complete": True,
+                            "outcome": trace_outcome,
+                            "terminal_frame_inclusive": frame_index,
+                            "frame_count": len(handover_teacher_rewards),
+                            "termination_flags": {
+                                name: bool(
+                                    value.bool()[0].item()
+                                )
+                                for name, value in term_values.items()
+                            },
+                        }
+                if handover_dagger_rewards is not None:
+                    handover_dagger_rewards.append(
+                        reward[0].detach().cpu().float().clone()
+                    )
+                    assert handover_dagger_safety_events is not None
+                    handover_dagger_safety_events.append(
+                        torch.stack(
+                            [
+                                term_values[name][0].detach().cpu().bool()
+                                for name in HANDOVER_SAFETY_TERMS
+                            ]
+                        )
+                    )
+                    if bool(dones.bool()[0].item()):
+                        if bool(successes.bool()[0].item()):
+                            trace_outcome = "success"
+                        else:
+                            trace_outcome = next(
+                                (
+                                    name
+                                    for name in failure_names
+                                    if bool(
+                                        term_values[name].bool()[0].item()
+                                    )
+                                ),
+                                "unclassified",
+                            )
+                        handover_dagger_terminal = {
+                            "complete": True,
+                            "outcome": trace_outcome,
+                            "terminal_frame_inclusive": frame_index,
+                            "frame_count": len(handover_dagger_rewards),
+                            "termination_flags": {
+                                name: bool(
+                                    value.bool()[0].item()
+                                )
+                                for name, value in term_values.items()
+                            },
+                        }
                 unassigned_failures = dones & ~successes
                 for name in failure_names:
                     assigned = unassigned_failures & term_values[name]
@@ -7736,6 +8459,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             }
                         )
                 policy.reset(dones)
+                if handover_dagger_oracle is not None:
+                    handover_dagger_oracle.reset(dones)
             rewards.append(float(reward.float().mean().item()))
             done_count += int(dones.sum().item())
             success_count += int(successes.sum().item())
@@ -10018,6 +10743,189 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     for name, mask in outcome_cohorts.items()
                 },
             }
+        handover_teacher_trace = None
+        if handover_teacher_trace_path is not None:
+            if (
+                handover_teacher_terminal is None
+                or handover_teacher_observations is None
+                or handover_teacher_actions is None
+                or handover_teacher_rewards is None
+                or handover_teacher_phases is None
+                or handover_teacher_safety_events is None
+            ):
+                return _fail(
+                    "teacher trace did not reach a terminal first episode"
+                )
+            observations_tensor = torch.stack(
+                handover_teacher_observations
+            ).float()
+            actions_tensor = torch.stack(handover_teacher_actions).float()
+            rewards_tensor = torch.stack(handover_teacher_rewards).float()
+            phases_tensor = torch.stack(handover_teacher_phases).long()
+            safety_events_tensor = torch.stack(
+                handover_teacher_safety_events
+            ).bool()
+            frame_count = int(observations_tensor.shape[0])
+            if not all(
+                tensor.shape[0] == frame_count
+                for tensor in (
+                    actions_tensor,
+                    rewards_tensor,
+                    phases_tensor,
+                    safety_events_tensor,
+                )
+            ):
+                return _fail("teacher trace tensors have inconsistent lengths")
+            trace_payload = {
+                "schema_version": HANDOVER_TEACHER_TRACE_SCHEMA,
+                "role": args.handover_teacher_role,
+                "teacher_kind": args.handover_teacher_kind,
+                "teacher_receipt": handover_teacher_receipt,
+                "teacher_action_schedule": (
+                    handover_teacher_action_schedule
+                ),
+                "pair_id": args.handover_teacher_pair_id,
+                "task": args.task,
+                "seed": args.seed,
+                "num_envs": env.unwrapped.num_envs,
+                "frames_requested": args.num_frames,
+                "episode_length_s": float(env_cfg.episode_length_s),
+                "reset_rotation_randomization_deg": (
+                    args.recovery_demo_rotation_deg
+                ),
+                "observation_dim": int(observations_tensor.shape[-1]),
+                "action_dim": int(actions_tensor.shape[-1]),
+                "observations": observations_tensor,
+                "actions": actions_tensor,
+                "rewards": rewards_tensor,
+                "phases": phases_tensor,
+                "safety_term_names": list(HANDOVER_SAFETY_TERMS),
+                "safety_events": safety_events_tensor,
+                "terminal": {
+                    **handover_teacher_terminal,
+                    "maximum_phase": int(phases_tensor.max().item()),
+                },
+                "policy": handover_teacher_policy,
+                "runtime": _runtime_evidence(repo_root),
+            }
+            try:
+                _write_immutable_torch_artifact(
+                    handover_teacher_trace_path,
+                    trace_payload,
+                )
+            except (OSError, ValueError) as error:
+                return _fail(str(error))
+            handover_teacher_trace = {
+                "path": str(handover_teacher_trace_path),
+                "sha256": _sha256(handover_teacher_trace_path),
+                "frame_count": frame_count,
+                "outcome": handover_teacher_terminal["outcome"],
+            }
+        handover_dagger_trace = None
+        if handover_dagger_trace_path is not None:
+            if (
+                handover_dagger_terminal is None
+                or handover_dagger_observations is None
+                or handover_dagger_student_actions is None
+                or handover_dagger_oracle_actions is None
+                or handover_dagger_executed_actions is None
+                or handover_dagger_rewards is None
+                or handover_dagger_phases is None
+                or handover_dagger_safety_events is None
+                or handover_successor_checkpoint is None
+            ):
+                return _fail(
+                    "DAgger trace did not reach a terminal first episode"
+                )
+            observations_tensor = torch.stack(
+                handover_dagger_observations
+            ).float()
+            student_actions_tensor = torch.stack(
+                handover_dagger_student_actions
+            ).float()
+            oracle_actions_tensor = torch.stack(
+                handover_dagger_oracle_actions
+            ).float()
+            executed_actions_tensor = torch.stack(
+                handover_dagger_executed_actions
+            ).float()
+            rewards_tensor = torch.stack(handover_dagger_rewards).float()
+            phases_tensor = torch.stack(handover_dagger_phases).long()
+            safety_events_tensor = torch.stack(
+                handover_dagger_safety_events
+            ).bool()
+            frame_count = int(observations_tensor.shape[0])
+            if not all(
+                tensor.shape[0] == frame_count
+                for tensor in (
+                    student_actions_tensor,
+                    oracle_actions_tensor,
+                    executed_actions_tensor,
+                    rewards_tensor,
+                    phases_tensor,
+                    safety_events_tensor,
+                )
+            ):
+                return _fail("DAgger trace tensors have inconsistent lengths")
+            oracle_configuration = {
+                key: value
+                for key, value in handover_teacher_policy.items()
+                if key != "successor_checkpoint_sha256"
+            }
+            trace_payload = {
+                "schema_version": HANDOVER_DAGGER_TRACE_SCHEMA,
+                "pair_id": args.handover_dagger_pair_id,
+                "task": args.task,
+                "seed": args.seed,
+                "num_envs": env.unwrapped.num_envs,
+                "frames_requested": args.num_frames,
+                "episode_length_s": float(env_cfg.episode_length_s),
+                "reset_rotation_randomization_deg": (
+                    args.recovery_demo_rotation_deg
+                ),
+                "oracle_beta": args.handover_dagger_oracle_beta,
+                "observation_dim": int(observations_tensor.shape[-1]),
+                "action_dim": int(oracle_actions_tensor.shape[-1]),
+                "observations": observations_tensor,
+                "student_actions": student_actions_tensor,
+                "oracle_actions": oracle_actions_tensor,
+                "executed_actions": executed_actions_tensor,
+                "rewards": rewards_tensor,
+                "phases": phases_tensor,
+                "safety_term_names": list(HANDOVER_SAFETY_TERMS),
+                "safety_events": safety_events_tensor,
+                "terminal": {
+                    **handover_dagger_terminal,
+                    "maximum_phase": int(phases_tensor.max().item()),
+                },
+                "policy": {
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "successor_checkpoint_sha256": _sha256(
+                        handover_successor_checkpoint
+                    ),
+                    "oracle_kind": "frozen_promoted_composite",
+                    "oracle_configuration": oracle_configuration,
+                    "mixture": (
+                        "oracle_beta_times_oracle_plus_"
+                        "one_minus_beta_times_student"
+                    ),
+                },
+                "runtime": _runtime_evidence(repo_root),
+            }
+            try:
+                _write_immutable_torch_artifact(
+                    handover_dagger_trace_path,
+                    trace_payload,
+                )
+            except (OSError, ValueError) as error:
+                return _fail(str(error))
+            handover_dagger_trace = {
+                "path": str(handover_dagger_trace_path),
+                "sha256": _sha256(handover_dagger_trace_path),
+                "frame_count": frame_count,
+                "outcome": handover_dagger_terminal["outcome"],
+                "oracle_beta": args.handover_dagger_oracle_beta,
+            }
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -10119,6 +11027,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "single_environment_episode_trace": (
                 single_environment_episode_trace
             ),
+            "handover_teacher_trace": handover_teacher_trace,
+            "handover_dagger_trace": handover_dagger_trace,
             "video_capture": (
                 {
                     "resolution": [args.video_width, args.video_height],
@@ -10154,6 +11064,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "path": str(checkpoint),
                 "sha256": _sha256(checkpoint),
             },
+            "handover_successor": (
+                {
+                    "enabled": True,
+                    "path": str(handover_successor_checkpoint),
+                    "sha256": _sha256(handover_successor_checkpoint),
+                    "schema_version": handover_successor_payload[
+                        "schema_version"
+                    ],
+                    "deployment_status": handover_successor_payload[
+                        "deployment_status"
+                    ],
+                    "runtime_heuristic_stack": False,
+                }
+                if handover_successor_checkpoint is not None
+                and handover_successor_payload is not None
+                else {"enabled": False}
+            ),
             "policy_residual_scale": (
                 float(policy_model.residual_scale)
                 if hasattr(policy_model, "residual_scale")
@@ -11138,6 +12065,43 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--video_height", type=int, default=720)
     play.add_argument("--video_folder")
     play.add_argument("--stop_after_first_episode", action="store_true")
+    play.add_argument(
+        "--handover_successor_checkpoint",
+        help="evaluate one compact full-action successor without recovery stacking",
+    )
+    play.add_argument(
+        "--handover_dagger_trace",
+        help=(
+            "immutable on-policy trajectory labeled by the frozen promoted "
+            "handover oracle"
+        ),
+    )
+    play.add_argument("--handover_dagger_pair_id")
+    play.add_argument(
+        "--handover_dagger_oracle_beta",
+        type=float,
+        default=0.9,
+        help="oracle fraction in the executed DAgger action mixture",
+    )
+    play.add_argument(
+        "--handover_teacher_trace",
+        help="immutable .pt path for one isolated first-episode trajectory",
+    )
+    play.add_argument("--handover_teacher_pair_id")
+    play.add_argument(
+        "--handover_teacher_role",
+        choices=("control", "teacher"),
+    )
+    play.add_argument(
+        "--handover_teacher_kind",
+        choices=(
+            "frozen_baseline",
+            "constrained_trajectory_optimizer",
+            "clinician_teleoperation",
+        ),
+    )
+    play.add_argument("--handover_teacher_receipt")
+    play.add_argument("--handover_teacher_action_schedule")
     play.add_argument(
         "--recovery_demo_rotation_deg",
         type=float,

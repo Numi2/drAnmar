@@ -12,7 +12,7 @@ robot learning, and patient-effect evaluation.**
 
 <p align="center">
   <a href="https://github.com/Numi2/dr-assets">
-    <img src="https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/hero-autonomous-rescue-or.png"
+    <img src="https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/hero-autonomous-rescue-or.png"
          width="100%"
          alt="Dr.Anmar Autonomous Rescue OR with patient, intervention stations, robot workcells, resuscitation, and physiological monitoring">
   </a>
@@ -76,17 +76,17 @@ controller/task contracts, and a named evidence boundary.
 
 | Oncologic resection | SafePlane dissection |
 | --- | --- |
-| [![Three-arm oncologic resection cell](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/oncologic-resection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalOncology/OncoSurgeryCell) | [![Exploded SafePlane dissection mechanism](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/safeplane-dissection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalDissection/SafePlaneDissectionRobot) |
+| [![Three-arm oncologic resection cell](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/oncologic-resection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalOncology/OncoSurgeryCell) | [![Exploded SafePlane dissection mechanism](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/safeplane-dissection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalDissection/SafePlaneDissectionRobot) |
 | Three coordinated stations for sensing, resection, margin assessment, and specimen handling. | Interchangeable traction, hydro, blunt, scissors, energy, and sensing components. |
 
 | Adaptive hemostasis | Adaptive anastomosis |
 | --- | --- |
-| [![Adaptive hemostasis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/adaptive-hemostasis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot) | [![Adaptive anastomosis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/adaptive-anastomosis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot) |
+| [![Adaptive hemostasis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/adaptive-hemostasis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot) | [![Adaptive anastomosis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/adaptive-anastomosis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot) |
 | Compression, clip, patch, suction, irrigation, and verification modes. | Alignment, approximation, staple formation, reinforcement, leak test, and patency. |
 
 | Perfusion viability | Dynamic abdominal patient |
 | --- | --- |
-| [![Multimodal perfusion assessment instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/perfusion-viability.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalAssessment/PerfusionViabilityRobot) | [![Dynamic abdominal patient](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/dynamic-abdominal-patient.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/Patients/DynamicAbdominalPatient) |
+| [![Multimodal perfusion assessment instrument](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/perfusion-viability.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalAssessment/PerfusionViabilityRobot) | [![Dynamic abdominal patient](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/dynamic-abdominal-patient.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/Patients/DynamicAbdominalPatient) |
 | Registered multimodal sensing with explicit validity and abstention behavior. | Layered abdominal access, organs, pathology, respiration, wound margins, and physiology. |
 
 Robotic motion media belongs beside the exact replay that produced it. The
@@ -102,7 +102,7 @@ attachment and integrity.
 
 | Uncontrolled vessel | Temporary compression | Retained repair |
 | --- | --- | --- |
-| ![Uncontrolled vessel](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-bleeding.png) | ![Compressed vessel](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-compressed.png) | ![Retained vessel repair](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-repaired.png) |
+| ![Uncontrolled vessel](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/effect-vessel-bleeding.png) | ![Compressed vessel](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/effect-vessel-compressed.png) | ![Retained vessel repair](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/effect-vessel-repaired.png) |
 | Flow and blood loss remain active. | Benefit expires when bilateral contact disappears. | Benefit persists only while repair attachment and integrity remain valid. |
 
 ```mermaid
@@ -160,11 +160,12 @@ space, and train/validation masks are assigned at complete-episode boundaries.
 
 ## DrAnmar Learning Path
 
-The reinforcement-learning path now starts with one measurable PSM pose-control
-skill and promotes policies through dual-tool coordination, contact-qualified
-lift, and physical handover. It uses stable `DrAnmar-*` task IDs, current
-RSL-RL actor/critic configuration, GPU-native scene cloning, success-based early
-stopping, live RAM/VRAM fitting, and typed benchmark evidence.
+The reinforcement-learning path starts with measurable PSM pose control and
+promotes policies through dual-tool coordination, contact-qualified lift, and
+physical handover. The current handover incumbent is a frozen 98-observation,
+14-action actor composed with a fixed pickup correction and a learned receiver
+candidate-value head. It uses stable `DrAnmar-*` task IDs, GPU-native scene
+cloning, seeded evaluation, live RAM/VRAM fitting, and typed benchmark evidence.
 
 ```bash
 ./dr_anmar_learning.sh validate
@@ -173,6 +174,7 @@ stopping, live RAM/VRAM fitting, and typed benchmark evidence.
 ./dr_anmar_learning.sh tqta-start
 ./dr_anmar_learning.sh train
 ./dr_anmar_learning.sh tqta-report
+./dr_anmar_learning.sh promoted-handover 1200 2000
 ```
 
 See the complete [DrAnmar Learning Path](docs/DRANMAR_LEARNING_PATH.md) for task
@@ -207,43 +209,130 @@ a calibrated sustained closed-jaw geometry fallback before receiver-pose
 coupling. These are simulator-engineering results only; they are not
 biomechanical, clinical, or autonomous-surgery validation.
 
-### Current needle-handover learning status
+### Champion needle pickup and handover
 
-The frozen simulation incumbent completed 1,292 of 1,800 development episodes
-(`71.78%`). That result was explicitly accepted as the current research
-baseline; it did not pass the original 80% target and is not a qualification
-claim.
+<p align="center">
+  <img src="docs/media/dranmar-champion-needle-pickup-handover.gif"
+       width="600"
+       alt="Dr.Anmar champion policy picking up a curved needle and handing it from one PSM instrument to the other in Isaac Sim and PhysX">
+</p>
 
-The strongest new neural checkpoint is a **risk critic**, not a motion policy.
-Its cross-fitted ROC AUC is `0.7913`, and the highest-risk 20% of states contain
-`58.56%` of observed failures. It is useful for finding hard receiver-custody
-states and prioritizing counterfactual data collection. It is not authorized to
-choose, scale, or gate robot motion.
+<p align="center">
+  <em>One complete successful rollout from the frozen simulation champion:
+  needle pickup, lift, presentation, receiver acquisition, giver release, and
+  retained handover.</em>
+</p>
 
-One-decision residual PPO, risk-guided residual PPO, retry interventions, and a
-receiver-only closed-loop PPO update all failed their predeclared development
-gates. They remain reproducible negative results; none replaced the incumbent.
+This is the real promoted composite running the
+`DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0` task, not an authored animation.
+The showcase was recorded on an NVIDIA RTX 4090 with seed `104729`; the episode
+terminated in success after 746 control frames with no drop, premature release,
+retention-loss, excessive-force, or protected-surface termination. The
+[showcase evidence](docs/handover_recovery_80/champion_seed104729_showcase_evidence.json)
+records the source revision, runtime, checkpoint hashes, controller settings,
+episode trace, and terminal counts.
 
-The counterfactual trajectory stage is now complete. Repeating the same
-environment indices in separate Isaac processes reproduced all prebranch
-tensors and no-op terminal outcomes exactly; treating neighboring vectorized
-PhysX clones as independent counterfactuals did not. The surviving uniform
-receiver-translation candidate, scale `0.6`, was then rejected on its first
-prespecified seed: among 196 activated episodes it changed 93 control
-successes to 87, produced 23 wins versus 29 losses, and added four receiver
-safety failures. No behavior-cloning or PPO update was started from those
-labels.
+The champion is deliberately a provenance-locked **hybrid policy**, not a
+claim that one end-to-end neural network learned the full handover:
 
-The incumbent therefore remains frozen. The next learning stage is independent
-teacher supervision at the acquisition-to-retention boundary: use the risk
-critic to allocate collection, obtain better actions from constrained
-trajectory optimization or clinician teleoperation in isolated
-single-environment executions, and train one compact phase-conditioned policy
-only from verified safe wins. The hand-authored recovery composition is a
-regression baseline, not part of the successor architecture. See the
-[attempt-learning report](docs/handover_recovery_80/attempt_policy_learning_report.json)
-for checkpoint hashes, evidence paths, and stop decisions.
+| Component | Role in the rollout |
+| --- | --- |
+| Frozen base actor | An analytic phase controller produces the physical sequence, while a residual MLP consumes the 98-value handover observation and adds bounded corrections to the resulting 14-D dual-PSM action. The immutable checkpoint is identified by SHA-256 in the [promotion lock](docs/handover_recovery_80/promoted_policy.lock.json). |
+| Pickup correction | A fixed post-reset pose correction, capped at `1.875 mm` translation and `1.5 deg` orientation, preserves the strongest verified needle-pickup behavior. |
+| Receiver value head | A learned candidate-value model ranks the receiver's first acquisition correction. The selected correction is locally refined within `1.0 mm` and `1.0 deg`, with final caps of `2.5 mm` and `2.0 deg`. |
+| Runtime bounds | Receiver retries, retention servo, and giver stabilization are disabled in the promoted configuration, so the displayed success is one bounded pickup-and-transfer attempt. |
+| Physics authority | Isaac Sim and PhysX contacts own custody, drops, force failures, release validity, retention, and the final success terminal; the policy cannot write its own outcome. |
 
+Across the locked development cohort, the composite succeeded in **1,292 of
+1,800 episodes (71.78%)**. Needle lift reached **98.94%**; receiver acquisition
+given lift reached **80.40%**; retention after acquisition reached **90.22%**.
+The owner accepted it as the current simulation champion while explicitly
+overriding the original 80% target. It remains a research baseline, not a
+qualification claim.
+
+### Current handover learning frontier
+
+The promoted handover actor and the new custody-risk model solve different
+problems and are meant to compose, not replace one another:
+
+| Artifact | Output | Current evidence-backed status |
+| --- | --- | --- |
+| [Promoted handover actor](docs/handover_recovery_80/promoted_policy.lock.json) | Robot motion | **1,292 / 1,800** development successes (**71.78%**). This is the owner-promoted simulation incumbent; the original 80% development goal was explicitly overridden and no qualification claim is made. |
+| One-decision receiver residual | Bounded motion correction | Not promoted. Its best held-out result was **+3 / 3,600** in aggregate while one seed regressed by 12; a fresh-stream update also lost to the incumbent on development seeds. |
+| Calibrated active-custody risk model | Failure probability | Preserved as the leading risk model. Across three left-out physics seeds, AUC was **0.704–0.776** and nested cross-fitted Brier score improved to **0.07455** from a **0.08063** base-rate reference. |
+| Counterfactual receiver trajectory | Bounded receiver XYZ scaling | Not promoted. Exact no-op replay passed, but uniform scale `0.6` reduced the activated cohort from **93 to 87** successes and added **4** receiver safety failures on the first prespecified seed. |
+| [Recurrent hybrid full-action successor](docs/handover_successor/learning_report_31b7339.json) | Complete 14-D dual-arm action | Candidate only; not promoted. The final source-locked checkpoint learned from **8** exact incumbent episodes plus **8** exact safe DAgger episodes across two rounds. It combines GRU episode memory, binary gripper decisions, and learned negative-limit / precision / positive-limit motion modes, but its first network-only replay still ended in phase 0 with `protected_surface_force`. The 71.78% incumbent therefore remains unchanged. |
+
+The actor still moves the robot. The risk model observes the one-frame
+active-custody transition and estimates whether retention is likely to fail; it
+does not emit actions and has no release or motion authority.
+
+The causal trajectory screen is complete. Separate same-index Isaac processes
+reproduced prebranch tensors and no-op terminal outcomes exactly, while
+neighboring vectorized PhysX clones did not remain isolated after an
+intervention. The only surviving speed candidate was negative, so no
+behavior-cloning or PPO update was started from it and the promoted actor
+remains unchanged.
+
+The next learning stage is executable through
+[`dr_anmar_handover_successor.py`](scripts/dr_anmar_handover_successor.py).
+Bit-identical safe successes from the frozen incumbent can be admitted as
+distillation demonstrations, which is how the hand-authored runtime is replaced
+by one network without treating failed incumbent actions as expertise. Offline
+action error is not a promotion metric: the first eight-episode clone failed
+closed loop despite low held-out error. Two prespecified DAgger rounds then used
+an oracle fraction of `0.9`. In each round, exactly four of eight screened seeds
+produced safe terminal successes and were admitted; all retention, drop, or
+force failures were quarantined. The candidate visits states under the
+oracle/student mixture, while the frozen promoted composite supplies labels for
+every visited state. A trajectory enters training only when two
+single-environment replays are bit-identical, end in success, contain no safety
+event, preserve source and checkpoint hashes, and cover all four
+action-bearing phases.
+
+The custody-risk model only allocates independent collection for failure states.
+Better-than-incumbent actions there must still come from constrained trajectory
+optimization or clinician teleoperation, then beat two bit-identical no-op
+controls without any safety event. Accepted offline successes, accepted DAgger
+episodes, and independently verified rescues train one compact
+phase-conditioned recurrent network that emits the full 14-D action. Episode
+order is preserved during training because grasp and release boundaries depend
+on history that is not fully represented by one observation. Grippers are
+binary decisions; each motion channel separately classifies negative
+saturation, precision control, or positive saturation before emitting its
+continuous precision value. This prevents regression from averaging a
+safety-critical limit command with the following fine-control command.
+Episode-level splitting prevents frame leakage, qualification seeds are
+forbidden from training, and every checkpoint is candidate-only until live
+seeded evaluation promotes it.
+
+Incumbent-only DAgger is now stopped. It reduced held-out action MAE but did not
+produce a safe autonomous phase-0 policy. The next useful information must be
+independent safe expert action in student-visited phase-0 states and in the
+quarantined retention failures, sourced from constrained trajectory
+optimization or clinician teleoperation with immutable receipts. More cloning
+of the incumbent would repeat its capability ceiling without resolving the
+closed-loop error.
+
+```text
+record exact incumbent success twice → admit offline distillation demonstration
+→ train candidate → record exact safe oracle-mixture replay twice
+→ admit on-policy DAgger labels → retrain
+or lock teacher proposal → record control/control/teacher → accept rescue
+→ train full-action successor → compare against the frozen incumbent
+```
+
+The hand-authored recovery composition remains sealed as the 71.78% regression
+baseline until a successor passes the live gate. It is the DAgger oracle during
+training only; none of its recovery wrappers are present in the successor
+runtime. It should be archived, not deleted, only after a learned checkpoint
+demonstrably replaces it.
+
+The new source-bound successor record, including every screened seed, admitted
+dataset hash, candidate hash, and final failed gate, is the
+[recurrent successor learning report](docs/handover_successor/learning_report_31b7339.json).
+The earlier receiver-policy calibration record remains in the
+[receiver policy learning report on the experiment branch](https://github.com/Numi2/drAnmar/blob/experiment/handover-attempt-rl/docs/handover_recovery_80/attempt_policy_learning_report.json).
 ## Doctor Studio
 
 Doctor Studio is the clinician-facing workspace for live simulation,
