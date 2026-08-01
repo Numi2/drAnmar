@@ -27,6 +27,13 @@ from ..contract import (
     puncture_success,
 )
 from ..backend import DrAnmarTissueEntryBackend, NeedlePose, create_tissue_entry_backend
+from ..through_backend import create_tissue_through_backend
+from ..through_contract import (
+    ThroughPunctureMeasurement,
+    ThroughPunctureThresholds,
+    advance_through_puncture_gate,
+    through_puncture_success,
+)
 from .events import (
     NEEDLE_MID_GRASP_POSITION_M,
     NEEDLE_POLICY_GRASP_QUAT_XYZW,
@@ -74,7 +81,14 @@ def _entry_target_w(env: ManagerBasedRLEnv) -> torch.Tensor:
 def _adapter(env: ManagerBasedRLEnv) -> DrAnmarTissueEntryBackend:
     adapter = getattr(env, "_dr_anmar_tissue_entry_backend", None)
     if adapter is None:
-        adapter = create_tissue_entry_backend(env.num_envs, integration_step_s=0.002)
+        if bool(getattr(env.cfg, "through_puncture", False)):
+            adapter = create_tissue_through_backend(
+                env.num_envs, integration_step_s=0.002
+            )
+        else:
+            adapter = create_tissue_entry_backend(
+                env.num_envs, integration_step_s=0.002
+            )
         env._dr_anmar_tissue_entry_backend = adapter
     return adapter
 
@@ -189,22 +203,32 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         device=env.device,
         dtype=root_pos.dtype,
     )
+    through_puncture = bool(state.get("through_puncture", False))
     thresholds = PunctureThresholds()
+    through_thresholds = ThroughPunctureThresholds()
     embedded_depth = torch.where(
         torch.tensor(punctured, device=env.device), gated_indentation,
         torch.zeros_like(gated_indentation),
     )
+    if through_puncture:
+        embedded_length = torch.tensor(
+            [item.embedded_arc_length_m for item in tissue_state],
+            device=env.device,
+            dtype=root_pos.dtype,
+        )
+    else:
+        embedded_length = embedded_depth
     component_rows: list[tuple[float, float, float, float, float]] = []
     for index in range(env.num_envs):
         components = needle_tissue_force_components(
             indentation_m=float(gated_indentation[index]),
-            embedded_length_m=float(embedded_depth[index]),
+            embedded_length_m=float(embedded_length[index]),
             puncture_force_n=float(state["puncture_force_n"][index]),
             prepuncture_depth_m=thresholds.prepuncture_depth_m,
             cutting_fraction=0.55,
             shaft_drag_n_per_m=float(state["shaft_drag_n_m"][index]),
             sweep_stiffness_n_m2=40_000.0,
-            swept_area_m2=0.00052 * float(embedded_depth[index]),
+            swept_area_m2=0.00052 * float(embedded_length[index]),
         )
         component_rows.append(
             (
@@ -216,6 +240,24 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             )
         )
     force_components = torch.tensor(component_rows, device=env.device, dtype=root_pos.dtype)
+    if through_puncture:
+        # Preserve the compression/cutting/sweep/shaft decomposition while
+        # keeping the complete passage inside the sampled force envelope.
+        # Soft tissue must not inherit a larger absolute shaft force merely
+        # because the authored needle remains embedded for more of the arc.
+        raw_normal = torch.abs(
+            torch.sum(raw_wrench[:, :3] * surface_normal, dim=-1)
+        )
+        available = torch.relu(1.20 * state["puncture_force_n"] - raw_normal)
+        component_scale = torch.minimum(
+            torch.ones_like(available),
+            available / force_components[:, 4].clamp_min(1.0e-9),
+        )
+        postpuncture = torch.tensor(punctured, device=env.device)
+        component_scale = torch.where(
+            postpuncture, component_scale, torch.ones_like(component_scale)
+        )
+        force_components = force_components * component_scale.unsqueeze(-1)
     wrench = raw_wrench.clone()
     wrench[:, :3] += surface_normal * force_components[:, 4].unsqueeze(-1)
     # Apply native deformation resistance and the explicit compression,
@@ -266,43 +308,120 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         & (torch.linalg.vector_norm(root_pos[:, :2] - target[:, :2], dim=-1) < 0.004)
     )
 
+    if through_puncture:
+        curvature_radius_m = 0.0070028174960433945
+        tissue_thickness_m = 0.006
+        exit_angle = torch.asin(
+            torch.tensor(tissue_thickness_m / curvature_radius_m, device=env.device)
+        )
+        exit_chord_m = curvature_radius_m * (1.0 - torch.cos(exit_angle))
+        drive_direction = torch.linalg.cross(wound_tangent, -surface_normal)
+        exit_target = (
+            target
+            + drive_direction * exit_chord_m
+            - surface_normal * tissue_thickness_m
+        )
+        exit_position = tissue_center + torch.tensor(
+            [item.exit_position_m for item in tissue_state],
+            device=env.device,
+            dtype=root_pos.dtype,
+        )
+        exit_error = torch.linalg.vector_norm(
+            (exit_position - exit_target)[:, :2], dim=-1
+        )
+        embedded_arc_length = embedded_length
+        exposed_arc_length = torch.tensor(
+            [item.exposed_arc_length_m for item in tissue_state],
+            device=env.device,
+            dtype=root_pos.dtype,
+        )
+        exposed_fraction = torch.tensor(
+            [item.exposed_fraction for item in tissue_state],
+            device=env.device,
+            dtype=root_pos.dtype,
+        )
+        exit_event_count = torch.tensor(
+            [item.exit_event_count for item in tissue_state],
+            device=env.device,
+            dtype=torch.long,
+        )
+    else:
+        exit_target = target.clone()
+        exit_position = target.clone()
+        exit_error = torch.zeros(env.num_envs, device=env.device)
+        embedded_arc_length = embedded_depth
+        exposed_arc_length = torch.zeros(env.num_envs, device=env.device)
+        exposed_fraction = torch.zeros(env.num_envs, device=env.device)
+        exit_event_count = torch.zeros(
+            env.num_envs, dtype=torch.long, device=env.device
+        )
+
     successes: list[bool] = []
     for index, gate in enumerate(state["gates"]):
-        measurement = PunctureMeasurement(
-            entry_error_m=float(entry_error[index]),
-            tangent_error_deg=float(tangent_error[index]),
-            plane_error_deg=float(plane_error[index]),
-            indentation_m=float(gated_indentation[index]),
-            embedded_depth_m=float(embedded_depth[index]),
-            normal_force_n=float(normal_force[index]),
-            accumulated_work_j=float(accumulated_work[index]),
-            bilateral_custody=bool(effective_custody[index]),
-            target_region_valid=bool(target_region[index]),
-            tissue_contact=bool(tissue_contact[index]),
-            solver_finite=bool(torch.isfinite(wrench[index]).all()),
-            unintended_jaw_contact=bool(unintended_jaw[index]),
-            unintended_surface_crossing=bool(
-                not punctured[index] and gated_indentation[index] > thresholds.depth_max_m
+        common = {
+            "entry_error_m": float(entry_error[index]),
+            "tangent_error_deg": float(tangent_error[index]),
+            "plane_error_deg": float(plane_error[index]),
+            "indentation_m": float(gated_indentation[index]),
+            "normal_force_n": float(normal_force[index]),
+            "accumulated_work_j": float(accumulated_work[index]),
+            "bilateral_custody": bool(effective_custody[index]),
+            "target_region_valid": bool(target_region[index]),
+            "tissue_contact": bool(tissue_contact[index]),
+            "solver_finite": bool(torch.isfinite(wrench[index]).all()),
+            "unintended_jaw_contact": bool(unintended_jaw[index]),
+            "unintended_surface_crossing": bool(
+                not punctured[index]
+                and gated_indentation[index] > thresholds.depth_max_m
             ),
-        )
+        }
+        if through_puncture:
+            measurement = ThroughPunctureMeasurement(
+                **common,
+                exit_error_m=float(exit_error[index]),
+                embedded_arc_length_m=float(embedded_arc_length[index]),
+                exposed_arc_length_m=float(exposed_arc_length[index]),
+                exposed_fraction=float(exposed_fraction[index]),
+                backend_exit_count=int(exit_event_count[index]),
+            )
+        else:
+            measurement = PunctureMeasurement(
+                **common,
+                embedded_depth_m=float(embedded_depth[index]),
+            )
         # Reset seating can briefly pass geometric thresholds while the jaws
         # and fixed grasp converge. It must never advance the authoritative
         # procedure state before settled bilateral custody is evaluated.
         if bool(settled[index]):
-            advance_puncture_gate(
-                gate,
-                measurement,
-                puncture_force_n=float(state["puncture_force_n"][index]),
-                thresholds=thresholds,
-            )
-        successes.append(
-            bool(settled[index])
-            and puncture_success(gate, measurement, thresholds)
-            and tissue_state[index].representation_switch_count == 1
-        )
+            if through_puncture:
+                advance_through_puncture_gate(
+                    gate,
+                    measurement,
+                    puncture_force_n=float(state["puncture_force_n"][index]),
+                    thresholds=through_thresholds,
+                )
+            else:
+                advance_puncture_gate(
+                    gate,
+                    measurement,
+                    puncture_force_n=float(state["puncture_force_n"][index]),
+                    thresholds=thresholds,
+                )
+        qualified_representation = tissue_state[index].representation_switch_count == 1
+        if through_puncture:
+            success = through_puncture_success(gate, measurement, through_thresholds)
+        else:
+            success = puncture_success(gate, measurement, thresholds)
+        successes.append(bool(settled[index]) and success and qualified_representation)
 
     phase = torch.tensor([int(gate.phase) for gate in state["gates"]], device=env.device)
-    event_count = torch.tensor([gate.event_count for gate in state["gates"]], device=env.device)
+    event_count = torch.tensor(
+        [
+            gate.entry_event_count if through_puncture else gate.event_count
+            for gate in state["gates"]
+        ],
+        device=env.device,
+    )
     hard_failure = torch.tensor([gate.failed for gate in state["gates"]], device=env.device)
     state.update(
         {
@@ -313,6 +432,12 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 "plane_error": plane_error,
                 "indentation": gated_indentation,
                 "embedded_depth": embedded_depth,
+                "embedded_arc_length": embedded_arc_length,
+                "exposed_arc_length": exposed_arc_length,
+                "exposed_fraction": exposed_fraction,
+                "exit_error": exit_error,
+                "exit_target": exit_target,
+                "exit_position": exit_position,
                 "target": target,
                 "surface_normal": surface_normal,
                 "tip_pos": tip_pos,
@@ -347,6 +472,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "grasp_angle_error_deg": grasp_angle_error_deg,
             "phase": phase,
             "event_count": event_count,
+            "exit_event_count": exit_event_count,
             "hard_failure": hard_failure,
             "success": torch.tensor(successes, device=env.device),
         }

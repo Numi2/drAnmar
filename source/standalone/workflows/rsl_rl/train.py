@@ -44,7 +44,11 @@ args_cli = parser.parse_args()
 
 
 def _require_tissue_entry_gate() -> None:
-    if args_cli.task != "DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-v0":
+    gated_tasks = {
+        "DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-v0",
+        "DrAnmar-Through-Puncture-Tissue-Needle-PSM-IK-Rel-v0",
+    }
+    if args_cli.task not in gated_tasks:
         return
     repository_root = Path(__file__).resolve().parents[4]
     receipt_path = args_cli.analytical_gate or (

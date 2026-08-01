@@ -3,9 +3,17 @@
 
 from isaaclab.utils.configclass import configclass
 
-from orbit.surgical.tasks.surgical.learning_cfg import DrAnmarPenetrationPPORunnerCfg
+from orbit.surgical.tasks.surgical.learning_cfg import (
+    DrAnmarPenetrationPPORunnerCfg,
+    DrAnmarThroughPuncturePPORunnerCfg,
+)
 
 
 @configclass
 class PenetrationNeedlePPORunnerCfg(DrAnmarPenetrationPPORunnerCfg):
+    pass
+
+
+@configclass
+class ThroughPunctureNeedlePPORunnerCfg(DrAnmarThroughPuncturePPORunnerCfg):
     pass

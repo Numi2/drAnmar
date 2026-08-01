@@ -87,6 +87,31 @@ def penetration_phase(env: ManagerBasedRLEnv) -> torch.Tensor:
     return functional.one_hot(penetration_state(env)["phase"], num_classes=5).float()
 
 
+def through_puncture_phase(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return functional.one_hot(penetration_state(env)["phase"], num_classes=7).float()
+
+
+def through_puncture_progress(env: ManagerBasedRLEnv) -> torch.Tensor:
+    measurement = penetration_state(env)["measurement"]
+    return torch.stack(
+        (
+            measurement["embedded_arc_length"],
+            measurement["exposed_fraction"],
+            measurement["exit_error"],
+        ),
+        dim=-1,
+    )
+
+
+def through_exit_delta(env: ManagerBasedRLEnv) -> torch.Tensor:
+    state = penetration_state(env)["measurement"]
+    delta_w = state["exit_target"] - state["exit_position"]
+    robot_quat = mdp_common.as_torch(env.scene["robot"].data.root_quat_w)
+    from isaaclab.utils.math import quat_apply_inverse
+
+    return quat_apply_inverse(robot_quat, delta_w)
+
+
 def privileged_puncture_state(env: ManagerBasedRLEnv) -> torch.Tensor:
     state = penetration_state(env)
     scalar_state = torch.stack(
@@ -105,5 +130,20 @@ def privileged_puncture_state(env: ManagerBasedRLEnv) -> torch.Tensor:
     exact_surface_displacement = state["tissue_surface_displacement"].unsqueeze(-1)
     return torch.cat(
         (scalar_state, state["force_components"], local_strain, exact_surface_displacement),
+        dim=-1,
+    )
+
+
+def privileged_through_puncture_state(env: ManagerBasedRLEnv) -> torch.Tensor:
+    state = penetration_state(env)
+    return torch.cat(
+        (
+            privileged_puncture_state(env),
+            state["measurement"]["embedded_arc_length"].unsqueeze(-1),
+            state["measurement"]["exposed_arc_length"].unsqueeze(-1),
+            state["measurement"]["exposed_fraction"].unsqueeze(-1),
+            state["measurement"]["exit_error"].unsqueeze(-1),
+            state["exit_event_count"].float().unsqueeze(-1),
+        ),
         dim=-1,
     )

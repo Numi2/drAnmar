@@ -1,0 +1,38 @@
+{
+  "schema": "dr.anmar.needle-through-puncture-benchmark.v1",
+  "task": "DrAnmar-Through-Puncture-Tissue-Needle-PSM-IK-Rel-v0",
+  "scope": "single_curved_needle_entry_exit_and_grippable_exposure",
+  "engineering_acceptance": {
+    "entry_event_count": 1,
+    "exit_event_count": 1,
+    "entry_error_m_max": 0.001,
+    "exit_error_m_max": 0.001,
+    "entry_tangent_error_deg_max": 10.0,
+    "needle_plane_error_deg_max": 10.0,
+    "exposed_fraction_min": 0.2,
+    "exposed_fraction_max": 0.3,
+    "exposed_arc_length_m_min": 0.0044,
+    "presentation_control_steps": 10,
+    "normalized_peak_force_max": 1.25,
+    "hard_safety_failures": 0
+  },
+  "authoritative_phases": [
+    "approach",
+    "align",
+    "indent",
+    "puncture",
+    "drive",
+    "exit",
+    "present"
+  ],
+  "excluded": [
+    "persistent_tract",
+    "thread_passage",
+    "tissue_cutting_or_topology_change",
+    "second_psm_pullout",
+    "needle_regrasp_from_exposed_segment",
+    "clinical_or_biomechanical_validation"
+  ],
+  "evidence_level": "simulator_engineering_only",
+  "clinical_validation": false
+}

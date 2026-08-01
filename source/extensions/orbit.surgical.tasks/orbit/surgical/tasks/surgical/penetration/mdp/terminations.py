@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import torch
 
 from ..contract import PunctureReceipt
+from ..through_contract import ThroughPunctureReceipt
 from .state import penetration_state
 
 if TYPE_CHECKING:
@@ -54,6 +55,53 @@ def successful_entry(env: ManagerBasedRLEnv) -> torch.Tensor:
                 hard_failures=tuple(sorted(gate.hard_failures)),
             ).as_dict()
             | {"phase": int(gate.phase), "custody_valid": bool(state["custody_valid"][index])}
+            for index, gate in enumerate(state["gates"])
+        ]
+    return result
+
+
+def successful_through_puncture(env: ManagerBasedRLEnv) -> torch.Tensor:
+    state = penetration_state(env)
+    result = state["success"]
+    if torch.any(result):
+        env._dr_anmar_last_successful_through_puncture = [
+            ThroughPunctureReceipt(
+                schema="dr.anmar.tissue-through-puncture-receipt.v1",
+                success=True,
+                entry_event_count=gate.entry_event_count,
+                exit_event_count=gate.exit_event_count,
+                representation_switch_count=int(
+                    state["representation_switch_count"][index]
+                ),
+                entry_error_m=float(gate.entry_error_at_puncture_m),
+                exit_error_m=float(state["measurement"]["exit_error"][index]),
+                tangent_error_deg=float(gate.tangent_error_at_puncture_deg),
+                plane_error_deg=float(gate.plane_error_at_puncture_deg),
+                sampled_puncture_force_n=float(state["puncture_force_n"][index]),
+                peak_force_n=gate.peak_force_n,
+                accumulated_work_j=float(state["accumulated_work"][index]),
+                embedded_arc_length_m=float(
+                    state["measurement"]["embedded_arc_length"][index]
+                ),
+                exposed_arc_length_m=float(
+                    state["measurement"]["exposed_arc_length"][index]
+                ),
+                exposed_fraction=float(
+                    state["measurement"]["exposed_fraction"][index]
+                ),
+                phase_sequence=tuple(gate.phase_sequence),
+                backend_revision=state["backend_metadata"].revision,
+                backend_implementation_sha256=(
+                    state["backend_metadata"].implementation_sha256
+                ),
+                hard_failures=tuple(sorted(gate.hard_failures)),
+            ).as_dict()
+            | {
+                "phase": int(gate.phase),
+                "custody_valid": bool(state["custody_valid"][index]),
+            }
+            if bool(result[index])
+            else {"success": False}
             for index, gate in enumerate(state["gates"])
         ]
     return result

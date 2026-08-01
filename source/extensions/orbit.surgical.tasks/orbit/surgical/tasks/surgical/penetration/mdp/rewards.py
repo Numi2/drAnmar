@@ -37,6 +37,18 @@ def successful_entry(env: ManagerBasedRLEnv) -> torch.Tensor:
     return penetration_state(env)["success"].float()
 
 
+def bounded_exit_progress(env: ManagerBasedRLEnv) -> torch.Tensor:
+    state = penetration_state(env)
+    exposure = state["measurement"]["exposed_fraction"]
+    previous = state.get("previous_exposed_fraction", exposure)
+    state["previous_exposed_fraction"] = exposure.clone()
+    return (previous.neg() + exposure).clamp(-0.02, 0.02)
+
+
+def successful_through_puncture(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return penetration_state(env)["success"].float()
+
+
 def normalized_force_overshoot(env: ManagerBasedRLEnv) -> torch.Tensor:
     state = penetration_state(env)
     normalized = state["normal_force"] / state["puncture_force_n"].clamp_min(1.0e-6)

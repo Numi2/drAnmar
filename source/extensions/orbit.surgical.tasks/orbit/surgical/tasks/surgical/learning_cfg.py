@@ -106,6 +106,17 @@ class DrAnmarPenetrationResidualModelCfg(RslRlRNNModelCfg):
     residual_scale: float = 0.25
 
 
+@configclass
+class DrAnmarThroughPunctureResidualModelCfg(RslRlRNNModelCfg):
+    """Curvature-following GRU with a safety-masked residual head."""
+
+    class_name = (
+        "orbit.surgical.tasks.surgical.penetration.residual_model:"
+        "ThroughPunctureResidualGRUModel"
+    )
+    residual_scale: float = 0.20
+
+
 def _actor(hidden_dims: list[int], *, initial_std: float = 1.0) -> RslRlMLPModelCfg:
     return RslRlMLPModelCfg(
         hidden_dims=hidden_dims,
@@ -309,4 +320,24 @@ class DrAnmarPenetrationPPORunnerCfg(DrAnmarManipulationPPORunnerCfg):
         gamma=0.99,
         learning_epochs=5,
         mini_batches=4,
+    )
+
+
+@configclass
+class DrAnmarThroughPuncturePPORunnerCfg(DrAnmarPenetrationPPORunnerCfg):
+    """Residual PPO for one complete entry-to-grippable-exit passage."""
+
+    experiment_name = "dranmar_tissue_through_puncture"
+    actor = DrAnmarThroughPunctureResidualModelCfg(
+        hidden_dims=[128, 128],
+        activation="elu",
+        obs_normalization=True,
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(
+            init_std=0.01,
+            std_type="log",
+        ),
+        rnn_type="gru",
+        rnn_hidden_dim=128,
+        rnn_num_layers=1,
+        residual_scale=0.20,
     )

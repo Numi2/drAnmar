@@ -278,3 +278,52 @@ class PenetrationEnvCfg_PLAY(PenetrationEnvCfg):
         super().__post_init__()
         self.scene.num_envs = 1
         self.events.reset_evidence.params = {"fixed_domain": True}
+
+
+@configclass
+class ThroughPunctureObservationsCfg:
+    @configclass
+    class PolicyCfg(ObservationsCfg.PolicyCfg):
+        phase = ObsTerm(func=mdp.through_puncture_phase)
+        through_progress = ObsTerm(func=mdp.through_puncture_progress)
+        exit_delta = ObsTerm(func=mdp.through_exit_delta)
+
+    @configclass
+    class CriticCfg(PolicyCfg):
+        privileged_state = ObsTerm(func=mdp.privileged_through_puncture_state)
+
+    policy: PolicyCfg = PolicyCfg()
+    critic: CriticCfg = CriticCfg()
+
+
+@configclass
+class ThroughPunctureRewardsCfg(RewardsCfg):
+    exit_progress = RewTerm(func=mdp.bounded_exit_progress, weight=4.0)
+    success = RewTerm(func=mdp.successful_through_puncture, weight=30.0)
+
+
+@configclass
+class ThroughPunctureTerminationsCfg(TerminationsCfg):
+    success = DoneTerm(func=mdp.successful_through_puncture)
+
+
+@configclass
+class ThroughPunctureEnvCfg(PenetrationEnvCfg):
+    """Continue the qualified entry along the needle arc to a grippable exit."""
+
+    through_puncture: bool = True
+    observations: ThroughPunctureObservationsCfg = ThroughPunctureObservationsCfg()
+    rewards: ThroughPunctureRewardsCfg = ThroughPunctureRewardsCfg()
+    terminations: ThroughPunctureTerminationsCfg = ThroughPunctureTerminationsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.episode_length_s = 30.0
+
+
+@configclass
+class ThroughPunctureEnvCfg_PLAY(ThroughPunctureEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.num_envs = 1
+        self.events.reset_evidence.params = {"fixed_domain": True}

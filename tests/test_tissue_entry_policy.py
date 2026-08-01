@@ -4,6 +4,7 @@
 import importlib.util
 import json
 import sys
+import types
 from pathlib import Path
 
 
@@ -32,6 +33,33 @@ def _backend():
     sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _through_contract():
+    name = "dranmar_test_through_puncture_contract"
+    spec = importlib.util.spec_from_file_location(name, TASK_ROOT / "through_contract.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _through_backend():
+    package_name = "dranmar_test_through_backend_package"
+    package = types.ModuleType(package_name)
+    package.__path__ = [str(TASK_ROOT)]
+    sys.modules[package_name] = package
+    for module_name in ("backend", "through_backend"):
+        qualified_name = f"{package_name}.{module_name}"
+        spec = importlib.util.spec_from_file_location(
+            qualified_name, TASK_ROOT / f"{module_name}.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        sys.modules[qualified_name] = module
+        spec.loader.exec_module(module)
+    return sys.modules[f"{package_name}.through_backend"]
 
 
 def _measurement(module, **overrides):
@@ -353,3 +381,108 @@ def test_isolated_entry_evaluator_resets_recurrent_state_and_reports_physics():
     assert '"hard_safety_failures": hard_failures' in evaluation
     assert '"exactly_one_event_per_success"' in evaluation
     assert '"normalized_peak_force_mean"' in evaluation
+
+
+def test_through_puncture_requires_one_entry_one_exit_and_twenty_percent_exposure():
+    module = _through_contract()
+    thresholds = module.ThroughPunctureThresholds()
+    values = {
+        "entry_error_m": 0.0005,
+        "exit_error_m": 0.0005,
+        "tangent_error_deg": 5.0,
+        "plane_error_deg": 5.0,
+        "indentation_m": 0.0015,
+        "embedded_arc_length_m": 0.0,
+        "exposed_arc_length_m": 0.0,
+        "exposed_fraction": 0.0,
+        "normal_force_n": 2.0,
+        "accumulated_work_j": 0.001,
+        "bilateral_custody": True,
+        "target_region_valid": True,
+        "tissue_contact": True,
+    }
+    state = module.ThroughPunctureGateState(
+        phase=module.ThroughPuncturePhase.INDENT
+    )
+    module.advance_through_puncture_gate(
+        state, module.ThroughPunctureMeasurement(**values), puncture_force_n=2.0
+    )
+    assert state.entry_event_count == 1
+    assert state.phase == module.ThroughPuncturePhase.PUNCTURE
+    values["embedded_arc_length_m"] = 0.004
+    module.advance_through_puncture_gate(
+        state, module.ThroughPunctureMeasurement(**values), puncture_force_n=2.0
+    )
+    assert state.phase == module.ThroughPuncturePhase.DRIVE
+    values.update(
+        backend_exit_count=1,
+        exposed_arc_length_m=0.0002,
+        exposed_fraction=0.01,
+    )
+    module.advance_through_puncture_gate(
+        state, module.ThroughPunctureMeasurement(**values), puncture_force_n=2.0
+    )
+    assert state.exit_event_count == 1
+    assert state.phase == module.ThroughPuncturePhase.EXIT
+    values.update(exposed_arc_length_m=0.0045, exposed_fraction=0.205)
+    measurement = module.ThroughPunctureMeasurement(**values)
+    module.advance_through_puncture_gate(state, measurement, puncture_force_n=2.0)
+    for _ in range(thresholds.presentation_steps - 1):
+        module.advance_through_puncture_gate(state, measurement, puncture_force_n=2.0)
+    assert module.through_puncture_success(state, measurement, thresholds)
+
+
+def test_through_puncture_backend_and_task_are_distinct_from_qualified_entry():
+    backend = (TASK_ROOT / "through_backend.py").read_text(encoding="utf-8")
+    registration = (TASK_ROOT / "config/needle/__init__.py").read_text(
+        encoding="utf-8"
+    )
+    controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
+    assert 'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v1"' in backend
+    assert "through_sample_count = 129" in backend
+    assert "exit_event_count" in backend
+    assert "DrAnmar-Through-Puncture-Tissue-Needle-PSM-IK-Rel-v0" in registration
+    assert "class ThroughPunctureAnalyticController" in controller
+    assert "target_exposed_fraction = 0.22" in controller
+
+
+def test_through_backend_emits_one_exit_and_measures_trailing_arc_exposure():
+    module = _through_backend()
+    backend = module.DrAnmarNativeTissueThroughBackend(1)
+    root = module.NeedlePose(
+        (0.0, 0.0, 0.002),
+        (2**-0.5, 0.0, 0.0, 2**-0.5),
+    )
+    backend.step([root], [root], [True])
+    first = backend.scene_state[0]
+    backend.step([root], [root], [True])
+    second = backend.scene_state[0]
+    assert first.exit_event_count == 1
+    assert second.exit_event_count == 1
+    assert first.exposed_arc_length_m > 0.0
+    assert first.embedded_arc_length_m > 0.0
+    assert 0.0 < first.exposed_fraction < 1.0
+
+
+def test_through_puncture_receipt_reports_grippable_exposure_and_exit_error():
+    module = _through_contract()
+    fields = module.ThroughPunctureReceipt.__dataclass_fields__
+    assert "exit_error_m" in fields
+    assert "exposed_arc_length_m" in fields
+    assert "exposed_fraction" in fields
+    assert fields["evidence_level"].default == "simulator_engineering_only"
+
+
+def test_through_puncture_benchmark_requires_a_grippable_twenty_percent_exit():
+    benchmark = json.loads(
+        (
+            ROOT
+            / "physics_next/benchmarks/needle-through-puncture-v1.json"
+        ).read_text(encoding="utf-8")
+    )
+    acceptance = benchmark["engineering_acceptance"]
+    assert acceptance["entry_event_count"] == 1
+    assert acceptance["exit_event_count"] == 1
+    assert acceptance["exposed_fraction_min"] == 0.2
+    assert acceptance["exposed_arc_length_m_min"] == 0.0044
+    assert "second_psm_pullout" in benchmark["excluded"]

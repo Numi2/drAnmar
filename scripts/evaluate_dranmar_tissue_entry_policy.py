@@ -24,6 +24,7 @@ parser.add_argument("--episodes", type=int, default=48)
 parser.add_argument("--num_envs", type=int, default=12)
 parser.add_argument("--seed", type=int, required=True)
 parser.add_argument("--report", type=Path, required=True)
+parser.add_argument("--trace_interval", type=int, default=0)
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app_launcher = AppLauncher(args)
@@ -36,14 +37,13 @@ from rsl_rl.runners import OnPolicyRunner  # noqa: E402
 
 import isaaclab_tasks  # noqa: E402, F401
 from isaaclab_tasks.utils import parse_env_cfg  # noqa: E402
+from isaaclab_tasks.utils.parse_cfg import load_cfg_from_registry  # noqa: E402
 from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
 
 import orbit.surgical.tasks  # noqa: E402, F401
 from orbit.surgical.tasks.surgical.penetration.residual_model import (  # noqa: E402
     PenetrationAnalyticController,
-)
-from orbit.surgical.tasks.surgical.penetration.config.needle.agents.rsl_rl_cfg import (  # noqa: E402
-    PenetrationNeedlePPORunnerCfg,
+    ThroughPunctureAnalyticController,
 )
 
 
@@ -55,14 +55,14 @@ DEPRECATED_MODEL_KEYS = (
 )
 
 
-def _runner_cfg() -> PenetrationNeedlePPORunnerCfg:
-    cfg = PenetrationNeedlePPORunnerCfg()
+def _runner_cfg():
+    cfg = load_cfg_from_registry(args.task, "rsl_rl_cfg_entry_point")
     cfg.seed = args.seed
     cfg.device = args.device
     return cfg
 
 
-def _sanitized_runner_dict(cfg: PenetrationNeedlePPORunnerCfg) -> dict:
+def _sanitized_runner_dict(cfg) -> dict:
     result = cfg.to_dict()
     for model_name in ("actor", "critic"):
         for key in DEPRECATED_MODEL_KEYS:
@@ -89,7 +89,12 @@ def main() -> int:
     runner = None
     checkpoint = args.checkpoint.resolve() if args.checkpoint else None
     if checkpoint is None:
-        controller = PenetrationAnalyticController().to(env.unwrapped.device)
+        controller_type = (
+            ThroughPunctureAnalyticController
+            if "Through-Puncture" in args.task
+            else PenetrationAnalyticController
+        )
+        controller = controller_type().to(env.unwrapped.device)
 
         def policy(observation):
             return controller(observation["policy"])[0]
@@ -129,6 +134,12 @@ def main() -> int:
     embedded_depths: list[float] = []
     normalized_peak_forces: list[float] = []
     event_counts: list[int] = []
+    exit_event_counts: list[int] = []
+    exit_errors: list[float] = []
+    exposed_fractions: list[float] = []
+    exposed_arc_lengths: list[float] = []
+    backend_revisions: set[str] = set()
+    backend_hashes: set[str] = set()
     failure_flags: dict[str, int] = {}
     control_steps = 0
     try:
@@ -139,15 +150,65 @@ def main() -> int:
                 if runner is not None:
                     policy.reset(dones)
             control_steps += 1
+            if args.trace_interval and (
+                control_steps % args.trace_interval == 0 or bool(torch.any(dones))
+            ):
+                state = getattr(env.unwrapped, "_dr_anmar_penetration_state", {})
+                measurement = state.get("measurement", {})
+                print(
+                    "[DR_ANMAR_TISSUE_TRACE] "
+                    + json.dumps(
+                        {
+                            "step": control_steps,
+                            "phase": int(state.get("phase", torch.tensor([-1]))[0]),
+                            "entry_error_m": float(
+                                measurement.get("entry_error", torch.tensor([float("nan")]))[0]
+                            ),
+                            "indentation_m": float(
+                                measurement.get("indentation", torch.tensor([float("nan")]))[0]
+                            ),
+                            "exposed_fraction": float(
+                                measurement.get("exposed_fraction", torch.tensor([0.0]))[0]
+                            ),
+                            "exit_error_m": float(
+                                measurement.get("exit_error", torch.tensor([0.0]))[0]
+                            ),
+                            "tip_pos": [
+                                float(value)
+                                for value in measurement.get(
+                                    "tip_pos", torch.zeros((1, 3))
+                                )[0]
+                            ],
+                            "exit_target": [
+                                float(value)
+                                for value in measurement.get(
+                                    "exit_target", torch.zeros((1, 3))
+                                )[0]
+                            ],
+                            "exit_position": [
+                                float(value)
+                                for value in measurement.get(
+                                    "exit_position", torch.zeros((1, 3))
+                                )[0]
+                            ],
+                            "action": [float(value) for value in actions[0]],
+                        },
+                        sort_keys=True,
+                    )
+                )
             if not bool(torch.any(dones)):
                 continue
             termination_manager = env.unwrapped.termination_manager
             success_mask = termination_manager.get_term("success")
             hard_mask = termination_manager.get_term("hard_failure")
             timeout_mask = termination_manager.get_term("time_out")
-            success_receipts = getattr(
-                env.unwrapped, "_dr_anmar_last_successful_entry", None
+            through_puncture = "Through-Puncture" in args.task
+            receipt_attribute = (
+                "_dr_anmar_last_successful_through_puncture"
+                if through_puncture
+                else "_dr_anmar_last_successful_entry"
             )
+            success_receipts = getattr(env.unwrapped, receipt_attribute, None)
             hard_receipts = getattr(
                 env.unwrapped, "_dr_anmar_last_hard_failures", None
             )
@@ -161,12 +222,31 @@ def main() -> int:
                     entry_errors.append(float(receipt["entry_error_m"]))
                     tangent_errors.append(float(receipt["tangent_error_deg"]))
                     plane_errors.append(float(receipt["plane_error_deg"]))
-                    embedded_depths.append(float(receipt["embedded_depth_m"]))
+                    embedded_depths.append(
+                        float(
+                            receipt[
+                                "embedded_arc_length_m"
+                                if through_puncture
+                                else "embedded_depth_m"
+                            ]
+                        )
+                    )
                     normalized_peak_forces.append(
                         float(receipt["peak_force_n"])
                         / float(receipt["sampled_puncture_force_n"])
                     )
-                    event_counts.append(int(receipt["event_count"]))
+                    backend_revisions.add(str(receipt["backend_revision"]))
+                    backend_hashes.add(str(receipt["backend_implementation_sha256"]))
+                    if through_puncture:
+                        event_counts.append(int(receipt["entry_event_count"]))
+                        exit_event_counts.append(int(receipt["exit_event_count"]))
+                        exit_errors.append(float(receipt["exit_error_m"]))
+                        exposed_fractions.append(float(receipt["exposed_fraction"]))
+                        exposed_arc_lengths.append(
+                            float(receipt["exposed_arc_length_m"])
+                        )
+                    else:
+                        event_counts.append(int(receipt["event_count"]))
                 elif bool(hard_mask[env_index]):
                     hard_failures += 1
                     flags = hard_receipts[env_index] if hard_receipts else ("unknown",)
@@ -215,7 +295,30 @@ def main() -> int:
             "custody_model": "pregrasped_pose_coupling",
             "evidence_level": "simulator_engineering_only",
             "clinical_validation": False,
+            "backend_revisions": sorted(backend_revisions),
+            "backend_implementation_sha256": (
+                next(iter(backend_hashes)) if len(backend_hashes) == 1 else None
+            ),
         }
+        if "Through-Puncture" in args.task:
+            report.update(
+                {
+                    "schema": "dr.anmar.tissue-through-isolated-evaluation.v1",
+                    "exit_error_m_max": max(exit_errors, default=None),
+                    "exposed_fraction_min": min(exposed_fractions, default=None),
+                    "exposed_arc_length_m_min": min(
+                        exposed_arc_lengths, default=None
+                    ),
+                    "embedded_arc_length_m_min": min(
+                        embedded_depths, default=None
+                    ),
+                    "embedded_arc_length_m_max": max(
+                        embedded_depths, default=None
+                    ),
+                    "exactly_one_exit_event_per_success": bool(exit_event_counts)
+                    and all(count == 1 for count in exit_event_counts),
+                }
+            )
         args.report.parent.mkdir(parents=True, exist_ok=True)
         temporary = args.report.with_name(f".{args.report.name}.{os.getpid()}.tmp")
         temporary.write_text(

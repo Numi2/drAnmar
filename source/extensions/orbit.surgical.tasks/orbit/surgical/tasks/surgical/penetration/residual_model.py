@@ -228,3 +228,182 @@ class PenetrationResidualGRUModel(RNNModel):
                 return self.distribution.sample()
             return self.distribution.deterministic_output(action_mean)
         return action_mean
+
+
+class ThroughPunctureAnalyticController(nn.Module):
+    """Follow the needle curvature until 20% of its arc is exposed below tissue."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.entry_controller = PenetrationAnalyticController()
+        self.translation_scale_m = 0.00025
+        self.rotation_scale_rad = 0.00872664626
+        self.curvature_radius_m = 0.0070028174960433945
+        self.tissue_thickness_m = 0.006
+        self.target_exposed_fraction = 0.22
+
+    def forward(self, raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        phase = torch.argmax(raw[..., 58:65], dim=-1)
+        entry_phase = torch.nn.functional.one_hot(phase.clamp(max=4), num_classes=5).to(
+            dtype=raw.dtype
+        )
+        entry_raw = torch.cat((raw[..., :58], entry_phase, raw[..., 65:71]), dim=-1)
+        entry_base, _, unsafe = self.entry_controller(entry_raw)
+        needle_position = raw[..., 23:26]
+        needle_quaternion = raw[..., 26:30]
+        entry_position = raw[..., 36:39]
+        surface_normal = torch.nn.functional.normalize(raw[..., 43:46], dim=-1)
+        indentation = raw[..., 46].clamp_min(0.0)
+        exposed_fraction = raw[..., 72].clamp_min(0.0)
+        exit_delta = raw[..., 74:77]
+
+        reference_x = torch.tensor(
+            (1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype
+        ).expand_as(surface_normal)
+        reference_minus_z = torch.tensor(
+            (0.0, 0.0, -1.0), device=raw.device, dtype=raw.dtype
+        ).expand_as(surface_normal)
+        reference_axis = torch.where(
+            torch.abs(surface_normal[..., :1]) > 0.9, reference_minus_z, reference_x
+        )
+        wound_tangent = torch.nn.functional.normalize(
+            torch.linalg.cross(surface_normal, reference_axis), dim=-1
+        )
+        current_plane_normal = quat_apply(
+            needle_quaternion,
+            torch.tensor((0.0, 0.0, 1.0), device=raw.device, dtype=raw.dtype).expand_as(
+                surface_normal
+            ),
+        )
+        plane_sign = torch.sign(
+            torch.sum(current_plane_normal * wound_tangent, dim=-1, keepdim=True)
+        )
+        wound_tangent = wound_tangent * torch.where(
+            plane_sign == 0.0, torch.ones_like(plane_sign), plane_sign
+        )
+        start_tangent = -surface_normal
+        current_tangent = quat_apply(
+            needle_quaternion,
+            torch.tensor((1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype).expand_as(
+                surface_normal
+            ),
+        )
+        sine = torch.sum(
+            torch.linalg.cross(start_tangent, current_tangent) * wound_tangent,
+            dim=-1,
+        )
+        cosine = torch.sum(start_tangent * current_tangent, dim=-1).clamp(-1.0, 1.0)
+        orientation_angle = torch.atan2(sine, cosine).clamp_min(0.0)
+        geometric_angle = torch.asin(
+            (indentation / self.curvature_radius_m).clamp(0.0, 1.0)
+        )
+        trajectory_angle = torch.maximum(orientation_angle, geometric_angle)
+        drive_direction = torch.linalg.cross(wound_tangent, start_tangent)
+        desired_tip_position = (
+            entry_position
+            + drive_direction
+            * (self.curvature_radius_m * (1.0 - torch.cos(trajectory_angle))).unsqueeze(-1)
+            + start_tangent
+            * (self.curvature_radius_m * torch.sin(trajectory_angle)).unsqueeze(-1)
+        )
+        translation_delta = desired_tip_position - needle_position
+        delta_norm = torch.linalg.vector_norm(translation_delta, dim=-1, keepdim=True)
+        translation = translation_delta * torch.clamp(
+            self.translation_scale_m / delta_norm.clamp_min(1.0e-9), max=1.0
+        ) / self.translation_scale_m
+
+        exit_angle = torch.asin(
+            torch.tensor(
+                self.tissue_thickness_m / self.curvature_radius_m,
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+        )
+        target_angle = exit_angle + self.target_exposed_fraction * torch.pi
+        rotate_active = (orientation_angle < target_angle) & (
+            exposed_fraction < self.target_exposed_fraction
+        )
+        rotation = wound_tangent * rotate_active.unsqueeze(-1).to(raw.dtype)
+        through_base = torch.cat((translation, rotation), dim=-1).clamp(-1.0, 1.0)
+        exit_translation = exit_delta / self.translation_scale_m
+        exit_norm = torch.linalg.vector_norm(exit_translation, dim=-1, keepdim=True)
+        exit_translation = exit_translation * torch.clamp(
+            1.0 / exit_norm.clamp_min(1.0e-9), max=1.0
+        )
+        # Once the tip crosses the underside, keep rotating until the required
+        # exposed length is reached while translating the exit intersection
+        # back onto its target. This decouples exposure from lateral exit drift.
+        exit_base = torch.cat((exit_translation, rotation), dim=-1)
+        through_base = torch.where((phase >= 5).unsqueeze(-1), exit_base, through_base)
+        through_phase = phase >= 3
+        base = torch.where(through_phase.unsqueeze(-1), through_base, entry_base)
+        base = torch.where(unsafe.unsqueeze(-1), torch.zeros_like(base), base)
+        return base, phase, unsafe
+
+
+class ThroughPunctureResidualGRUModel(PenetrationResidualGRUModel):
+    """Bounded recurrent correction around the curvature-following controller."""
+
+    def __init__(self, *args, residual_scale: float = 0.20, **kwargs) -> None:
+        super().__init__(*args, residual_scale=residual_scale, **kwargs)
+        self.controller = ThroughPunctureAnalyticController()
+
+    def forward(
+        self,
+        obs,
+        masks: torch.Tensor | None = None,
+        hidden_state=None,
+        stochastic_output: bool = False,
+    ) -> torch.Tensor:
+        raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
+        latent = self.get_latent(obs, masks, hidden_state)
+        residual = torch.tanh(self.mlp(latent))
+        if masks is not None:
+            raw = unpad_trajectories(raw, masks)
+        base, phase, unsafe = self.controller(raw)
+        surface_normal = torch.nn.functional.normalize(raw[..., 43:46], dim=-1)
+        needle_quaternion = raw[..., 26:30]
+        wound_tangent = quat_apply(
+            needle_quaternion,
+            torch.tensor((0.0, 0.0, 1.0), device=raw.device, dtype=raw.dtype).expand_as(
+                surface_normal
+            ),
+        )
+        drive_direction = torch.nn.functional.normalize(
+            torch.linalg.cross(wound_tangent, -surface_normal), dim=-1
+        )
+        contact_phase = phase >= 2
+        normal_component = torch.sum(
+            residual[..., :3] * surface_normal, dim=-1, keepdim=True
+        )
+        drive_component = torch.sum(
+            residual[..., :3] * drive_direction, dim=-1, keepdim=True
+        )
+        constrained_translation = (
+            surface_normal * normal_component + drive_direction * drive_component
+        )
+        rotation_component = torch.sum(
+            residual[..., 3:] * wound_tangent, dim=-1, keepdim=True
+        )
+        constrained_rotation = wound_tangent * rotation_component
+        safe_residual = self.residual_scale * torch.cat(
+            (
+                torch.where(
+                    contact_phase.unsqueeze(-1), constrained_translation, residual[..., :3]
+                ),
+                torch.where(
+                    contact_phase.unsqueeze(-1), constrained_rotation, residual[..., 3:]
+                ),
+            ),
+            dim=-1,
+        )
+        safe_residual = torch.where(
+            unsafe.unsqueeze(-1), torch.zeros_like(safe_residual), safe_residual
+        )
+        action_mean = (base + safe_residual).clamp(-1.0, 1.0)
+        if self.distribution is not None:
+            self.distribution.update(action_mean)
+            if stochastic_output:
+                return self.distribution.sample()
+            return self.distribution.deterministic_output(action_mean)
+        return action_mean

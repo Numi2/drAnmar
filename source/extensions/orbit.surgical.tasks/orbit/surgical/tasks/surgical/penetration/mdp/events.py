@@ -16,6 +16,7 @@ from orbit.surgical.assets.psm import PSM_GRIPPER_PROFILE
 from orbit.surgical.tasks.surgical import mdp_common
 
 from ..contract import PunctureGateState
+from ..through_contract import ThroughPunctureGateState
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -101,10 +102,13 @@ def reset_penetration_evidence(
 
     if env_ids is None:
         env_ids = torch.arange(env.num_envs, device=env.device)
+    through_puncture = bool(getattr(env.cfg, "through_puncture", False))
+    gate_factory = ThroughPunctureGateState if through_puncture else PunctureGateState
     state = getattr(env, "_dr_anmar_penetration_state", None)
     if state is None:
         state = {
-            "gates": [PunctureGateState() for _ in range(env.num_envs)],
+            "gates": [gate_factory() for _ in range(env.num_envs)],
+            "through_puncture": through_puncture,
             "puncture_force_n": torch.full((env.num_envs,), 2.0, device=env.device),
             "shaft_drag_n_m": torch.full((env.num_envs,), 25.0, device=env.device),
             "wetness": torch.full((env.num_envs,), 0.45, device=env.device),
@@ -153,11 +157,16 @@ def reset_penetration_evidence(
     state["grasp_local_quaternion_xyzw"][env_ids] = torch.tensor(
         NEEDLE_MID_GRASP_QUAT_XYZW, device=env.device
     )
+    if bool(state.get("through_puncture", False)) != through_puncture:
+        raise RuntimeError("penetration task mode cannot change without recreating the environment")
     for index in env_ids.detach().cpu().tolist():
-        state["gates"][index] = PunctureGateState()
+        state["gates"][index] = gate_factory()
     state.pop("measurement", None)
     state.pop("wrench", None)
     state.pop("force_derivative", None)
     state.pop("force_integral", None)
     state.pop("previous_entry_error", None)
+    state.pop("previous_exposed_fraction", None)
+    state.pop("previous_tip_pos", None)
+    state.pop("rewarded_phase", None)
     state["last_update_step"] = -1
