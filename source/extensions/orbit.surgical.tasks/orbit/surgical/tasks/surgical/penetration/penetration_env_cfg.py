@@ -48,6 +48,10 @@ class PenetrationSceneCfg(InteractiveSceneCfg):
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
         history_length=2,
     )
+    robot_contacts = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/.*",
+        history_length=2,
+    )
     tissue_left = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/TissueLeft",
         init_state=AssetBaseCfg.InitialStateCfg(pos=(-0.0185, 0.0, 0.05)),
@@ -70,7 +74,10 @@ class PenetrationSceneCfg(InteractiveSceneCfg):
     )
     table = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Table",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, -0.407)),
+        # Keep the qualified pickup/handover support transform. Raising the
+        # table by 50 mm intersects the rotated PSM insertion chain and creates
+        # a six-joint solver launch before the entry controller can act.
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, -0.457)),
         spawn=UsdFileCfg(usd_path=f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/Table/table.usd"),
     )
     plane = AssetBaseCfg(
@@ -190,12 +197,16 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
         robot.init_state.joint_pos.update(psm_gripper_close_command_expr())
         robot.init_state.joint_pos.update(
             {
-                "psm_yaw_joint": 1.2202913239889313e-06,
-                "psm_pitch_end_joint": -4.4182324927533045e-06,
-                "psm_main_insertion_joint": 0.07160016894340515,
-                "psm_tool_roll_joint": -2.688386189220182e-07,
-                "psm_tool_pitch_joint": 4.619290393748088e-06,
-                "psm_tool_yaw_joint": -1.2004795735265361e-06,
+                # Contact-free analytical stand-off obtained from the fixed
+                # domain PSM and authored needle grasp. This avoids beginning
+                # an episode with the tip already indenting outside the 1 mm
+                # entry region.
+                "psm_yaw_joint": 0.026266563683748245,
+                "psm_pitch_end_joint": 0.05557627975940704,
+                "psm_main_insertion_joint": 0.07030967622995377,
+                "psm_tool_roll_joint": -0.000004311198154027807,
+                "psm_tool_pitch_joint": -0.05519611015915871,
+                "psm_tool_yaw_joint": -0.0260869599878788,
             }
         )
         self.scene.robot = robot
@@ -205,7 +216,7 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
             spawn=UsdFileCfg(
                 usd_path=(
                     f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/SurgicalClosure/Needle/"
-                    "dranmar_needle.usda"
+                    "dranmar_needle_entry_proxy.usda"
                 ),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
@@ -266,3 +277,4 @@ class PenetrationEnvCfg_PLAY(PenetrationEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         self.scene.num_envs = 1
+        self.events.reset_evidence.params = {"fixed_domain": True}

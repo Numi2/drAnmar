@@ -44,7 +44,8 @@ def _measurement(module, **overrides):
         "normal_force_n": 2.0,
         "accumulated_work_j": 0.001,
         "bilateral_custody": True,
-        "target_patch_contact": True,
+        "target_region_valid": True,
+        "tissue_contact": True,
     }
     values.update(overrides)
     return module.PunctureMeasurement(**values)
@@ -97,6 +98,54 @@ def test_prepuncture_overshoot_is_a_hard_failure():
     )
     assert state.hard_failures == {"prepuncture_force_limit"}
     assert state.event_count == 0
+
+
+def test_alignment_enters_indent_before_tissue_contact():
+    module = _contract()
+    state = module.PunctureGateState(phase=module.PenetrationPhase.ALIGN)
+    module.advance_puncture_gate(
+        state,
+        _measurement(
+            module,
+            indentation_m=0.0,
+            normal_force_n=0.0,
+            accumulated_work_j=0.0,
+            tissue_contact=False,
+        ),
+        puncture_force_n=2.0,
+    )
+    assert state.phase == module.PenetrationPhase.INDENT
+    assert state.event_count == 0
+
+
+def test_alignment_uses_coarse_radius_but_contact_keeps_one_mm_target():
+    module = _contract()
+    state = module.PunctureGateState(phase=module.PenetrationPhase.ALIGN)
+    module.advance_puncture_gate(
+        state,
+        _measurement(
+            module,
+            entry_error_m=0.0015,
+            indentation_m=0.0,
+            normal_force_n=0.0,
+            accumulated_work_j=0.0,
+            target_region_valid=False,
+            tissue_contact=False,
+        ),
+        puncture_force_n=2.0,
+    )
+    assert state.phase == module.PenetrationPhase.INDENT
+
+
+def test_off_target_contact_still_fails_closed():
+    module = _contract()
+    state = module.PunctureGateState(phase=module.PenetrationPhase.INDENT)
+    module.advance_puncture_gate(
+        state,
+        _measurement(module, target_region_valid=False, tissue_contact=True),
+        puncture_force_n=2.0,
+    )
+    assert state.hard_failures == {"off_target_contact"}
 
 
 def test_force_model_preserves_compression_cutting_sweep_and_shaft_terms():
@@ -185,6 +234,42 @@ def test_policy_is_gru_128_with_zero_initialized_bounded_residual():
     assert 'rnn_type="gru"' in learning
     assert "rnn_hidden_dim=128" in learning
     assert "residual_scale=0.25" in learning
+    assert "desired_tip_position - needle_position" in model
+    assert "contact_phase = indent_phase & (indentation > 0.0)" in model
+    assert "rotation = torch.where(indent_phase.unsqueeze(-1)" in model
+
+
+def test_reset_settling_cannot_advance_authoritative_phase():
+    state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
+    assert "if bool(settled[index]):" in state
+    assert "advance_puncture_gate(" in state
+
+
+def test_play_task_uses_canonical_fixed_domain_materials():
+    config = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
+    events = (TASK_ROOT / "mdp/events.py").read_text(encoding="utf-8")
+    assert 'self.events.reset_evidence.params = {"fixed_domain": True}' in config
+    assert "state[\"puncture_force_n\"][env_ids] = 2.0" in events
+
+
+def test_entry_proxy_is_static_and_table_keeps_handover_clearance():
+    config = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
+    proxy = (
+        ROOT / "source/extensions/orbit.surgical.assets/data/Props/"
+        "SurgicalClosure/Needle/dranmar_needle_entry_proxy.usda"
+    ).read_text(encoding="utf-8")
+    assert "dranmar_needle_entry_proxy.usda" in config
+    assert 'pos=(0.0, 0.0, -0.457)' in config
+    assert proxy.count("physics:collisionEnabled = false") == 48
+    assert "physics:collisionEnabled = true" not in proxy
+
+
+def test_receipt_discloses_pregrasp_coupling_and_simulator_evidence():
+    module = _contract()
+    fields = module.PunctureReceipt.__dataclass_fields__
+    assert fields["custody_model"].default == "pregrasped_pose_coupling"
+    assert fields["rigid_needle_collisions_enabled"].default is False
+    assert fields["evidence_level"].default == "simulator_engineering_only"
 
 
 def test_entry_benchmark_is_explicitly_not_full_suturing():

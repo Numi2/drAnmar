@@ -36,33 +36,23 @@ class PenetrationAnalyticController(nn.Module):
         end_effector_quaternion = raw[..., 19:23]
         entry_position = raw[..., 36:39]
         surface_normal = torch.nn.functional.normalize(raw[..., 43:46], dim=-1)
+        indentation = raw[..., 46]
         contacts = raw[..., 48:50]
         normalized_wrench = raw[..., 50:56]
         phase = torch.argmax(raw[..., 58:63], dim=-1)
 
         approach_offset = torch.where(
             (phase == 0).unsqueeze(-1),
-            torch.full_like(surface_normal, 0.008),
+            torch.full_like(surface_normal, 0.003),
             torch.where(
                 (phase == 1).unsqueeze(-1),
-                torch.full_like(surface_normal, -0.0001),
+                torch.full_like(surface_normal, 0.0010),
                 torch.where(
                     (phase == 2).unsqueeze(-1),
                     torch.full_like(surface_normal, -0.0015),
                     torch.full_like(surface_normal, -0.0020),
                 ),
             ),
-        )
-        target_position = entry_position + surface_normal * approach_offset
-        translation = ((target_position - needle_position) / self.translation_scale_m).clamp(
-            -1.0, 1.0
-        )
-        normal_component = torch.sum(
-            translation * surface_normal, dim=-1, keepdim=True
-        )
-        tangential_component = translation - surface_normal * normal_component
-        translation = tangential_component + surface_normal * normal_component.clamp(
-            -self.normal_advance_limit, self.normal_advance_limit
         )
 
         # Align the needle's local tangent +X with the inward normal and its
@@ -106,33 +96,57 @@ class PenetrationAnalyticController(nn.Module):
             quat_conjugate(needle_quaternion), end_effector_quaternion
         )
         desired_tool_quaternion = quat_mul(desired_needle_quaternion, grasp_quaternion)
+
+        # Solve orientation through the measured settled grasp. Translation is
+        # applied only while rotation is paused below, so the measured tip
+        # displacement maps one-for-one to rigid tool translation without an
+        # idealized grasp-position offset.
+        desired_tip_position = entry_position + surface_normal * approach_offset
+        translation_delta_m = desired_tip_position - needle_position
+        normal_component = torch.sum(
+            translation_delta_m * surface_normal, dim=-1, keepdim=True
+        )
+        tangential_component = translation_delta_m - surface_normal * normal_component
+        normal_limit_m = self.normal_advance_limit * self.translation_scale_m
+        bounded_delta_m = tangential_component + surface_normal * normal_component.clamp(
+            -normal_limit_m, normal_limit_m
+        )
+        # Clamp the vector norm only after the normal/tangential decomposition.
+        # Per-axis clipping first rotates a saturated diagonal command, which
+        # produced millimetres of lateral drift during the stand-off approach.
+        delta_norm = torch.linalg.vector_norm(bounded_delta_m, dim=-1, keepdim=True)
+        bounded_delta_m = bounded_delta_m * torch.clamp(
+            self.translation_scale_m / delta_norm.clamp_min(1.0e-9), max=1.0
+        )
+        translation = bounded_delta_m / self.translation_scale_m
         _, orientation_error = compute_pose_error(
             end_effector_position,
             end_effector_quaternion,
             end_effector_position,
             desired_tool_quaternion,
         )
-        rotation = (orientation_error / self.rotation_scale_rad).clamp(-0.1, 0.1)
-        # Use a 5-degree controller margin inside the authoritative 10-degree
-        # environment gate so translation has room for IK coupling without
-        # numerical chatter at the phase boundary.
-        tangent_aligned = torch.sum(current_tangent * desired_tangent, dim=-1) >= 0.996194698
-        plane_aligned = torch.abs(torch.sum(current_plane_normal * wound_tangent, dim=-1)) >= 0.996194698
+        rotation = (orientation_error / self.rotation_scale_rad).clamp(-1.0, 1.0)
+        # Arbitrate the six-dimensional DLS command instead of letting the
+        # larger rotation residual starve PSM translation. Use the same
+        # ten-degree boundary as the authoritative gate; the phase transition
+        # itself latches alignment once the measured entry region is valid.
+        tangent_aligned = torch.sum(current_tangent * desired_tangent, dim=-1) >= 0.984807753
+        plane_aligned = torch.abs(torch.sum(current_plane_normal * wound_tangent, dim=-1)) >= 0.984807753
         rotation = torch.where(
             (tangent_aligned & plane_aligned).unsqueeze(-1), torch.zeros_like(rotation), rotation
         )
-        aligning = (phase == 1) & ~(tangent_aligned & plane_aligned)
+        aligning = (phase <= 1) & ~(tangent_aligned & plane_aligned)
         translation = torch.where(
             aligning.unsqueeze(-1), torch.zeros_like(translation), translation
         )
-
-        contact_phase = phase >= 2
+        indent_phase = phase >= 2
+        contact_phase = indent_phase & (indentation > 0.0)
         normal_command = torch.sum(translation * surface_normal, dim=-1, keepdim=True)
         normal_command = normal_command.clamp(-self.normal_advance_limit, self.normal_advance_limit)
         translation = torch.where(
             contact_phase.unsqueeze(-1), surface_normal * normal_command, translation
         )
-        rotation = torch.where(contact_phase.unsqueeze(-1), torch.zeros_like(rotation), rotation)
+        rotation = torch.where(indent_phase.unsqueeze(-1), torch.zeros_like(rotation), rotation)
         base = torch.cat((translation, rotation), dim=-1)
 
         bilateral = torch.all(contacts > self.normalized_contact_threshold, dim=-1)

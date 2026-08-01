@@ -60,7 +60,8 @@ class PunctureMeasurement:
     normal_force_n: float
     accumulated_work_j: float
     bilateral_custody: bool
-    target_patch_contact: bool
+    target_region_valid: bool
+    tissue_contact: bool
     solver_finite: bool = True
     unintended_jaw_contact: bool = False
     unintended_surface_crossing: bool = False
@@ -149,7 +150,7 @@ def advance_puncture_gate(
         return state
     if not measurement.bilateral_custody:
         state.hard_failures.add("grasp_loss")
-    if measurement.indentation_m > 0.0 and not measurement.target_patch_contact:
+    if measurement.tissue_contact and not measurement.target_region_valid:
         state.hard_failures.add("off_target_contact")
     if measurement.unintended_jaw_contact:
         state.hard_failures.add("unintended_jaw_tissue_contact")
@@ -176,12 +177,13 @@ def advance_puncture_gate(
         if measurement.entry_error_m <= thresholds.approach_radius_m:
             next_phase = PenetrationPhase.ALIGN
     elif state.phase == PenetrationPhase.ALIGN:
-        if aligned and measurement.target_patch_contact:
+        if aligned:
             next_phase = PenetrationPhase.INDENT
     elif state.phase == PenetrationPhase.INDENT:
         puncture_ready = (
             aligned
-            and measurement.target_patch_contact
+            and measurement.target_region_valid
+            and measurement.tissue_contact
             and measurement.indentation_m >= thresholds.prepuncture_depth_m
             and measurement.normal_force_n >= puncture_force_n
             and measurement.accumulated_work_j > 0.0
@@ -232,6 +234,7 @@ class PunctureReceipt:
     schema: str
     success: bool
     event_count: int
+    representation_switch_count: int
     entry_position_m: tuple[float, float, float]
     entry_error_m: float
     tangent_error_deg: float
@@ -244,6 +247,9 @@ class PunctureReceipt:
     backend_revision: str
     backend_implementation_sha256: str
     hard_failures: tuple[str, ...]
+    custody_model: str = "pregrasped_pose_coupling"
+    rigid_needle_collisions_enabled: bool = False
+    evidence_level: str = "simulator_engineering_only"
     clinical_validation: bool = False
 
     def as_dict(self) -> dict[str, Any]:

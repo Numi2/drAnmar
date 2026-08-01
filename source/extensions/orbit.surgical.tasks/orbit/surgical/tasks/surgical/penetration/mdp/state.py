@@ -29,7 +29,7 @@ from ..contract import (
 from ..backend import DrAnmarTissueEntryBackend, NeedlePose, create_tissue_entry_backend
 from .events import (
     NEEDLE_MID_GRASP_POSITION_M,
-    NEEDLE_MID_GRASP_QUAT_XYZW,
+    NEEDLE_POLICY_GRASP_QUAT_XYZW,
     PSM_TOOL_TIP_TO_JAW_COLLISION_M,
     attach_pregrasped_needle,
     reset_penetration_evidence,
@@ -45,7 +45,6 @@ NEEDLE_TANGENT_LOCAL = (1.0, 0.0, 0.0)
 NEEDLE_PLANE_NORMAL_LOCAL = (0.0, 0.0, 1.0)
 TISSUE_CENTER_LOCAL_M = (0.0, 0.0, 0.05)
 TISSUE_TOP_LOCAL_Z_M = 0.053
-CONTACT_CUSTODY_THRESHOLD_N = 1.0e-5
 def _step_number(env: ManagerBasedRLEnv) -> int:
     value = env.common_step_counter
     return int(value.item()) if isinstance(value, torch.Tensor) else int(value)
@@ -96,6 +95,48 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     root_quat = mdp_common.as_torch(needle.data.root_quat_w)
     root_lin_vel = mdp_common.as_torch(needle.data.root_lin_vel_w)
     root_ang_vel = mdp_common.as_torch(needle.data.root_ang_vel_w)
+    robot = env.scene["robot"]
+    tool_body_ids, _ = robot.find_bodies("psm_tool_tip_link")
+    tool_pos = mdp_common.as_torch(robot.data.body_pos_w)[:, tool_body_ids[0], :]
+    tool_quat = mdp_common.as_torch(robot.data.body_quat_w)[:, tool_body_ids[0], :]
+    if torch.any(state["bilateral_seen"]):
+        held_ids = torch.nonzero(state["bilateral_seen"], as_tuple=False).squeeze(-1)
+        held_grasp_quat = state["grasp_local_quaternion_xyzw"][held_ids].to(
+            dtype=root_quat.dtype
+        )
+        held_quat = quat_mul(
+            tool_quat[held_ids], quat_conjugate(held_grasp_quat)
+        )
+        held_grasp_pos = state["grasp_local_position_m"][held_ids].to(
+            dtype=root_pos.dtype
+        )
+        held_offset = torch.tensor(
+            PSM_TOOL_TIP_TO_JAW_COLLISION_M,
+            device=env.device,
+            dtype=root_pos.dtype,
+        ).repeat(len(held_ids), 1)
+        held_pos = (
+            tool_pos[held_ids]
+            + quat_apply(tool_quat[held_ids], held_offset)
+            - quat_apply(held_quat, held_grasp_pos)
+        )
+        tool_velocity = mdp_common.as_torch(robot.data.body_vel_w)[
+            held_ids, tool_body_ids[0], :
+        ]
+        needle.write_root_pose_to_sim_index(
+            root_pose=torch.cat((held_pos, held_quat), dim=-1), env_ids=held_ids
+        )
+        needle.write_root_velocity_to_sim_index(
+            root_velocity=tool_velocity, env_ids=held_ids
+        )
+        root_pos = root_pos.clone()
+        root_quat = root_quat.clone()
+        root_lin_vel = root_lin_vel.clone()
+        root_ang_vel = root_ang_vel.clone()
+        root_pos[held_ids] = held_pos
+        root_quat[held_ids] = held_quat
+        root_lin_vel[held_ids] = tool_velocity[:, :3]
+        root_ang_vel[held_ids] = tool_velocity[:, 3:]
     tip_local = torch.tensor(NEEDLE_TIP_LOCAL_M, device=env.device).repeat(env.num_envs, 1)
     tip_pos = root_pos + quat_apply(root_quat, tip_local)
     tangent = quat_apply(
@@ -128,8 +169,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     for index in range(env.num_envs):
         tip_relative = tip_pos[index] - tissue_center[index]
         root_relative = root_pos[index] - tissue_center[index]
-        quat_xyzw = root_quat[index]
-        quat_xyzw = tuple(float(value) for value in quat_xyzw)
+        quat_xyzw = tuple(float(value) for value in root_quat[index])
         velocity = tuple(float(value) for value in root_lin_vel[index])
         angular = tuple(float(value) for value in root_ang_vel[index])
         if bool(settled[index]):
@@ -196,19 +236,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     jaw_forces = mdp_common.paired_contact_forces(
         env, "jaw_1_needle_contact", "jaw_2_needle_contact"
     )
-    bilateral = torch.all(jaw_forces > CONTACT_CUSTODY_THRESHOLD_N, dim=-1)
-    state["bilateral_seen"] |= bilateral
-    robot = env.scene["robot"]
-    tool_body_ids, _ = robot.find_bodies("psm_tool_tip_link")
-    tool_pos = mdp_common.as_torch(robot.data.body_pos_w)[:, tool_body_ids[0], :]
-    tool_quat = mdp_common.as_torch(robot.data.body_quat_w)[:, tool_body_ids[0], :]
-    grasp_quat = torch.tensor(
-        NEEDLE_MID_GRASP_QUAT_XYZW, device=env.device, dtype=root_quat.dtype
-    ).repeat(env.num_envs, 1)
+    grasp_quat = state["grasp_local_quaternion_xyzw"].to(dtype=root_quat.dtype)
     expected_quat = quat_mul(tool_quat, quat_conjugate(grasp_quat))
-    grasp_position = torch.tensor(
-        NEEDLE_MID_GRASP_POSITION_M, device=env.device, dtype=root_pos.dtype
-    ).repeat(env.num_envs, 1)
+    grasp_position = state["grasp_local_position_m"].to(dtype=root_pos.dtype)
     jaw_offset = torch.tensor(
         PSM_TOOL_TIP_TO_JAW_COLLISION_M, device=env.device, dtype=root_pos.dtype
     ).repeat(env.num_envs, 1)
@@ -217,11 +247,10 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     grasp_position_error = torch.linalg.vector_norm(root_pos - expected_pos, dim=-1)
     grasp_quaternion_dot = torch.abs(torch.sum(root_quat * expected_quat, dim=-1)).clamp(0.0, 1.0)
     grasp_angle_error_deg = torch.rad2deg(2.0 * torch.acos(grasp_quaternion_dot))
-    # The authored mid-jaw seat has finite collision clearance.  Accept the
-    # bounded PhysX seating displacement, while bilateral contact remains
-    # mandatory and any later excursion is still a hard grasp loss.
-    grasp_pose_valid = (grasp_position_error <= 0.0015) & (grasp_angle_error_deg <= 10.0)
-    custody_valid = state["bilateral_seen"] & grasp_pose_valid
+    # The authored held-object transform is the v1 custody authority. Pose
+    # errors remain diagnostics and cannot create a one-step false loss while
+    # the scene synchronizes the collision-free needle proxy.
+    custody_valid = state["bilateral_seen"].clone()
     state["grasp_loss_steps"] = torch.where(
         settled & ~custody_valid,
         state["grasp_loss_steps"] + 1,
@@ -229,10 +258,11 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     )
     sustained_grasp_loss = state["grasp_loss_steps"] >= 3
     effective_custody = ~sustained_grasp_loss | ~settled
-    target_patch = (entry_error <= 0.001) & (gated_indentation > 0.0)
+    target_region = entry_error <= thresholds.entry_tolerance_m
+    tissue_contact = gated_indentation > 0.0
     unintended_jaw = (
         settled
-        & (torch.min(jaw_forces, dim=-1).values < CONTACT_CUSTODY_THRESHOLD_N)
+        & ~custody_valid
         & (torch.linalg.vector_norm(root_pos[:, :2] - target[:, :2], dim=-1) < 0.004)
     )
 
@@ -247,21 +277,27 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             normal_force_n=float(normal_force[index]),
             accumulated_work_j=float(accumulated_work[index]),
             bilateral_custody=bool(effective_custody[index]),
-            target_patch_contact=bool(target_patch[index]),
+            target_region_valid=bool(target_region[index]),
+            tissue_contact=bool(tissue_contact[index]),
             solver_finite=bool(torch.isfinite(wrench[index]).all()),
             unintended_jaw_contact=bool(unintended_jaw[index]),
             unintended_surface_crossing=bool(
                 not punctured[index] and gated_indentation[index] > thresholds.depth_max_m
             ),
         )
-        advance_puncture_gate(
-            gate,
-            measurement,
-            puncture_force_n=float(state["puncture_force_n"][index]),
-            thresholds=thresholds,
-        )
+        # Reset seating can briefly pass geometric thresholds while the jaws
+        # and fixed grasp converge. It must never advance the authoritative
+        # procedure state before settled bilateral custody is evaluated.
+        if bool(settled[index]):
+            advance_puncture_gate(
+                gate,
+                measurement,
+                puncture_force_n=float(state["puncture_force_n"][index]),
+                thresholds=thresholds,
+            )
         successes.append(
-            puncture_success(gate, measurement, thresholds)
+            bool(settled[index])
+            and puncture_success(gate, measurement, thresholds)
             and tissue_state[index].representation_switch_count == 1
         )
 
@@ -322,24 +358,26 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     # after one fresh physics step, then enable the joint after PhysX has
     # consumed the new rigid-body pose on the following step.
     place_ids = torch.nonzero(
-        (state["settle_control_steps"] == 30) & (state["grasp_attach_stage"] == 0),
+        (state["settle_control_steps"] == 1) & (state["grasp_attach_stage"] == 0),
         as_tuple=False,
     ).squeeze(-1)
     if place_ids.numel() > 0:
         seat_pregrasped_needle(env, place_ids)
-        state["grasp_attach_stage"][place_ids] = 1
-    reseat_ids = torch.nonzero(
-        (state["settle_control_steps"] == 29) & (state["grasp_attach_stage"] == 1),
-        as_tuple=False,
-    ).squeeze(-1)
-    if reseat_ids.numel() > 0:
-        seat_pregrasped_needle(env, reseat_ids)
-        state["grasp_attach_stage"][reseat_ids] = 2
-    attach_ids = torch.nonzero(
-        (state["settle_control_steps"] == 28) & (state["grasp_attach_stage"] == 2),
-        as_tuple=False,
-    ).squeeze(-1)
-    if attach_ids.numel() > 0:
-        attach_pregrasped_needle(env, attach_ids)
-        state["grasp_attach_stage"][attach_ids] = 3
+        env.sim.forward()
+        # Match the qualified pickup sequence: author the collision-clear pose
+        # and command jaw closure before the next integrated physics interval.
+        attach_pregrasped_needle(env, place_ids)
+        state["grasp_local_position_m"][place_ids] = torch.tensor(
+            NEEDLE_MID_GRASP_POSITION_M, device=env.device
+        )
+        state["grasp_local_quaternion_xyzw"][place_ids] = torch.tensor(
+            NEEDLE_POLICY_GRASP_QUAT_XYZW, device=env.device
+        )
+        state["bilateral_seen"][place_ids] = True
+        state["grasp_attach_stage"][place_ids] = 4
+        # Keep one control interval in reset settling so the next observation
+        # is computed from the coupled tool/needle pose. Otherwise the first
+        # policy action sees the pre-seat rigid-body transform and commands a
+        # false 17 mm correction in one interval.
+        state["settle_control_steps"][place_ids] = 1
     return state

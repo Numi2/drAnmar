@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import torch
 
+from ..contract import PunctureReceipt
 from .state import penetration_state
 
 if TYPE_CHECKING:
@@ -28,23 +29,31 @@ def successful_entry(env: ManagerBasedRLEnv) -> torch.Tensor:
     result = state["success"]
     if torch.any(result):
         env._dr_anmar_last_successful_entry = [
-            {
-                "event_count": gate.event_count,
-                "representation_switch_count": int(
+            PunctureReceipt(
+                schema="dr.anmar.tissue-entry-receipt.v1",
+                success=True,
+                event_count=gate.event_count,
+                representation_switch_count=int(
                     state["representation_switch_count"][index]
                 ),
-                "phase": int(gate.phase),
-                "hard_failures": tuple(sorted(gate.hard_failures)),
-                "entry_error_m": float(state["measurement"]["entry_error"][index]),
-                "tangent_error_deg": float(state["measurement"]["tangent_error"][index]),
-                "plane_error_deg": float(state["measurement"]["plane_error"][index]),
-                "embedded_depth_m": float(state["measurement"]["embedded_depth"][index]),
-                "peak_force_n": gate.peak_force_n,
-                "backend_revision": state["backend_metadata"].revision,
-                "backend_implementation_sha256": (
+                entry_position_m=tuple(
+                    float(value) for value in state["measurement"]["tip_pos"][index]
+                ),
+                entry_error_m=float(state["measurement"]["entry_error"][index]),
+                tangent_error_deg=float(state["measurement"]["tangent_error"][index]),
+                plane_error_deg=float(state["measurement"]["plane_error"][index]),
+                sampled_puncture_force_n=float(state["puncture_force_n"][index]),
+                peak_force_n=gate.peak_force_n,
+                accumulated_work_j=float(state["accumulated_work"][index]),
+                embedded_depth_m=float(state["measurement"]["embedded_depth"][index]),
+                phase_sequence=tuple(gate.phase_sequence),
+                backend_revision=state["backend_metadata"].revision,
+                backend_implementation_sha256=(
                     state["backend_metadata"].implementation_sha256
                 ),
-            }
+                hard_failures=tuple(sorted(gate.hard_failures)),
+            ).as_dict()
+            | {"phase": int(gate.phase), "custody_valid": bool(state["custody_valid"][index])}
             for index, gate in enumerate(state["gates"])
         ]
     return result
