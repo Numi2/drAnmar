@@ -185,6 +185,47 @@ minimizes **time to qualified task achievement**: wall-clock time from a frozen
 task contract to the first checkpoint that passes held-out competence, safety,
 and recovery gates.
 
+### Champion needle pickup and handover
+
+<p align="center">
+  <img src="docs/media/dranmar-champion-needle-pickup-handover.gif"
+       width="600"
+       alt="Dr.Anmar champion policy picking up a curved needle and handing it from one PSM instrument to the other in Isaac Sim and PhysX">
+</p>
+
+<p align="center">
+  <em>One complete successful rollout from the frozen simulation champion:
+  needle pickup, lift, presentation, receiver acquisition, giver release, and
+  retained handover.</em>
+</p>
+
+This is the real promoted composite running the
+`DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0` task, not an authored animation.
+The showcase was recorded on an NVIDIA RTX 4090 with seed `104729`; the episode
+terminated in success after 746 control frames with no drop, premature release,
+retention-loss, excessive-force, or protected-surface termination. The
+[showcase evidence](docs/handover_recovery_80/champion_seed104729_showcase_evidence.json)
+records the source revision, runtime, checkpoint hashes, controller settings,
+episode trace, and terminal counts.
+
+The champion is deliberately a provenance-locked **hybrid policy**, not a
+claim that one end-to-end neural network learned the full handover:
+
+| Component | Role in the rollout |
+| --- | --- |
+| Frozen base actor | An analytic phase controller produces the physical sequence, while a residual MLP consumes the 98-value handover observation and adds bounded corrections to the resulting 14-D dual-PSM action. The immutable checkpoint is identified by SHA-256 in the [promotion lock](docs/handover_recovery_80/promoted_policy.lock.json). |
+| Pickup correction | A fixed post-reset pose correction, capped at `1.875 mm` translation and `1.5 deg` orientation, preserves the strongest verified needle-pickup behavior. |
+| Receiver value head | A learned candidate-value model ranks the receiver's first acquisition correction. The selected correction is locally refined within `1.0 mm` and `1.0 deg`, with final caps of `2.5 mm` and `2.0 deg`. |
+| Runtime bounds | Receiver retries, retention servo, and giver stabilization are disabled in the promoted configuration, so the displayed success is one bounded pickup-and-transfer attempt. |
+| Physics authority | Isaac Sim and PhysX contacts own custody, drops, force failures, release validity, retention, and the final success terminal; the policy cannot write its own outcome. |
+
+Across the locked development cohort, the composite succeeded in **1,292 of
+1,800 episodes (71.78%)**. Needle lift reached **98.94%**; receiver acquisition
+given lift reached **80.40%**; retention after acquisition reached **90.22%**.
+The owner accepted it as the current simulation champion while explicitly
+overriding the original 80% target. It remains a research baseline, not a
+qualification claim.
+
 ### Current handover learning frontier
 
 The promoted handover actor and the new custody-risk model solve different
