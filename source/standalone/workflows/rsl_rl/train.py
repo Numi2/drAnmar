@@ -89,6 +89,7 @@ simulation_app = app_launcher.app
 
 import gymnasium as gym
 import os
+import traceback
 import torch
 from datetime import datetime
 
@@ -110,12 +111,29 @@ torch.backends.cudnn.deterministic = False
 torch.backends.cudnn.benchmark = False
 
 
+def _runner_cfg_for_installed_rsl_rl(agent_cfg: RslRlOnPolicyRunnerCfg) -> dict:
+    """Drop deprecated Isaac compatibility fields rejected by rsl-rl 5."""
+
+    runner_cfg = agent_cfg.to_dict()
+    for model_name in ("actor", "critic"):
+        model_cfg = runner_cfg.get(model_name, {})
+        for deprecated_key in (
+            "stochastic",
+            "init_noise_std",
+            "noise_std_type",
+            "state_dependent_std",
+        ):
+            model_cfg.pop(deprecated_key, None)
+    return runner_cfg
+
+
 def main():
     """Train with RSL-RL agent."""
     # parse configuration
     env_cfg: ManagerBasedRLEnvCfg = parse_env_cfg(
         args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
     )
+    env_cfg.seed = args_cli.seed
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
 
     # specify directory for logging experiments
@@ -149,7 +167,12 @@ def main():
     env = RslRlVecEnvWrapper(env)
 
     # create runner from rsl-rl
-    runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    runner = OnPolicyRunner(
+        env,
+        _runner_cfg_for_installed_rsl_rl(agent_cfg),
+        log_dir=log_dir,
+        device=agent_cfg.device,
+    )
     # write git state to logs
     runner.add_git_repo_to_log(__file__)
     # save resume path before creating a new log_dir
@@ -175,7 +198,14 @@ def main():
 
 
 if __name__ == "__main__":
-    # run the main function
-    main()
+    try:
+        main()
+    except Exception:
+        # Kit's shutdown path can replace an uncaught training exception with
+        # status zero. Preserve fail-closed orchestration semantics so a model
+        # construction or optimizer failure can never look like a completed
+        # PPO tranche.
+        traceback.print_exc()
+        os._exit(1)
     # close sim app
     simulation_app.close()

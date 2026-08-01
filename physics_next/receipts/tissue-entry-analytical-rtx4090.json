@@ -1,104 +1,264 @@
 {
+  "accumulated_work_j": 0.0013579463120549917,
   "backend_implementation_sha256": "6ef0188faeb783ac3935dba8f1d0f90132f6b504b50c9ae7d786c801f9a5c714",
   "backend_revision": "dranmar-native-tissue-entry-v1",
   "clinical_validation": false,
-  "completed_steps": 1000,
+  "completed_steps": 176,
+  "custody_model": "pregrasped_pose_coupling",
   "custody_valid": true,
-  "embedded_depth_m": 0.0,
-  "entry_error_m": 0.0032411881256848574,
+  "embedded_depth_m": 0.0018062703311443329,
+  "entry_error_m": 1.1424632248235866e-05,
   "entry_target_world_m": [
-    -3.725290298461914e-09,
+    -9.313225746154785e-10,
     0.0,
-    0.052999988198280334
+    0.05299999564886093
   ],
-  "event_count": 0,
+  "event_count": 1,
   "evidence_level": "simulator_engineering_only",
+  "final_applied_joint_effort": [
+    0.05013459920883179,
+    0.09835970401763916,
+    -0.00012987875379621983,
+    -0.0005050765466876328,
+    0.004954040050506592,
+    -0.00026732683181762695
+  ],
   "final_end_effector_quaternion_xyzw": [
-    -0.00910291075706482,
-    -0.04374121129512787,
-    0.027645708993077278,
-    0.9986189007759094
+    -0.0001900196075439453,
+    -8.964099106378853e-05,
+    -3.0502103527396685e-06,
+    0.9999999403953552
+  ],
+  "final_joint_position_targets": [
+    -0.013513803482055664,
+    -0.028236256912350655,
+    0.07022073119878769,
+    1.5359015606009052e-06,
+    0.027997061610221863,
+    0.01339313481003046
   ],
   "final_joint_positions": [
-    0.08166162669658661,
-    0.11193009465932846,
-    0.07427338510751724,
-    -0.05620419234037399,
-    -0.09566253423690796,
-    0.01171121932566166
+    0.026266563683748245,
+    0.05557627975940704,
+    0.07030967622995377,
+    -4.311198154027807e-06,
+    -0.05519611015915871,
+    -0.0260869599878788
   ],
-  "grasp_angle_error_deg": 2.549443006515503,
-  "grasp_position_error_m": 0.0003892844542860985,
-  "hard_failures": [],
-  "initial_end_effector_position_robot_m": [
-    0.006495579145848751,
-    -0.009645894169807434,
-    -0.07616525888442993
-  ],
-  "initial_end_effector_quaternion_xyzw": [
-    -0.08545321226119995,
-    -0.050680503249168396,
-    0.02553585357964039,
-    0.9947248101234436
-  ],
-  "initial_joint_positions": [
-    0.08166617155075073,
-    0.11193697899580002,
-    0.07427329570055008,
-    -0.05620262771844864,
-    0.05763085186481476,
-    0.02167634293437004
-  ],
-  "initial_needle_quaternion_xyzw": [
-    -0.4784780740737915,
-    -0.872216522693634,
-    0.044272031635046005,
-    -0.0913076400756836
-  ],
-  "jaw_contact_forces_n": [
-    0.1417229026556015,
-    0.20543281733989716
-  ],
-  "last_action": [
-    -0.5384508371353149,
-    0.16044527292251587,
-    1.0000001192092896,
+  "final_joint_velocity": [
+    0.0,
+    0.0,
+    0.0,
     0.0,
     0.0,
     0.0
   ],
-  "max_rotation_action": 0.10000000149011612,
+  "hard_failures": [],
+  "ik_current_ee_position_robot_m": [
+    0.001675209030508995,
+    -0.0030461326241493225,
+    -0.07300311326980591
+  ],
+  "ik_desired_ee_position_robot_m": [
+    -0.0008635706035420299,
+    0.001550187123939395,
+    -0.07299282401800156
+  ],
+  "ik_jacobian_singular_values": [
+    1.4175583124160767,
+    1.415694236755371,
+    0.999999463558197,
+    0.9969548583030701,
+    0.045022495090961456,
+    0.03864511847496033
+  ],
+  "ik_processed_action": [
+    -4.817535955226049e-05,
+    8.763065125094727e-05,
+    -5.960463893284196e-12,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "initial_end_effector_position_robot_m": [
+    0.0016751736402511597,
+    -0.003046073019504547,
+    -0.07300275564193726
+  ],
+  "initial_end_effector_quaternion_xyzw": [
+    -0.0001900196075439453,
+    -8.964099106378853e-05,
+    -3.0502103527396685e-06,
+    0.9999999403953552
+  ],
+  "initial_entry_goal_robot_m": [
+    -0.006088440306484699,
+    -0.010464081540703773,
+    -0.0729999989271164
+  ],
+  "initial_joint_positions": [
+    0.026266563683748245,
+    0.05557627975940704,
+    0.07030930370092392,
+    -4.360406364867231e-06,
+    -0.05519610643386841,
+    -0.026086987927556038
+  ],
+  "initial_needle_quaternion_xyzw": [
+    -0.5090439915657043,
+    -0.8607403635978699,
+    0.00011796748003689572,
+    -0.0001738568244036287
+  ],
+  "initial_needle_tip_position_robot_m": [
+    -0.00446150079369545,
+    -0.013422481715679169,
+    -0.07299990206956863
+  ],
+  "jaw_net_contact_force_n": [
+    0.0,
+    0.0
+  ],
+  "last_action": [
+    -0.19270142912864685,
+    0.35052257776260376,
+    -2.384185471271394e-08,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "max_indentation_m": 0.0017745345830917358,
+  "max_rotation_action": 0.0,
+  "min_entry_error_m": 3.755797308713227e-07,
+  "min_plane_error_deg": 0.0,
+  "min_tangent_error_deg": 0.0,
   "needle_quaternion_xyzw": [
-    -0.5026711821556091,
-    -0.8633661866188049,
-    -0.021166080608963966,
-    -0.03837127983570099
+    -0.5090439915657043,
+    -0.8607403635978699,
+    0.00011796748003689572,
+    -0.0001738568244036287
   ],
   "needle_tip_world_m": [
-    -0.0021470305509865284,
-    0.0024280808866024017,
-    0.062361542135477066
+    1.0159332305192947e-05,
+    -5.218666046857834e-06,
+    0.0511937290430069
   ],
-  "peak_force_n": 0.0,
-  "phase": 1,
+  "peak_force_n": 2.0320639610290527,
+  "phase": 4,
+  "phase_first_control_step": {
+    "align": 1,
+    "indent": 2,
+    "puncture": 166,
+    "stabilize": 167
+  },
+  "phase_first_ee_robot_m": {
+    "align": [
+      0.001664385199546814,
+      -0.0030282512307167053,
+      -0.07300311326980591
+    ],
+    "indent": [
+      0.001648949459195137,
+      -0.00300009548664093,
+      -0.07300391048192978
+    ],
+    "puncture": [
+      -0.0006813257932662964,
+      0.0012230351567268372,
+      -0.0729912519454956
+    ],
+    "stabilize": [
+      -0.0006919633597135544,
+      0.0012409240007400513,
+      -0.07299070060253143
+    ]
+  },
+  "phase_first_tip_world_m": {
+    "align": [
+      4.0512531995773315e-07,
+      -6.561167538166046e-07,
+      0.05635538697242737
+    ],
+    "indent": [
+      3.702007234096527e-07,
+      1.969747245311737e-07,
+      0.056323278695344925
+    ],
+    "puncture": [
+      7.87666067481041e-06,
+      -6.3818879425525665e-06,
+      0.05149993672966957
+    ],
+    "stabilize": [
+      8.57701525092125e-06,
+      -7.866881787776947e-06,
+      0.05147914960980415
+    ]
+  },
   "phase_sequence": [
     "approach",
-    "align"
+    "align",
+    "indent",
+    "puncture",
+    "stabilize"
   ],
-  "plane_error_deg": 5.023245811462402,
-  "qualified_for_ppo": false,
-  "representation_switch_count": 0,
-  "reset_rejections": 1,
+  "phase_visit_steps": {
+    "align": 1,
+    "approach": 0,
+    "indent": 164,
+    "puncture": 1,
+    "stabilize": 10
+  },
+  "plane_error_deg": 0.0,
+  "qualified_for_ppo": true,
+  "representation_switch_count": 1,
+  "reset_rejections": 0,
+  "rigid_needle_collisions_enabled": false,
+  "robot_contact_bodies": [
+    "psm_base_link",
+    "psm_remote_center_link",
+    "psm_yaw_link",
+    "psm_pitch_end_link",
+    "psm_main_insertion_link",
+    "psm_main_insertion_link_2",
+    "psm_main_insertion_link_3",
+    "psm_tool_roll_link",
+    "psm_tool_pitch_link",
+    "psm_tool_yaw_link",
+    "psm_tool_gripper1_link",
+    "psm_tool_gripper2_link",
+    "psm_tool_tip_link"
+  ],
+  "robot_net_contact_forces_n": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "rotation_saturation_steps": 0,
+  "sampled_puncture_force_n": 2.0,
   "schema": "dr.anmar.tissue-entry-analytical-gate.v1",
-  "successful": false,
+  "successful": true,
   "surface_normal_robot": [
     0.4817536473274231,
     -0.8763065934181213,
     5.960464477539063e-08
   ],
-  "tangent_error_deg": 2.667337656021118,
+  "tangent_error_deg": 0.0,
   "task": "DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-Play-v0",
-  "terminated_by": [],
-  "warmup_steps": 63,
+  "terminated_by": [
+    "success"
+  ],
+  "translation_saturation_steps": 0,
+  "warmup_steps": 1,
   "wrench_finite": true
 }

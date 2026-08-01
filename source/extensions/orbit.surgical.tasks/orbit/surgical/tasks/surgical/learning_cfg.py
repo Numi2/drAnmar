@@ -293,7 +293,10 @@ class DrAnmarPenetrationPPORunnerCfg(DrAnmarManipulationPPORunnerCfg):
         hidden_dims=[128, 128],
         activation="elu",
         obs_normalization=True,
-        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(init_std=0.01),
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(
+            init_std=0.01,
+            std_type="log",
+        ),
         rnn_type="gru",
         rnn_hidden_dim=128,
         rnn_num_layers=1,

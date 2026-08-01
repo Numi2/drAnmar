@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import torch
 from rsl_rl.models import RNNModel
+from rsl_rl.utils import unpad_trajectories
 from torch import nn
 
 from isaaclab.utils.math import (
-    compute_pose_error,
+    axis_angle_from_quat,
     quat_apply,
     quat_conjugate,
     quat_from_matrix,
@@ -32,7 +33,6 @@ class PenetrationAnalyticController(nn.Module):
     def forward(self, raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         needle_position = raw[..., 23:26]
         needle_quaternion = raw[..., 26:30]
-        end_effector_position = raw[..., 16:19]
         end_effector_quaternion = raw[..., 19:23]
         entry_position = raw[..., 36:39]
         surface_normal = torch.nn.functional.normalize(raw[..., 43:46], dim=-1)
@@ -119,11 +119,11 @@ class PenetrationAnalyticController(nn.Module):
             self.translation_scale_m / delta_norm.clamp_min(1.0e-9), max=1.0
         )
         translation = bounded_delta_m / self.translation_scale_m
-        _, orientation_error = compute_pose_error(
-            end_effector_position,
-            end_effector_quaternion,
-            end_effector_position,
-            desired_tool_quaternion,
+        orientation_error = axis_angle_from_quat(
+            quat_mul(
+                desired_tool_quaternion,
+                quat_conjugate(end_effector_quaternion),
+            )
         )
         rotation = (orientation_error / self.rotation_scale_rad).clamp(-1.0, 1.0)
         # Arbitrate the six-dimensional DLS command instead of letting the
@@ -166,6 +166,17 @@ class PenetrationResidualGRUModel(RNNModel):
     """GRU-128 actor whose learned output cannot bypass the safety base."""
 
     def __init__(self, *args, residual_scale: float = 0.25, **kwargs) -> None:
+        # Isaac Lab's compatibility config still serializes pre-rsl-rl-5
+        # stochastic policy fields. The installed RNNModel accepts the new
+        # distribution_cfg contract only, so consume the deprecated keys at
+        # this custom-model boundary instead of leaking them to RSL-RL.
+        for deprecated_key in (
+            "stochastic",
+            "init_noise_std",
+            "noise_std_type",
+            "state_dependent_std",
+        ):
+            kwargs.pop(deprecated_key, None)
         super().__init__(*args, **kwargs)
         self.residual_scale = float(residual_scale)
         self.controller = PenetrationAnalyticController()
@@ -183,7 +194,10 @@ class PenetrationResidualGRUModel(RNNModel):
         stochastic_output: bool = False,
     ) -> torch.Tensor:
         raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
-        residual = super().forward(obs, masks, hidden_state, stochastic_output)
+        latent = self.get_latent(obs, masks, hidden_state)
+        residual = torch.tanh(self.mlp(latent))
+        if masks is not None:
+            raw = unpad_trajectories(raw, masks)
         base, phase, unsafe = self.controller(raw)
         surface_normal = torch.nn.functional.normalize(raw[..., 43:46], dim=-1)
         contact_phase = phase >= 2
@@ -204,4 +218,13 @@ class PenetrationResidualGRUModel(RNNModel):
         safe_residual = torch.where(
             unsafe.unsqueeze(-1), torch.zeros_like(safe_residual), safe_residual
         )
-        return (base + safe_residual).clamp(-1.0, 1.0)
+        action_mean = (base + safe_residual).clamp(-1.0, 1.0)
+        # PPO must evaluate the exact composed action sent to the environment.
+        # Centering the distribution on the raw residual while returning
+        # base+residual makes stored actions and log probabilities disagree.
+        if self.distribution is not None:
+            self.distribution.update(action_mean)
+            if stochastic_output:
+                return self.distribution.sample()
+            return self.distribution.deterministic_output(action_mean)
+        return action_mean

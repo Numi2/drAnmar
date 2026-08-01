@@ -234,9 +234,14 @@ def test_policy_is_gru_128_with_zero_initialized_bounded_residual():
     assert 'rnn_type="gru"' in learning
     assert "rnn_hidden_dim=128" in learning
     assert "residual_scale=0.25" in learning
+    assert 'std_type="log"' in learning
     assert "desired_tip_position - needle_position" in model
     assert "contact_phase = indent_phase & (indentation > 0.0)" in model
     assert "rotation = torch.where(indent_phase.unsqueeze(-1)" in model
+    assert 'kwargs.pop(deprecated_key, None)' in model
+    assert "raw = unpad_trajectories(raw, masks)" in model
+    assert "residual = torch.tanh(self.mlp(latent))" in model
+    assert "self.distribution.update(action_mean)" in model
 
 
 def test_reset_settling_cannot_advance_authoritative_phase():
@@ -333,3 +338,18 @@ def test_rsl_rl_training_fails_closed_on_native_analytical_gate():
     assert 'receipt.get("qualified_for_ppo") is True' in training
     assert 'receipt.get("representation_switch_count") == 1' in training
     assert 'receipt.get("backend_implementation_sha256") == source_sha256' in training
+    assert "except Exception:" in training
+    assert "os._exit(1)" in training
+    assert "_runner_cfg_for_installed_rsl_rl(agent_cfg)" in training
+    assert "env_cfg.seed = args_cli.seed" in training
+
+
+def test_isolated_entry_evaluator_resets_recurrent_state_and_reports_physics():
+    evaluation = (
+        ROOT / "scripts/evaluate_dranmar_tissue_entry_policy.py"
+    ).read_text(encoding="utf-8")
+    assert "policy.reset(dones)" in evaluation
+    assert 'termination_manager.get_term("success")' in evaluation
+    assert '"hard_safety_failures": hard_failures' in evaluation
+    assert '"exactly_one_event_per_success"' in evaluation
+    assert '"normalized_peak_force_mean"' in evaluation
