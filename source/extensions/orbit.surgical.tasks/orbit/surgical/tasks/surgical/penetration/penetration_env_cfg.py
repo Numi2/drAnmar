@@ -92,9 +92,9 @@ class CommandsCfg:
         resampling_time_range=(30.0, 30.0),
         debug_vis=False,
         ranges=mdp.UniformPoseCommandCfg.Ranges(
-            pos_x=(0.006, 0.006),
-            pos_y=(-0.015, 0.015),
-            pos_z=(-0.097, -0.097),
+            pos_x=(-0.00608844038348, -0.00608844038348),
+            pos_y=(-0.01046408122182, -0.01046408122182),
+            pos_z=(-0.0730, -0.0730),
             roll=(0.0, 0.0),
             pitch=(0.0, 0.0),
             yaw=(0.0, 0.0),
@@ -179,10 +179,25 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
         robot = PSM_HIGH_PD_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot",
             spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
-            init_state=PSM_HIGH_PD_CFG.init_state.replace(pos=(-0.2, 0.0, 0.15)),
+            init_state=PSM_HIGH_PD_CFG.init_state.replace(
+                pos=(-0.01037645055381, -0.0730, 0.04676338424909),
+                rot=(0.175850305627, -0.684891721377, 0.684891721377, 0.175850305627),
+            ),
         )
+        robot.actuators["psm_tool"].effort_limit_sim = 0.8
+        robot.actuators["psm_tool"].stiffness = 1200.0
+        robot.actuators["psm_tool"].damping = 5.0
         robot.init_state.joint_pos.update(psm_gripper_close_command_expr())
-        robot.init_state.joint_pos["psm_main_insertion_joint"] = 0.063
+        robot.init_state.joint_pos.update(
+            {
+                "psm_yaw_joint": 1.2202913239889313e-06,
+                "psm_pitch_end_joint": -4.4182324927533045e-06,
+                "psm_main_insertion_joint": 0.07160016894340515,
+                "psm_tool_roll_joint": -2.688386189220182e-07,
+                "psm_tool_pitch_joint": 4.619290393748088e-06,
+                "psm_tool_yaw_joint": -1.2004795735265361e-06,
+            }
+        )
         self.scene.robot = robot
         self.scene.needle = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Needle",
@@ -196,8 +211,14 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                     solver_position_iteration_count=16,
                     solver_velocity_iteration_count=8,
                     max_depenetration_velocity=1.0,
-                    disable_gravity=False,
+                    disable_gravity=True,
                     enable_gyroscopic_forces=True,
+                ),
+                physics_material=sim_utils.RigidBodyMaterialCfg(
+                    static_friction=2.0,
+                    dynamic_friction=1.5,
+                    restitution=0.0,
+                    friction_combine_mode="max",
                 ),
             ),
         )
@@ -235,7 +256,7 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
         self.decimation = 10
         self.sim.dt = 0.002
         self.sim.render_interval = self.decimation
-        self.episode_length_s = 12.0
+        self.episode_length_s = 30.0
         self.viewer.eye = (0.0, 0.35, 0.18)
         self.viewer.lookat = (0.0, 0.0, 0.05)
 

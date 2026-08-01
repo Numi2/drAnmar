@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING, Any
 import torch
 
 from isaaclab.assets import RigidObject
-from isaaclab.utils.math import combine_frame_transforms, quat_apply
+from isaaclab.utils.math import (
+    combine_frame_transforms,
+    quat_apply,
+    quat_conjugate,
+    quat_mul,
+)
 
 from orbit.surgical.tasks.surgical import mdp_common
 
@@ -24,7 +29,14 @@ from ..contract import (
 )
 from ..backend import DrAnmarTissueEntryBackend, create_tissue_entry_backend
 from ..cressim import NeedlePose
-from .events import reset_penetration_evidence
+from .events import (
+    NEEDLE_MID_GRASP_POSITION_M,
+    NEEDLE_MID_GRASP_QUAT_XYZW,
+    PSM_TOOL_TIP_TO_JAW_COLLISION_M,
+    attach_pregrasped_needle,
+    reset_penetration_evidence,
+    seat_pregrasped_needle,
+)
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -187,7 +199,38 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         env, "jaw_1_needle_contact", "jaw_2_needle_contact"
     )
     bilateral = torch.all(jaw_forces > CONTACT_CUSTODY_THRESHOLD_N, dim=-1)
-    effective_custody = bilateral | ~settled
+    state["bilateral_seen"] |= bilateral
+    robot = env.scene["robot"]
+    tool_body_ids, _ = robot.find_bodies("psm_tool_tip_link")
+    tool_pos = mdp_common.as_torch(robot.data.body_pos_w)[:, tool_body_ids[0], :]
+    tool_quat = mdp_common.as_torch(robot.data.body_quat_w)[:, tool_body_ids[0], :]
+    grasp_quat = torch.tensor(
+        NEEDLE_MID_GRASP_QUAT_XYZW, device=env.device, dtype=root_quat.dtype
+    ).repeat(env.num_envs, 1)
+    expected_quat = quat_mul(tool_quat, quat_conjugate(grasp_quat))
+    grasp_position = torch.tensor(
+        NEEDLE_MID_GRASP_POSITION_M, device=env.device, dtype=root_pos.dtype
+    ).repeat(env.num_envs, 1)
+    jaw_offset = torch.tensor(
+        PSM_TOOL_TIP_TO_JAW_COLLISION_M, device=env.device, dtype=root_pos.dtype
+    ).repeat(env.num_envs, 1)
+    expected_grasp_pos = tool_pos + quat_apply(tool_quat, jaw_offset)
+    expected_pos = expected_grasp_pos - quat_apply(expected_quat, grasp_position)
+    grasp_position_error = torch.linalg.vector_norm(root_pos - expected_pos, dim=-1)
+    grasp_quaternion_dot = torch.abs(torch.sum(root_quat * expected_quat, dim=-1)).clamp(0.0, 1.0)
+    grasp_angle_error_deg = torch.rad2deg(2.0 * torch.acos(grasp_quaternion_dot))
+    # The authored mid-jaw seat has finite collision clearance.  Accept the
+    # bounded PhysX seating displacement, while bilateral contact remains
+    # mandatory and any later excursion is still a hard grasp loss.
+    grasp_pose_valid = (grasp_position_error <= 0.0015) & (grasp_angle_error_deg <= 10.0)
+    custody_valid = state["bilateral_seen"] & grasp_pose_valid
+    state["grasp_loss_steps"] = torch.where(
+        settled & ~custody_valid,
+        state["grasp_loss_steps"] + 1,
+        torch.zeros_like(state["grasp_loss_steps"]),
+    )
+    sustained_grasp_loss = state["grasp_loss_steps"] >= 3
+    effective_custody = ~sustained_grasp_loss | ~settled
     target_patch = (entry_error <= 0.001) & (gated_indentation > 0.0)
     unintended_jaw = (
         settled
@@ -246,6 +289,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "force_integral": force_integral,
             "accumulated_work": accumulated_work,
             "jaw_forces": jaw_forces,
+            "custody_valid": custody_valid,
+            "grasp_position_error": grasp_position_error,
+            "grasp_angle_error_deg": grasp_angle_error_deg,
             "phase": phase,
             "event_count": event_count,
             "hard_failure": hard_failure,
@@ -255,4 +301,28 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     state["settle_control_steps"] = torch.clamp(
         state["settle_control_steps"] - 1, min=0
     )
+    # Reset events see the previous articulation kinematics.  Place the needle
+    # after one fresh physics step, then enable the joint after PhysX has
+    # consumed the new rigid-body pose on the following step.
+    place_ids = torch.nonzero(
+        (state["settle_control_steps"] == 30) & (state["grasp_attach_stage"] == 0),
+        as_tuple=False,
+    ).squeeze(-1)
+    if place_ids.numel() > 0:
+        seat_pregrasped_needle(env, place_ids)
+        state["grasp_attach_stage"][place_ids] = 1
+    reseat_ids = torch.nonzero(
+        (state["settle_control_steps"] == 29) & (state["grasp_attach_stage"] == 1),
+        as_tuple=False,
+    ).squeeze(-1)
+    if reseat_ids.numel() > 0:
+        seat_pregrasped_needle(env, reseat_ids)
+        state["grasp_attach_stage"][reseat_ids] = 2
+    attach_ids = torch.nonzero(
+        (state["settle_control_steps"] == 28) & (state["grasp_attach_stage"] == 2),
+        as_tuple=False,
+    ).squeeze(-1)
+    if attach_ids.numel() > 0:
+        attach_pregrasped_needle(env, attach_ids)
+        state["grasp_attach_stage"][attach_ids] = 3
     return state

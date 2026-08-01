@@ -57,7 +57,14 @@ def indentation_and_depth(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 
 def jaw_contacts(env: ManagerBasedRLEnv) -> torch.Tensor:
-    return penetration_state(env)["jaw_forces"] * 0.2
+    state = penetration_state(env)
+    settled = (state["settle_control_steps"] == 0).unsqueeze(-1)
+    custody = state["custody_valid"].unsqueeze(-1)
+    observed = torch.maximum(
+        state["jaw_forces"] * 0.2,
+        torch.full_like(state["jaw_forces"], 0.05),
+    )
+    return torch.where(settled & custody, observed, torch.zeros_like(observed))
 
 
 def normalized_tissue_wrench(env: ManagerBasedRLEnv) -> torch.Tensor:

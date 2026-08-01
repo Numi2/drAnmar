@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--task", default="DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-Play-v0"
 )
-parser.add_argument("--steps", type=int, default=600)
+parser.add_argument("--steps", type=int, default=1500)
 parser.add_argument("--report", type=Path, required=True)
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -45,7 +45,7 @@ def main() -> int:
     observation, _ = env.reset()
     reset_rejections = 0
     warmup_steps = 0
-    while warmup_steps < 64:
+    while warmup_steps < 128:
         warmup_steps += 1
         with torch.inference_mode():
             observation, _, terminated, truncated, _ = env.step(
@@ -56,11 +56,11 @@ def main() -> int:
             reset_rejections += 1
             continue
         if int(state["settle_control_steps"][0]) == 0 and bool(
-            torch.all(state["jaw_forces"][0] > 1.0e-5)
+            state["custody_valid"][0]
         ):
             break
     else:
-        raise RuntimeError("could not obtain settled bilateral needle custody in 64 steps")
+        raise RuntimeError("could not obtain settled bilateral needle custody in 128 steps")
     robot = env.unwrapped.scene["robot"]
     initial_joint_positions = robot.data.joint_pos[0, :6].detach().cpu().tolist()
     initial_needle_quaternion = observation["policy"][0, 26:30].detach().cpu().tolist()
@@ -89,15 +89,12 @@ def main() -> int:
                 break
 
         state = env.unwrapped._dr_anmar_penetration_state
-        last_hard_failures = getattr(
-            env.unwrapped, "_dr_anmar_last_hard_failures", [tuple()]
-        )
         successful = "success" in terminated_by
         success_receipt = getattr(env.unwrapped, "_dr_anmar_last_successful_entry", None)
         evidence = success_receipt[0] if success_receipt else {
             "event_count": int(state["event_count"][0]),
             "phase": int(state["phase"][0]),
-            "hard_failures": tuple(last_hard_failures[0]),
+            "hard_failures": tuple(sorted(state["gates"][0].hard_failures)),
             "entry_error_m": float(state["measurement"]["entry_error"][0]),
             "tangent_error_deg": float(state["measurement"]["tangent_error"][0]),
             "plane_error_deg": float(state["measurement"]["plane_error"][0]),

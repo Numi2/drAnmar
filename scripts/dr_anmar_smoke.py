@@ -109,6 +109,15 @@ def main() -> None:
             "event_count": penetration_state["event_count"].detach().cpu().tolist(),
             "hard_failure": penetration_state["hard_failure"].detach().cpu().tolist(),
             "jaw_forces_n": penetration_state["jaw_forces"].detach().cpu().tolist(),
+            "custody_valid": penetration_state["custody_valid"].detach().cpu().tolist(),
+            "grasp_position_error_m": penetration_state["grasp_position_error"]
+            .detach()
+            .cpu()
+            .tolist(),
+            "grasp_angle_error_deg": penetration_state["grasp_angle_error_deg"]
+            .detach()
+            .cpu()
+            .tolist(),
             "wrench_finite": bool(torch.isfinite(penetration_state["wrench"]).all().item()),
             "entry_error_m": penetration_state["measurement"]["entry_error"].detach().cpu().tolist(),
             "tip_position_w": penetration_state["measurement"]["tip_pos"].detach().cpu().tolist(),
