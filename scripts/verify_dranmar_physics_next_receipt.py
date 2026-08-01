@@ -73,27 +73,12 @@ def verify(next_root: Path, lock_path: Path) -> list[str]:
     for package_name, expected_version in lock["runtime_packages"].items():
         if receipt.get("packages", {}).get(package_name) != expected_version:
             failures.append(f"{package_name} runtime package mismatch")
-    for source_id, relative in (
-        ("isaaclab", "IsaacLab"),
-        ("cressim_mpm", "CRESSim-MPM"),
-    ):
+    for source_id, relative in (("isaaclab", "IsaacLab"),):
         expected = lock["sources"][source_id]["revision"]
         if receipt.get("sources", {}).get(source_id) != expected:
             failures.append(f"{source_id} receipt revision mismatch")
         if _git_head(next_root / relative) != expected:
             failures.append(f"{source_id} checkout revision mismatch")
-    cressim_build = lock["builds"]["cressim_mpm"]
-    cressim_artifact = receipt.get("artifacts", {}).get("cressim_mpm_c_api", {})
-    cressim_library = next_root / cressim_build["library_relative_path"]
-    if not cressim_library.is_file():
-        failures.append("missing CRESSim shared C API library")
-    else:
-        if cressim_artifact.get("path") != cressim_build["library_relative_path"]:
-            failures.append("CRESSim artifact path mismatch")
-        if cressim_artifact.get("sha256") != _sha256(cressim_library):
-            failures.append("CRESSim shared library digest mismatch")
-        if cressim_artifact.get("build") != cressim_build:
-            failures.append("CRESSim build configuration mismatch")
     if ready_path.is_file():
         expected_ready = _sha256(receipt_path)
         if ready_path.read_text(encoding="utf-8").strip() != expected_ready:

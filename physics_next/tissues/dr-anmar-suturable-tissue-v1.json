@@ -93,7 +93,7 @@
     "sweep_stiffness_n_m2_seed": 40000.0,
     "entry_exit_asymmetry_fraction_seed": 0.18,
     "persistent_tract_required": true,
-    "topology_backend_required": "cressim_mpm"
+    "topology_backend_required": "blocked_pending_dranmar_native_topology_backend"
   },
   "suture_holding": {
     "reference_bite_margin_m": 0.005,
@@ -127,8 +127,8 @@
   },
   "solver": {
     "stable_backend": "physx_fem",
-    "topology_backend": "cressim_mpm",
-    "future_backend": "newton_vbd_or_mpm",
+    "topology_backend": "blocked_pending_dranmar_native_topology_backend",
+    "future_backend": "dranmar_native_topology_backend",
     "position_iterations": 24,
     "self_collision": true,
     "vertex_velocity_damping": 0.01,

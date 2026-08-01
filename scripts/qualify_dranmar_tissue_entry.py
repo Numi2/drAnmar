@@ -55,7 +55,7 @@ def main() -> int:
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--learned-summary", type=Path, required=True)
     parser.add_argument("--policy", type=Path, required=True)
-    parser.add_argument("--runtime-receipt", type=Path, required=True)
+    parser.add_argument("--backend-probe", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--promotion-lock", type=Path, required=True)
     args = parser.parse_args()
@@ -64,7 +64,7 @@ def main() -> int:
     seed_results = [json.loads(path.read_text(encoding="utf-8")) for path in args.seed_result]
     baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
     learned = json.loads(args.learned_summary.read_text(encoding="utf-8"))
-    runtime = json.loads(args.runtime_receipt.read_text(encoding="utf-8"))
+    backend_probe = json.loads(args.backend_probe.read_text(encoding="utf-8"))
     qualification = contract.evaluate_qualification(seed_results)
     paired_passed, paired_basis = contract.learned_policy_beats_baseline(learned, baseline)
     qualification["paired_baseline_passed"] = paired_passed
@@ -87,15 +87,15 @@ def main() -> int:
         ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
         capture_output=True, text=True,
     ).stdout.strip()
-    cressim = runtime["artifacts"]["cressim_mpm_c_api"]
+    backend = backend_probe["at_2ms"]["backend"]
     promotion = {
         "schema": "dr.anmar.tissue-entry-promotion-lock.v1",
         "task": qualification["task"],
         "source_revision": source_revision,
         "policy_sha256": _sha256(args.policy.resolve()),
-        "backend_provider": "cressim_mpm",
-        "backend_revision": runtime["sources"]["cressim_mpm"],
-        "backend_library_sha256": cressim["sha256"],
+        "backend_provider": backend["provider"],
+        "backend_revision": backend["revision"],
+        "backend_implementation_sha256": backend["implementation_sha256"],
         "tissue_profile": "dr-anmar-suturable-tissue-v1",
         "needle_profile": "dr-anmar-needle-v1",
         "evaluation_seeds": [result["seed"] for result in seed_results],

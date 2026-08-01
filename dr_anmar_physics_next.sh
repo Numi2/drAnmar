@@ -34,11 +34,6 @@ PIP_VERSION="$(lock_value python.pip)"
 ISAACSIM_VERSION="$(lock_value simulator.version)"
 ISAACLAB_REPOSITORY="$(lock_value sources.isaaclab.repository)"
 ISAACLAB_COMMIT="$(lock_value sources.isaaclab.revision)"
-CRESSIM_REPOSITORY="$(lock_value sources.cressim_mpm.repository)"
-CRESSIM_COMMIT="$(lock_value sources.cressim_mpm.revision)"
-CRESSIM_LIBRARY_RELATIVE="$(lock_value builds.cressim_mpm.library_relative_path)"
-CRESSIM_BUILD_TYPE="$(lock_value builds.cressim_mpm.build_type)"
-CRESSIM_CUDA_ARCHITECTURES="$(lock_value builds.cressim_mpm.cuda_architectures)"
 PYTETWILD_VERSION="$(lock_value mesh_environment.pytetwild)"
 SCIPY_VERSION="$(lock_value mesh_environment.scipy)"
 ISAACLAB_INSTALL_PROFILE="$(lock_value dependency_policy.isaaclab_install_profile)"
@@ -63,11 +58,6 @@ find_eigen_include() {
 
 find_glfw_library() {
     find "${ENV_ROOT}" "${DATA_ROOT}" -name 'libglfw.so' -type f -print -quit 2>/dev/null
-}
-
-build_cressim() {
-    "${ENV_ROOT}/bin/python" "${REPOSITORY_ROOT}/scripts/build_dranmar_cressim.py" \
-        --root "${NEXT_ROOT}" --lock "${LOCK_PATH}"
 }
 
 install_running() {
@@ -104,14 +94,12 @@ install_runtime() {
         isaacsim_version="$7"
         isaaclab_repository="$8"
         isaaclab_commit="$9"
-        cressim_repository="${10}"
-        cressim_commit="${11}"
-        repository_root="${12}"
-        isaaclab_install_profile="${13}"
-        pytorch_index_url="${14}"
-        torch_version="${15}"
-        torchvision_version="${16}"
-        torchaudio_version="${17}"
+        repository_root="${10}"
+        isaaclab_install_profile="${11}"
+        pytorch_index_url="${12}"
+        torch_version="${13}"
+        torchvision_version="${14}"
+        torchaudio_version="${15}"
         "python${python_version}" -m venv "${env_root}"
         "${env_root}/bin/python" -m pip install "pip==${pip_version}"
         # Isaac Sim 6.0.1 supplies CUDA 13 runtime libraries used by its Kit
@@ -132,17 +120,6 @@ install_runtime() {
             "torch==${torch_version}" \
             "torchvision==${torchvision_version}" \
             "torchaudio==${torchaudio_version}"
-        cressim_root="${next_root}/CRESSim-MPM"
-        if [[ ! -d "${cressim_root}/.git" ]]; then
-            git clone --filter=blob:none --no-checkout "${cressim_repository}" "${cressim_root}"
-        fi
-        cd "${cressim_root}"
-        git fetch --depth 1 origin "${cressim_commit}"
-        git checkout --detach "${cressim_commit}"
-        [[ "$(git rev-parse HEAD)" == "${cressim_commit}" ]]
-        "${env_root}/bin/python" \
-            "${repository_root}/scripts/build_dranmar_cressim.py" \
-            --root "${next_root}" --lock "${lock_path}"
         dependency_check="${next_root}/dependency-check.json"
         "${env_root}/bin/python" \
             "${repository_root}/scripts/verify_dranmar_physics_next_environment.py" \
@@ -157,7 +134,6 @@ install_runtime() {
     ' bash "${NEXT_ROOT}" "${ENV_ROOT}" "${ISAACLAB_ROOT}" "${LOCK_PATH}" \
         "${PYTHON_VERSION}" "${PIP_VERSION}" "${ISAACSIM_VERSION}" \
         "${ISAACLAB_REPOSITORY}" "${ISAACLAB_COMMIT}" \
-        "${CRESSIM_REPOSITORY}" "${CRESSIM_COMMIT}" \
         "${REPOSITORY_ROOT}" "${ISAACLAB_INSTALL_PROFILE}" \
         "${PYTORCH_INDEX_URL}" "${TORCH_VERSION}" "${TORCHVISION_VERSION}" \
         "${TORCHAUDIO_VERSION}" >>"${INSTALL_LOG}" 2>&1 &
@@ -196,12 +172,6 @@ case "${1:-status}" in
     probe)
         [[ -x "${ENV_ROOT}/bin/python" ]] || { echo "physics-next environment is not installed" >&2; exit 1; }
         "${ENV_ROOT}/bin/python" "${REPOSITORY_ROOT}/scripts/dr_anmar_physics_next.py" status
-        ;;
-    build-cressim)
-        build_cressim
-        "${ENV_ROOT}/bin/python" \
-            "${REPOSITORY_ROOT}/scripts/write_dranmar_physics_next_receipt.py" \
-            --root "${NEXT_ROOT}" --lock "${LOCK_PATH}"
         ;;
     benchmark)
         backend="${2:-physx}"
@@ -292,7 +262,7 @@ case "${1:-status}" in
         "${ISAAC_PYTHON:-python3}" "${REPOSITORY_ROOT}/scripts/dr_anmar_physics_next_compare.py" "$@"
         ;;
     *)
-        echo "Usage: $0 {install|status|logs|probe|build-cressim|benchmark [physx|newton]|compare RESULT [...]|extract-liver SCENE [OUTPUT] [PRIM]|tetrahedralize-liver EXTRACTION [OUTPUT] [EDGE]|author-liver-usd TETRA_NPZ [OUTPUT_USD]|author-liver-physx SURFACE_OBJ [OUTPUT_USD] [ISAACLAB_ROOT]|patient-liver-smoke [TETRA_NPZ] [OUTPUT]}" >&2
+        echo "Usage: $0 {install|status|logs|probe|benchmark [physx|newton]|compare RESULT [...]|extract-liver SCENE [OUTPUT] [PRIM]|tetrahedralize-liver EXTRACTION [OUTPUT] [EDGE]|author-liver-usd TETRA_NPZ [OUTPUT_USD]|author-liver-physx SURFACE_OBJ [OUTPUT_USD] [ISAACLAB_ROOT]|patient-liver-smoke [TETRA_NPZ] [OUTPUT]}" >&2
         exit 2
         ;;
 esac

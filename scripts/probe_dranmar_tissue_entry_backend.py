@@ -2,11 +2,12 @@
 # Copyright (c) 2026, Dr.Anmar Project Developers.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Exercise the pinned tissue-entry backend on the qualification GPU."""
+"""Exercise the native Dr.Anmar tissue-entry backend."""
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import math
 import os
@@ -20,11 +21,16 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSET_SOURCE = ROOT / "source/extensions/orbit.surgical.assets"
 TASK_SOURCE = ROOT / "source/extensions/orbit.surgical.tasks"
 sys.path[:0] = [str(ASSET_SOURCE), str(TASK_SOURCE)]
-
-from orbit.surgical.tasks.surgical.penetration.backend import (  # noqa: E402
-    create_tissue_entry_backend,
+BACKEND_PATH = (
+    TASK_SOURCE / "orbit/surgical/tasks/surgical/penetration/backend.py"
 )
-from orbit.surgical.tasks.surgical.penetration.cressim import NeedlePose  # noqa: E402
+spec = importlib.util.spec_from_file_location("dranmar_native_entry_backend", BACKEND_PATH)
+backend_module = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+sys.modules[spec.name] = backend_module
+spec.loader.exec_module(backend_module)
+NeedlePose = backend_module.NeedlePose
+create_tissue_entry_backend = backend_module.create_tissue_entry_backend
 
 
 def _norm(values: tuple[float, float, float]) -> float:
@@ -35,11 +41,10 @@ def _p95(values: list[float]) -> float:
     return sorted(values)[max(0, math.ceil(0.95 * len(values)) - 1)]
 
 
-def _run(library: Path, scenes: int, integration_step_s: float) -> dict[str, object]:
+def _run(scenes: int, integration_step_s: float) -> dict[str, object]:
     backend = create_tissue_entry_backend(
         scenes,
         integration_step_s=integration_step_s,
-        library_path=library,
     )
     quaternion = (0.0, 0.0, 0.0, 1.0)
     outside = NeedlePose((0.0, 0.0, 0.012), quaternion)
@@ -124,13 +129,12 @@ def _relative_rmse(reference: list[float], candidate: list[float]) -> float:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--library", type=Path, required=True)
     parser.add_argument("--scenes", type=int, default=12)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
-    at_2ms = _run(args.library.resolve(), args.scenes, 0.002)
-    at_1ms = _run(args.library.resolve(), args.scenes, 0.001)
+    at_2ms = _run(args.scenes, 0.002)
+    at_1ms = _run(args.scenes, 0.001)
     relative_rmse = _relative_rmse(at_1ms["trace"], at_2ms["trace"])
     qualified = bool(
         at_2ms["finite"]

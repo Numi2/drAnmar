@@ -1,19 +1,101 @@
 {
+  "backend_implementation_sha256": "6ef0188faeb783ac3935dba8f1d0f90132f6b504b50c9ae7d786c801f9a5c714",
+  "backend_revision": "dranmar-native-tissue-entry-v1",
   "clinical_validation": false,
   "completed_steps": 1000,
+  "custody_valid": true,
   "embedded_depth_m": 0.0,
   "entry_error_m": 0.0032411881256848574,
+  "entry_target_world_m": [
+    -3.725290298461914e-09,
+    0.0,
+    0.052999988198280334
+  ],
   "event_count": 0,
   "evidence_level": "simulator_engineering_only",
+  "final_end_effector_quaternion_xyzw": [
+    -0.00910291075706482,
+    -0.04374121129512787,
+    0.027645708993077278,
+    0.9986189007759094
+  ],
+  "final_joint_positions": [
+    0.08166162669658661,
+    0.11193009465932846,
+    0.07427338510751724,
+    -0.05620419234037399,
+    -0.09566253423690796,
+    0.01171121932566166
+  ],
+  "grasp_angle_error_deg": 2.549443006515503,
+  "grasp_position_error_m": 0.0003892844542860985,
   "hard_failures": [],
+  "initial_end_effector_position_robot_m": [
+    0.006495579145848751,
+    -0.009645894169807434,
+    -0.07616525888442993
+  ],
+  "initial_end_effector_quaternion_xyzw": [
+    -0.08545321226119995,
+    -0.050680503249168396,
+    0.02553585357964039,
+    0.9947248101234436
+  ],
+  "initial_joint_positions": [
+    0.08166617155075073,
+    0.11193697899580002,
+    0.07427329570055008,
+    -0.05620262771844864,
+    0.05763085186481476,
+    0.02167634293437004
+  ],
+  "initial_needle_quaternion_xyzw": [
+    -0.4784780740737915,
+    -0.872216522693634,
+    0.044272031635046005,
+    -0.0913076400756836
+  ],
+  "jaw_contact_forces_n": [
+    0.1417229026556015,
+    0.20543281733989716
+  ],
+  "last_action": [
+    -0.5384508371353149,
+    0.16044527292251587,
+    1.0000001192092896,
+    0.0,
+    0.0,
+    0.0
+  ],
   "max_rotation_action": 0.10000000149011612,
+  "needle_quaternion_xyzw": [
+    -0.5026711821556091,
+    -0.8633661866188049,
+    -0.021166080608963966,
+    -0.03837127983570099
+  ],
+  "needle_tip_world_m": [
+    -0.0021470305509865284,
+    0.0024280808866024017,
+    0.062361542135477066
+  ],
   "peak_force_n": 0.0,
   "phase": 1,
+  "phase_sequence": [
+    "approach",
+    "align"
+  ],
   "plane_error_deg": 5.023245811462402,
   "qualified_for_ppo": false,
+  "representation_switch_count": 0,
   "reset_rejections": 1,
   "schema": "dr.anmar.tissue-entry-analytical-gate.v1",
   "successful": false,
+  "surface_normal_robot": [
+    0.4817536473274231,
+    -0.8763065934181213,
+    5.960464477539063e-08
+  ],
   "tangent_error_deg": 2.667337656021118,
   "task": "DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-Play-v0",
   "terminated_by": [],

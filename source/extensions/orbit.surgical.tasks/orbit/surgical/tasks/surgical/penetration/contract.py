@@ -5,7 +5,8 @@
 
 This module deliberately has no Isaac Sim dependency.  The gate, evidence
 receipt, and promotion decision can therefore be tested and audited outside
-Kit while the live task feeds it measurements from PhysX and CRESSim-MPM.
+Kit while the live task feeds it measurements from PhysX and the native
+Dr.Anmar tissue-entry backend.
 """
 
 from __future__ import annotations
@@ -96,8 +97,8 @@ def needle_tissue_force_components(
 ) -> dict[str, float]:
     """Return the explicit compression/cutting/sweep/friction contact law.
 
-    The task adds these interpretable material terms to CRESSim's deformation
-    momentum balance.  The environment gate still owns the one-shot puncture
+    The task adds these interpretable material terms to the native backend's
+    deformation response.  The environment gate still owns the one-shot puncture
     event; this function cannot change puncture state by itself.
     """
 
@@ -241,7 +242,7 @@ class PunctureReceipt:
     embedded_depth_m: float
     phase_sequence: tuple[str, ...]
     backend_revision: str
-    backend_library_sha256: str
+    backend_implementation_sha256: str
     hard_failures: tuple[str, ...]
     clinical_validation: bool = False
 

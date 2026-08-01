@@ -1,11 +1,10 @@
 # Copyright (c) 2026, Dr.Anmar Project Developers.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""CRESSim/PhysX co-simulation and physics-owned puncture state."""
+"""Native Dr.Anmar tissue mechanics and physics-owned puncture state."""
 
 from __future__ import annotations
 
-import weakref
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -27,8 +26,7 @@ from ..contract import (
     needle_tissue_force_components,
     puncture_success,
 )
-from ..backend import DrAnmarTissueEntryBackend, create_tissue_entry_backend
-from ..cressim import NeedlePose
+from ..backend import DrAnmarTissueEntryBackend, NeedlePose, create_tissue_entry_backend
 from .events import (
     NEEDLE_MID_GRASP_POSITION_M,
     NEEDLE_MID_GRASP_QUAT_XYZW,
@@ -75,16 +73,15 @@ def _entry_target_w(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 
 def _adapter(env: ManagerBasedRLEnv) -> DrAnmarTissueEntryBackend:
-    adapter = getattr(env, "_dr_anmar_cressim_adapter", None)
+    adapter = getattr(env, "_dr_anmar_tissue_entry_backend", None)
     if adapter is None:
         adapter = create_tissue_entry_backend(env.num_envs, integration_step_s=0.002)
-        env._dr_anmar_cressim_adapter = adapter
-        env._dr_anmar_cressim_finalizer = weakref.finalize(env, adapter.close)
+        env._dr_anmar_tissue_entry_backend = adapter
     return adapter
 
 
 def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
-    """Return one cached update built from native contacts and CRESSim wrench."""
+    """Return one cached update from PhysX contacts and native tissue mechanics."""
 
     state = getattr(env, "_dr_anmar_penetration_state", None)
     if state is None:
@@ -144,7 +141,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         arc_poses.append(
             NeedlePose(tuple(float(value) for value in root_relative), quat_xyzw, velocity, angular)
         )
-    coupling = _adapter(env).step(tip_poses, arc_poses, punctured, dt_s=0.02)
+    adapter = _adapter(env)
+    coupling = adapter.step(tip_poses, arc_poses, punctured, dt_s=0.02)
+    tissue_state = adapter.scene_state
     raw_wrench = torch.tensor(
         [(*item.force_n, *item.torque_nm) for item in coupling],
         device=env.device,
@@ -179,9 +178,8 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     force_components = torch.tensor(component_rows, device=env.device, dtype=root_pos.dtype)
     wrench = raw_wrench.clone()
     wrench[:, :3] += surface_normal * force_components[:, 4].unsqueeze(-1)
-    # Apply the combined MPM momentum balance and explicit
-    # compression/cutting/sweep/shaft contact law to PhysX.  Puncture remains
-    # environment-owned and requires the force-gated backend receipt.
+    # Apply native deformation resistance and the explicit compression,
+    # cutting, sweep, and shaft law to PhysX. Puncture remains environment-owned.
     needle.permanent_wrench_composer.reset()
     needle.permanent_wrench_composer.add_forces_and_torques(
         wrench[:, :3].unsqueeze(1), wrench[:, 3:].unsqueeze(1), is_global=True
@@ -262,7 +260,10 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             puncture_force_n=float(state["puncture_force_n"][index]),
             thresholds=thresholds,
         )
-        successes.append(puncture_success(gate, measurement, thresholds))
+        successes.append(
+            puncture_success(gate, measurement, thresholds)
+            and tissue_state[index].representation_switch_count == 1
+        )
 
     phase = torch.tensor([int(gate.phase) for gate in state["gates"]], device=env.device)
     event_count = torch.tensor([gate.event_count for gate in state["gates"]], device=env.device)
@@ -284,6 +285,22 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "wrench": wrench,
             "raw_wrench": raw_wrench,
             "force_components": force_components,
+            "tissue_surface_displacement": torch.tensor(
+                [item.surface_displacement_m for item in tissue_state],
+                device=env.device,
+                dtype=root_pos.dtype,
+            ),
+            "tissue_local_strain": torch.tensor(
+                [item.local_strain for item in tissue_state],
+                device=env.device,
+                dtype=root_pos.dtype,
+            ),
+            "representation_switch_count": torch.tensor(
+                [item.representation_switch_count for item in tissue_state],
+                device=env.device,
+                dtype=torch.long,
+            ),
+            "backend_metadata": adapter.metadata,
             "normal_force": normal_force,
             "force_derivative": force_derivative,
             "force_integral": force_integral,

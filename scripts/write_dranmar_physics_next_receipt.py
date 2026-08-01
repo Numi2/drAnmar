@@ -80,7 +80,6 @@ def main() -> int:
 
     source_paths = {
         "isaaclab": next_root / "IsaacLab",
-        "cressim_mpm": next_root / "CRESSim-MPM",
     }
     source_heads = {
         source_id: _git_head(path) for source_id, path in source_paths.items()
@@ -98,11 +97,6 @@ def main() -> int:
             "runtime source lock mismatch: "
             + json.dumps(source_mismatches, sort_keys=True)
         )
-
-    cressim_build = lock["builds"]["cressim_mpm"]
-    cressim_library = next_root / cressim_build["library_relative_path"]
-    if not cressim_library.is_file():
-        raise SystemExit(f"missing pinned CRESSim shared library: {cressim_library}")
 
     try:
         gpu_driver = subprocess.run(
@@ -134,13 +128,7 @@ def main() -> int:
         "gpu_driver": gpu_driver,
         "packages": installed_packages,
         "sources": source_heads,
-        "artifacts": {
-            "cressim_mpm_c_api": {
-                "path": cressim_build["library_relative_path"],
-                "sha256": _sha256(cressim_library),
-                "build": cressim_build,
-            }
-        },
+        "artifacts": {},
         "clinical_validation": False,
     }
     receipt_path = next_root / "runtime.json"

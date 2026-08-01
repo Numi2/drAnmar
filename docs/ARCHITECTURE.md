@@ -93,8 +93,11 @@ an optional vascular graph. The procedure determines the preferred solver:
 
 - PhysX volumetric FEM for intact palpation, grasping and retraction;
 - Newton VBD for high-throughput deformable learning and two-way solver comparison;
-- CRESSim-MPM for topology-changing cutting, puncture tracts and thread passage;
+- Dr.Anmar's native entry backend for force-gated, entry-only needle contact;
 - PhysX rigid-body dynamics for the current doctor-facing manipulation rooms.
+
+Persistent puncture tracts, thread passage, cutting, and other topology changes
+remain explicitly blocked until Dr.Anmar owns and qualifies those mechanics.
 
 The doctor-facing catalog contains only implemented rooms. Launch checks are limited to concrete dependencies
 such as the selected OpenUSD anatomy, native room assets, or an external provider runtime. The optional

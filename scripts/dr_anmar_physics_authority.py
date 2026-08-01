@@ -27,7 +27,7 @@ SUPPORTED_BACKENDS = {
     "physx_rigid",
     "physx_fem",
     "newton_vbd",
-    "cressim_mpm",
+    "dranmar_native_entry",
 }
 
 def _sha256(path: Path) -> str:
@@ -145,7 +145,7 @@ class PhysicsAuthority:
         effective = effective_backend or str(self.manifest["stable_default"])
         if effective not in SUPPORTED_BACKENDS:
             raise ValueError(f"Unknown effective native backend: {effective}")
-        experimental_requested = requested in {"newton_vbd", "cressim_mpm"}
+        experimental_requested = requested in {"newton_vbd", "dranmar_native_entry"}
         experimental_permitted = os.environ.get("DR_ANMAR_ENABLE_EXPERIMENTAL_PHYSICS", "0") == "1"
         data_root = Path(
             os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")
@@ -167,7 +167,7 @@ class PhysicsAuthority:
             "effective_backend": effective,
             "experimental_backend_requested": experimental_requested,
             "experimental_backend_permitted": experimental_permitted,
-            "experimental_backend_active": effective in {"newton_vbd", "cressim_mpm"},
+            "experimental_backend_active": effective in {"newton_vbd", "dranmar_native_entry"},
             "native_deformable_count": int(native_deformable_count),
             "fallback_explicit": False,
             "fallback_reason": None,

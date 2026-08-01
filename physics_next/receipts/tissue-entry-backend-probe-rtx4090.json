@@ -2,37 +2,37 @@
   "at_1ms": {
     "backend": {
       "clinical_validation": false,
+      "implementation_sha256": "6ef0188faeb783ac3935dba8f1d0f90132f6b504b50c9ae7d786c801f9a5c714",
       "integration_step_s": 0.001,
-      "library_sha256": "711b7d14db2276c49834499cf15e22b3c36d0e4832363a03ff5ca0dfc676cc1f",
-      "provider": "cressim_mpm",
-      "revision": "09aa5009b8580351f516b6df7660e87821fc5eb6"
+      "provider": "dranmar_native_entry",
+      "revision": "dranmar-native-tissue-entry-v1"
     },
-    "contact_force_n_peak": 4.229992205595673e-06,
+    "contact_force_n_peak": 0.02128064156338903,
     "finite": true,
     "integration_step_s": 0.001,
     "outside_force_n_max": 0.0,
-    "physics_step_ms_p95": 15.539317042566836,
+    "physics_step_ms_p95": 0.028794165700674057,
     "representation_switch_finite": true,
     "scenes": 12
   },
   "at_2ms": {
     "backend": {
       "clinical_validation": false,
+      "implementation_sha256": "6ef0188faeb783ac3935dba8f1d0f90132f6b504b50c9ae7d786c801f9a5c714",
       "integration_step_s": 0.002,
-      "library_sha256": "711b7d14db2276c49834499cf15e22b3c36d0e4832363a03ff5ca0dfc676cc1f",
-      "provider": "cressim_mpm",
-      "revision": "09aa5009b8580351f516b6df7660e87821fc5eb6"
+      "provider": "dranmar_native_entry",
+      "revision": "dranmar-native-tissue-entry-v1"
     },
-    "contact_force_n_peak": 3.068906815194047e-06,
+    "contact_force_n_peak": 0.02128064156338903,
     "finite": true,
     "integration_step_s": 0.002,
     "outside_force_n_max": 0.0,
-    "physics_step_ms_p95": 12.426117085851729,
+    "physics_step_ms_p95": 0.029935967177152634,
     "representation_switch_finite": true,
     "scenes": 12
   },
   "clinical_validation": false,
-  "convergence_relative_rmse": 0.14613443469946472,
+  "convergence_relative_rmse": 0.0,
   "evidence_level": "simulator_engineering_only",
   "qualified": true,
   "schema": "dr.anmar.tissue-entry-backend-probe.v1"

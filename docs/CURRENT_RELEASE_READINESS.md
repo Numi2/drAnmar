@@ -25,7 +25,7 @@ The current source gate establishes:
 - public services default to loopback and non-loopback binding fails closed
   without explicit opt-in, authentication, TLS termination, and firewall
   confirmation;
-- SuFIA downloads, Python packages, Isaac Lab, CRESSim-MPM, and installed
+- SuFIA downloads, Python packages, Isaac Lab, and installed
   physics-next state are versioned or content-addressed with verification
   receipts; and
 - per-unit and aggregate asset growth budgets are enforced.

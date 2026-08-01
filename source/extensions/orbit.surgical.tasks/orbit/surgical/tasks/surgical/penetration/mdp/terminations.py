@@ -30,6 +30,9 @@ def successful_entry(env: ManagerBasedRLEnv) -> torch.Tensor:
         env._dr_anmar_last_successful_entry = [
             {
                 "event_count": gate.event_count,
+                "representation_switch_count": int(
+                    state["representation_switch_count"][index]
+                ),
                 "phase": int(gate.phase),
                 "hard_failures": tuple(sorted(gate.hard_failures)),
                 "entry_error_m": float(state["measurement"]["entry_error"][index]),
@@ -37,6 +40,10 @@ def successful_entry(env: ManagerBasedRLEnv) -> torch.Tensor:
                 "plane_error_deg": float(state["measurement"]["plane_error"][index]),
                 "embedded_depth_m": float(state["measurement"]["embedded_depth"][index]),
                 "peak_force_n": gate.peak_force_n,
+                "backend_revision": state["backend_metadata"].revision,
+                "backend_implementation_sha256": (
+                    state["backend_metadata"].implementation_sha256
+                ),
             }
             for index, gate in enumerate(state["gates"])
         ]

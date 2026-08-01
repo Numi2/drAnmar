@@ -9,15 +9,16 @@ The stable workstation reports the backend that actually produced its state.
 Its first promoted deformable room imports the patient liver surface through
 NVIDIA's mesh converter and lets native PhysX cook the simulation tetrahedra.
 The explicit OpenUSD `TetMesh` is retained for Isaac Sim 6 / Isaac Lab 3 and
-Newton work. Newton VBD and CRESSim-MPM remain isolated until they are connected
-as workers with every native capability required by a room.
+Newton work. Topology-changing tract, cutting, exit, and thread-passage work
+remain blocked until Dr.Anmar develops and qualifies a native backend for them.
 
 ## Authority ladder
 
 1. `physx_rigid`: robot articulation, rigid objects, contacts and sensors.
 2. `physx_fem`: intact volumetric tissue, native contact and stress telemetry.
 3. `newton_vbd`: high-throughput two-way deformable comparison and policy work.
-4. `cressim_mpm`: topology-changing cutting and puncture research.
+4. `dranmar_native_entry`: entry-only viscoelastic deformation and force-gated
+   tip-to-arc switching; no persistent tract or topology change.
 
 ## Native strand lane
 

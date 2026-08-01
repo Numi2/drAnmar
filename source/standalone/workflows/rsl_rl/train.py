@@ -8,6 +8,9 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import hashlib
+import json
+from pathlib import Path
 
 from isaaclab.app import AppLauncher
 
@@ -27,11 +30,53 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+parser.add_argument(
+    "--analytical_gate",
+    type=Path,
+    default=None,
+    help="Required analytical qualification receipt for the Dr.Anmar tissue-entry task.",
+)
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
+
+
+def _require_tissue_entry_gate() -> None:
+    if args_cli.task != "DrAnmar-Penetrate-Tissue-Needle-PSM-IK-Rel-v0":
+        return
+    repository_root = Path(__file__).resolve().parents[4]
+    receipt_path = args_cli.analytical_gate or (
+        repository_root / "physics_next/receipts/tissue-entry-analytical-rtx4090.json"
+    )
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"Tissue-entry PPO blocked: invalid analytical gate {receipt_path}: {exc}")
+    backend_source = (
+        repository_root
+        / "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks/"
+        "surgical/penetration/backend.py"
+    )
+    source_sha256 = hashlib.sha256(backend_source.read_bytes()).hexdigest()
+    valid = (
+        receipt.get("schema") == "dr.anmar.tissue-entry-analytical-gate.v1"
+        and receipt.get("qualified_for_ppo") is True
+        and receipt.get("event_count") == 1
+        and receipt.get("representation_switch_count") == 1
+        and receipt.get("backend_revision") == "dranmar-native-tissue-entry-v1"
+        and receipt.get("backend_implementation_sha256") == source_sha256
+        and not receipt.get("hard_failures")
+        and receipt.get("clinical_validation") is False
+    )
+    if not valid:
+        raise SystemExit(
+            f"Tissue-entry PPO blocked: analytical controller has not qualified {receipt_path}"
+        )
+
+
+_require_tissue_entry_gate()
 # always enable cameras to record video
 if args_cli.video:
     args_cli.enable_cameras = True

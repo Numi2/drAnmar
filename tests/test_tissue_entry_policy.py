@@ -24,6 +24,16 @@ def _contract():
     return module
 
 
+def _backend():
+    name = "dranmar_test_penetration_backend"
+    spec = importlib.util.spec_from_file_location(name, TASK_ROOT / "backend.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def _measurement(module, **overrides):
     values = {
         "entry_error_m": 0.0005,
@@ -157,8 +167,11 @@ def test_task_is_dranmar_owned_and_uses_a_private_backend_provider():
     backend = (TASK_ROOT / "backend.py").read_text(encoding="utf-8")
     state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
     assert "class DrAnmarTissueEntryBackend(Protocol):" in backend
+    assert "class DrAnmarNativeTissueEntryBackend:" in backend
+    assert 'provider="dranmar_native_entry"' in backend
     assert "create_tissue_entry_backend" in state
     assert "CressimMpmAdapter" not in state
+    assert "cressim" not in backend.lower()
 
 
 def test_policy_is_gru_128_with_zero_initialized_bounded_residual():
@@ -184,13 +197,54 @@ def test_entry_benchmark_is_explicitly_not_full_suturing():
     assert benchmark["clinical_validation"] is False
 
 
-def test_runtime_lock_receipts_the_shared_cressim_artifact():
+def test_entry_policy_has_no_cressim_runtime_or_lock_dependency():
     lock = json.loads((ROOT / "config/physics-next-lock.json").read_text(encoding="utf-8"))
-    build = lock["builds"]["cressim_mpm"]
-    assert build["library_relative_path"].endswith("libcrmpm_c_api.so")
-    assert build["cuda_architectures"] == "89"
-    assert build["tests"] is True
-    writer = (ROOT / "scripts/write_dranmar_physics_next_receipt.py").read_text(encoding="utf-8")
-    verifier = (ROOT / "scripts/verify_dranmar_physics_next_receipt.py").read_text(encoding="utf-8")
-    assert '"cressim_mpm_c_api"' in writer
-    assert "CRESSim shared library digest mismatch" in verifier
+    assert "cressim_mpm" not in lock.get("sources", {})
+    assert "cressim_mpm" not in lock.get("builds", {})
+    assert not (TASK_ROOT / "cressim.py").exists()
+    probe = (ROOT / "scripts/probe_dranmar_tissue_entry_backend.py").read_text(
+        encoding="utf-8"
+    )
+    assert "--library" not in probe
+
+
+def test_native_backend_blocks_indents_and_switches_representation_once():
+    module = _backend()
+    backend = module.DrAnmarNativeTissueEntryBackend(1)
+    outside = module.NeedlePose((0.0, 0.0, 0.004), (0.0, 0.0, 0.0, 1.0))
+    contact = module.NeedlePose(
+        (0.0, 0.0, 0.002),
+        (0.0, 0.0, 0.0, 1.0),
+        linear_velocity=(0.0, 0.0, -0.001),
+    )
+    assert backend.step([outside], [outside], [False])[0].force_n == (0.0, 0.0, 0.0)
+    assert backend.step([contact], [contact], [False])[0].force_n[2] > 0.0
+    assert backend.scene_state[0].representation == "tip"
+    switched = backend.step([contact], [contact], [True])[0]
+    backend.step([contact], [contact], [True])
+    assert backend.scene_state[0].representation == "arc"
+    assert backend.scene_state[0].representation_switch_count == 1
+    assert any(abs(value) > 0.0 for value in switched.torque_nm)
+
+
+def test_native_backend_reset_and_nonfinite_state_fail_closed():
+    module = _backend()
+    backend = module.DrAnmarNativeTissueEntryBackend(1)
+    contact = module.NeedlePose((0.0, 0.0, 0.002), (0.0, 0.0, 0.0, 1.0))
+    backend.step([contact], [contact], [True])
+    backend.step([contact], [contact], [False])
+    assert backend.scene_state[0].representation_switch_count == 0
+    invalid = module.NeedlePose((0.0, 0.0, float("nan")), (0.0, 0.0, 0.0, 1.0))
+    wrench = backend.step([invalid], [invalid], [False])[0]
+    assert backend.scene_state[0].finite is False
+    assert all(value != value for value in wrench.force_n)
+
+
+def test_rsl_rl_training_fails_closed_on_native_analytical_gate():
+    training = (ROOT / "source/standalone/workflows/rsl_rl/train.py").read_text(
+        encoding="utf-8"
+    )
+    assert "_require_tissue_entry_gate()" in training
+    assert 'receipt.get("qualified_for_ppo") is True' in training
+    assert 'receipt.get("representation_switch_count") == 1' in training
+    assert 'receipt.get("backend_implementation_sha256") == source_sha256' in training

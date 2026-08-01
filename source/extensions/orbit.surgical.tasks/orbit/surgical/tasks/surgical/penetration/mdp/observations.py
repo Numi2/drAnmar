@@ -101,8 +101,8 @@ def privileged_puncture_state(env: ManagerBasedRLEnv) -> torch.Tensor:
         ),
         dim=-1,
     )
-    local_strain = (state["measurement"]["indentation"] / 0.006).unsqueeze(-1)
-    exact_surface_displacement = state["measurement"]["indentation"].unsqueeze(-1)
+    local_strain = state["tissue_local_strain"].unsqueeze(-1)
+    exact_surface_displacement = state["tissue_surface_displacement"].unsqueeze(-1)
     return torch.cat(
         (scalar_state, state["force_components"], local_strain, exact_surface_displacement),
         dim=-1,

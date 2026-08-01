@@ -3,7 +3,7 @@
   "id": "needle-entry-v1",
   "scope": "single_force_gated_entry_only",
   "backend": "dranmar_tissue_entry_backend",
-  "provider": "locked_cressim_mpm",
+  "provider": "dranmar_native_entry",
   "phases": ["approach", "align", "indent", "puncture", "stabilize"],
   "success": {
     "puncture_event_count": 1,

@@ -59,13 +59,13 @@
       "two_way_robot_tissue": true,
       "clinical_validation": false
     },
-    "cressim_mpm": {
-      "id": "cressim_mpm",
-      "runtime": "CRESSim-MPM CUDA subsolver behind the Dr.Anmar OpenUSD contract",
-      "maturity": "research-integration",
-      "authority_scope": ["cutting", "puncture tract", "needle and thread passage", "large topology change"],
-      "capabilities": ["rigid_body", "contact", "volume_deformable", "two_way_robot_tissue", "topology_change", "tissue_puncture"],
-      "topology_change": true,
+    "dranmar_native_entry": {
+      "id": "dranmar_native_entry",
+      "runtime": "Dr.Anmar deterministic entry-only viscoelastic backend coupled to PhysX",
+      "maturity": "simulation-engineering-candidate",
+      "authority_scope": ["prepuncture surface deformation", "force-gated needle entry", "bounded post-entry resistance"],
+      "capabilities": ["contact", "entry_deformation", "two_way_robot_tissue", "tissue_entry"],
+      "topology_change": false,
       "two_way_robot_tissue": true,
       "clinical_validation": false
     }
@@ -80,10 +80,6 @@
       "ref": "pinned-commit",
       "revision": "51104d55d46192f9c981f2b63007d5156e141cec"
     },
-    "cressim_mpm": {
-      "ref": "v2.2.0",
-      "revision": "09aa5009b8580351f516b6df7660e87821fc5eb6"
-    },
     "pytetwild": {"version": "0.3.0"}
   },
   "routing": {
@@ -93,10 +89,8 @@
     "palpation": ["physx_fem", "newton_vbd"],
     "organ_retraction": ["physx_fem", "newton_vbd"],
     "threaded_needle_core": ["physx_fem"],
-    "needle_puncture": ["cressim_mpm"],
+    "needle_entry": ["dranmar_native_entry"],
     "wound_edge_approximation": ["physx_fem", "newton_vbd"],
-    "suturing": ["cressim_mpm"],
-    "cutting": ["cressim_mpm"],
     "contact_driven_rescue": ["physx_fem", "physx_rigid"],
     "policy_training": ["newton_vbd", "physx_fem", "physx_rigid"]
   },

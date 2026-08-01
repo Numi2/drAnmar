@@ -93,6 +93,7 @@ def main() -> int:
         success_receipt = getattr(env.unwrapped, "_dr_anmar_last_successful_entry", None)
         evidence = success_receipt[0] if success_receipt else {
             "event_count": int(state["event_count"][0]),
+            "representation_switch_count": int(state["representation_switch_count"][0]),
             "phase": int(state["phase"][0]),
             "hard_failures": tuple(sorted(state["gates"][0].hard_failures)),
             "entry_error_m": float(state["measurement"]["entry_error"][0]),
@@ -100,6 +101,10 @@ def main() -> int:
             "plane_error_deg": float(state["measurement"]["plane_error"][0]),
             "embedded_depth_m": float(state["measurement"]["embedded_depth"][0]),
             "peak_force_n": float(state["normal_force"][0]),
+            "backend_revision": state["backend_metadata"].revision,
+            "backend_implementation_sha256": (
+                state["backend_metadata"].implementation_sha256
+            ),
         }
         report = {
             "schema": "dr.anmar.tissue-entry-analytical-gate.v1",
@@ -110,6 +115,11 @@ def main() -> int:
             "terminated_by": terminated_by,
             "successful": successful,
             "event_count": evidence["event_count"],
+            "representation_switch_count": evidence["representation_switch_count"],
+            "backend_revision": evidence["backend_revision"],
+            "backend_implementation_sha256": evidence[
+                "backend_implementation_sha256"
+            ],
             "phase": evidence["phase"],
             "hard_failures": list(evidence["hard_failures"]),
             "entry_error_m": evidence["entry_error_m"],
@@ -117,6 +127,19 @@ def main() -> int:
             "plane_error_deg": evidence["plane_error_deg"],
             "embedded_depth_m": evidence["embedded_depth_m"],
             "peak_force_n": evidence["peak_force_n"],
+            "entry_target_world_m": state["measurement"]["target"][0]
+            .detach()
+            .cpu()
+            .tolist(),
+            "needle_tip_world_m": state["measurement"]["tip_pos"][0]
+            .detach()
+            .cpu()
+            .tolist(),
+            "grasp_position_error_m": float(state["grasp_position_error"][0]),
+            "grasp_angle_error_deg": float(state["grasp_angle_error_deg"][0]),
+            "jaw_contact_forces_n": state["jaw_forces"][0].detach().cpu().tolist(),
+            "custody_valid": bool(state["custody_valid"][0]),
+            "phase_sequence": list(state["gates"][0].phase_sequence),
             "wrench_finite": bool(torch.isfinite(state["wrench"]).all()),
             "max_rotation_action": max_rotation_action,
             "last_action": action[0].detach().cpu().tolist(),
@@ -134,6 +157,7 @@ def main() -> int:
             "qualified_for_ppo": bool(
                 successful
                 and evidence["event_count"] == 1
+                and evidence["representation_switch_count"] == 1
                 and not evidence["hard_failures"]
             ),
             "evidence_level": "simulator_engineering_only",
@@ -143,14 +167,21 @@ def main() -> int:
         temporary = args.report.with_name(f".{args.report.name}.{os.getpid()}.tmp")
         temporary.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         os.replace(temporary, args.report)
-        print("[DR_ANMAR_TISSUE_ENTRY_ANALYTICAL] " + json.dumps(report, sort_keys=True))
+        print(
+            "[DR_ANMAR_TISSUE_ENTRY_ANALYTICAL] " + json.dumps(report, sort_keys=True),
+            flush=True,
+        )
         return 0 if report["qualified_for_ppo"] else 1
     finally:
         env.close()
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    finally:
-        simulation_app.close()
+    exit_code = main()
+    if exit_code != 0:
+        # Isaac's close path exits the process with status zero on this runtime,
+        # which would silently open the PPO gate. The environment and receipt
+        # are already closed/flushed by main, so preserve the gate status.
+        os._exit(exit_code)
+    simulation_app.close()
+    raise SystemExit(0)

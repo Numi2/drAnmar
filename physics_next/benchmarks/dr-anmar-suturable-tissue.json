@@ -20,12 +20,13 @@
       "intact_deformation_comparison",
       "high_throughput_parameter_sweep"
     ],
-    "cressim_mpm": [
-      "arbitrary_puncture",
-      "persistent_tract",
-      "thread_passage",
-      "cutting",
-      "local_topology_change"
+    "dranmar_native_entry": [
+      "single_force_gated_entry_only",
+      "prepuncture_surface_response",
+      "bounded_post_entry_resistance"
+    ],
+    "blocked_pending_native_topology_backend": [
+      "persistent_tract", "thread_passage", "cutting", "local_topology_change"
     ]
   },
   "phases": [
