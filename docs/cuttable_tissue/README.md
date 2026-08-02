@@ -190,3 +190,29 @@ intersecting cuts remain qualified in the persistent cut-cell topology layer,
 but sequentially enriching an already split live FEM mesh is still blocked.
 Likewise, this NumPy reference is not a CUDA dynamic solver, a calibrated model
 of human skin, biomechanical validation, or clinical validation.
+
+## Curved dynamics on Warp CUDA
+
+The same remesh and initial state can be advanced entirely on Warp CUDA:
+
+```bash
+python scripts/dr_anmar_dynamic_curved_cut_warp.py --device cuda:0 \
+  --output physics_next/receipts/dynamic-curved-cut-warp-cuda-reference.json
+```
+
+On Gilgamesh's RTX 4090, the bulk finite-strain force, Prony history update,
+unilateral wound compression/damping, opening traction, and semi-implicit
+integration all execute on `cuda:0`. The retained 4,000-step run reports zero
+inversion observations, a 0.870 minimum Jacobian, 0.069 mm mean opening, and
+complete two-sided wound collision with zero probe crossing.
+
+Five fresh CUDA replays all qualified. Atomic force accumulation produced a
+maximum Jacobian envelope only 1.2e-6 wide and a mean-gap envelope 1.1e-8 m
+wide. The source, profile, CPU oracle, raw CUDA receipt, hardware/runtime, test
+count, replay hashes, and metric envelopes are frozen in
+`dynamic-curved-cut-cuda-promotion-lock.json`.
+
+This promotes the single curved post-fracture dynamic path to CUDA-qualified
+simulator engineering evidence. It does not yet promote a scalpel-driven moving
+fracture front or sequential intersecting live remeshing, and it remains
+uncalibrated against human-tissue specimens.
