@@ -83,6 +83,7 @@ def _couple_fem_contact_patch(
     """
 
     patch_radius_m = 0.008
+    entry_patch_radius_m = 0.0045
     underside_patch_radius_m = 0.006
     underside_displacement_max_m = 0.0008
     exit_influence_depth_m = 0.004
@@ -193,13 +194,19 @@ def _couple_fem_contact_patch(
         lateral_delta = positions[..., :2] - patch_center[:, None, :]
         radius = torch.linalg.vector_norm(lateral_delta, dim=-1)
         falloff = torch.clamp(1.0 - radius / patch_radius_m, min=0.0) ** 2
+        entry_falloff = torch.clamp(
+            1.0 - radius / entry_patch_radius_m, min=0.0
+        ) ** 2
+        deformation_falloff = torch.where(
+            punctured_mask.unsqueeze(-1), falloff, entry_falloff
+        )
         contact_active = (
             (active_flap & ~punctured_mask & (displacement > 0.0))
             | tract_contact_active
         )
         contact_patch = (
             top_surface
-            & (falloff > 0.0)
+            & (deformation_falloff > 0.0)
             & contact_active.unsqueeze(-1)
             & ~outer_anchor
         )
@@ -207,13 +214,14 @@ def _couple_fem_contact_patch(
             contact_patch,
             positions[..., 2]
             - torch.clamp(displacement, max=tract_displacement_max_m).unsqueeze(-1)
-            * falloff,
+            * deformation_falloff,
             targets[..., 2],
         )
         targets[..., :2] = torch.where(
             contact_patch.unsqueeze(-1),
             positions[..., :2]
-            + lateral_displacement.unsqueeze(1) * falloff.unsqueeze(-1),
+            + lateral_displacement.unsqueeze(1)
+            * deformation_falloff.unsqueeze(-1),
             targets[..., :2],
         )
         # The tip lifts a bounded patch on the underside of the right FEM flap.
@@ -263,7 +271,7 @@ def _couple_fem_contact_patch(
             targets[..., 2],
         )
         targets[..., 3] = torch.where(
-            contact_patch | exit_patch,
+            contact_patch | underside_patch | exit_patch,
             torch.zeros_like(targets[..., 3]),
             targets[..., 3],
         )

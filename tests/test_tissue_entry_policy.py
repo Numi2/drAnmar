@@ -632,9 +632,10 @@ def test_fem_tract_load_stretches_and_recoils_through_free_nodes():
     )
     assert "contact_position_m" in backend
     assert "patch_radius_m = 0.008" in state
+    assert "entry_patch_radius_m = 0.0045" in state
     assert "tract_displacement_max_m = 0.0035" in state
     assert "tract_lateral_displacement_max_m = 0.002" in state
-    assert "lateral_displacement.unsqueeze(1) * falloff.unsqueeze(-1)" in state
+    assert "deformation_falloff.unsqueeze(-1)" in state
     for asset in (left, right):
         assert "float omniphysics:youngsModulus = 80000" in asset
         assert "float physxDeformableMaterial:elasticityDamping = 0.08" in asset
@@ -775,7 +776,10 @@ def test_pullout_requires_receiver_contact_transfer_and_complete_clearance():
         exposed_fraction=0.99,
     )
     measurement = module.PulloutMeasurement(**values)
-    module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
+    for _ in range(thresholds.receiver_pull_steps_min):
+        module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
+    assert state.receiver_pull_steps == thresholds.receiver_pull_steps_min
+    assert state.phase == module.PulloutPhase.CLEAR
     for _ in range(thresholds.clearance_steps - 1):
         module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
     assert module.pullout_success(state, measurement, thresholds)
@@ -838,6 +842,7 @@ def test_tissue_blocks_psms_but_filters_only_the_needle_pair():
     assert "item.surface_displacement_m" in state
     assert "contact_patch" in state
     assert "underside_patch" in state
+    assert "contact_patch | underside_patch | exit_patch" in state
     assert "right_underside_event_count" in state
     assert "giver_tip_tissue_contact" in penetration
     assert "collision_enabled=False" not in pullout
@@ -867,6 +872,7 @@ def test_pullout_benchmark_requires_receiver_only_complete_clearance():
     )
     acceptance = benchmark["engineering_acceptance"]
     assert acceptance["receiver_bilateral_contact_steps_min"] == 3
+    assert acceptance["receiver_pull_steps_min"] == 64
     assert acceptance["embedded_arc_length_m_max"] == 0.0002
     assert acceptance["exposed_fraction_min"] == 0.95
     assert acceptance["giver_released"] is True

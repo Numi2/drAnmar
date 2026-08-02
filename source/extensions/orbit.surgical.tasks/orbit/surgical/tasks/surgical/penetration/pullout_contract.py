@@ -51,6 +51,9 @@ class PulloutThresholds:
     # Receiver custody must remain stable while the giver retreats 5 mm at the
     # bounded 0.25 mm command limit; only then may the binary jaw open.
     transfer_release_steps: int = 20
+    # At the 0.25 mm command bound this proves a visible 16 mm receiver-owned
+    # pull after handover instead of accepting an already-clear geometry bit.
+    receiver_pull_steps_min: int = 64
     embedded_arc_clearance_m: float = 0.0002
     exposed_fraction_clearance: float = 0.95
     clearance_steps: int = 10
@@ -102,6 +105,7 @@ class PulloutGateState:
     presented_steps: int = 0
     receiver_contact_steps: int = 0
     giver_release_steps: int = 0
+    receiver_pull_steps: int = 0
     cleared_steps: int = 0
     peak_force_n: float = 0.0
     entry_error_at_puncture_m: float | None = None
@@ -266,8 +270,12 @@ def advance_pullout_gate(
         if state.giver_release_steps >= thresholds.transfer_release_steps:
             next_phase = PulloutPhase.PULL
     elif state.phase == PulloutPhase.PULL:
+        if measurement.receiver_custody and measurement.giver_released:
+            state.receiver_pull_steps += 1
         clear = (
             measurement.receiver_custody
+            and measurement.giver_released
+            and state.receiver_pull_steps >= thresholds.receiver_pull_steps_min
             and measurement.embedded_arc_length_m <= thresholds.embedded_arc_clearance_m
             and measurement.exposed_fraction >= thresholds.exposed_fraction_clearance
         )
@@ -335,6 +343,7 @@ class PulloutReceipt:
     embedded_arc_length_m: float
     exposed_arc_length_m: float
     receiver_contact_steps: int
+    receiver_pull_steps: int
     receiver_only_clearance_steps: int
     phase_sequence: tuple[str, ...]
     backend_revision: str

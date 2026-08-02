@@ -30,6 +30,7 @@
     "presentation_exposed_fraction_min": 0.2,
     "presentation_exposed_fraction_max": 0.3,
     "receiver_bilateral_contact_steps_min": 3,
+    "receiver_pull_steps_min": 64,
     "giver_released": true,
     "receiver_custody": true,
     "embedded_arc_length_m_max": 0.0002,
