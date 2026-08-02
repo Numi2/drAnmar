@@ -193,7 +193,9 @@ top of the left collision-enabled span, follows the 21 mm curved needle below
 the surface, punctures the underside of the separate right span, re-emerges
 through its top, presents more than one fifth of the arc, and stops. The
 opposite PSM then acquires the exposed arc, the giver releases, and the receiver
-pulls the needle completely clear on the right.
+continues rotating the needle about its curvature centre until the trailing tip
+is completely clear on the right. There is no surface-normal lift in either
+stage.
 
 <p align="center">
   <img src="docs/media/dranmar-champion-tissue-puncture-pullout.gif"
@@ -216,19 +218,22 @@ shaft, or wrist tissue contact is a hard failure; puncture permission applies
 only to the needle.
 
 The rendered seed-17 receipt records one left entry, one right-underside
-puncture, and one right-top exit; 0.884 mm entry error; 0.094 mm immutable
+puncture, and one right-top exit; 0.884 mm entry error; 0.053 mm immutable
 exit-event error; 7.11 degree tangent error; 7.59 degree plane error; zero hard
 failures; zero embedded arc after pullout; and 100% final exposure. The
 analytical policy runs at 50 Hz with 0.25 mm and 0.5 degree command bounds,
 four tissue-supported giver regrips, a fixed giver hold during receiver
-approach, sustained receiver custody, and 64 receiver-owned pull steps before
-success may be declared. The machine-readable rendered evidence is in
+approach, sustained receiver custody, a 203 degree unwrapped giver drive, and
+855 receiver-owned curvature steps before success is declared. The receiver
+rotated 149.49 degrees after handover while its measured curvature-centre drift
+remained below 0.77 mm; drift above 1.5 mm is a hard failure. The
+machine-readable rendered evidence is in
 [`docs/tissue_puncture_pullout/seed17_fem_rendered_success.json`](docs/tissue_puncture_pullout/seed17_fem_rendered_success.json).
-The receiver follows the instantaneous curved-needle tangent throughout its
-pull, avoiding the previous late upward cross-surface motion. The GIF uses only
-frames from this successful RTX rollout, keeps the first-entry interval near
-real-time so the left-flap tip crossing remains visible, and omits the
-post-success reset frame.
+The receiver applies matched circular translation and rotation about the
+needle's curvature centre, avoiding the previous late upward cross-surface
+motion. The GIF uses only frames from this successful RTX rollout, keeps the
+first-entry and final curved-clearance intervals near real-time, compresses the
+long middle handover, and omits the post-success reset frame.
 
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.

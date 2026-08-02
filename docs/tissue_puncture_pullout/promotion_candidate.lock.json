@@ -1,17 +1,17 @@
 {
   "schema": "dr.anmar.tissue-puncture-pullout-promotion-candidate-lock.v1",
-  "source_revision": "9a067fc",
+  "source_revision": "e3091ef",
   "task": "DrAnmar-Puncture-Pullout-Tissue-Needle-PSM-IK-Rel-Play-v0",
   "policy": {
     "kind": "analytical",
-    "sha256": "d7f0718402c0fb3093dbe5acfca58355eb95e123a174ebbe5a1698edb5da769f"
+    "sha256": "256513aa32d933ac5aea922ec4b61537090e03c1560d364265194c79c70bdda0"
   },
   "backend": {
     "revision": "dranmar-native-tissue-through-v13-right-underside-gate",
     "sha256": "398f109dc0576739041104356e632e45e4ab67c08d5eaef6cabbe2ee0e4cecc4"
   },
   "profiles": {
-    "tissue_and_task_sha256": "0fe0d0ceace03aa6656d575c24920c7714e6473b8a094fd7e7984d66c848ec5f",
+    "tissue_and_task_sha256": "5bea34331d514d66c691ec257d3d31d120ac290d60d0b30ea15596d321f5f9a4",
     "needle_usda_sha256": "6be56beeee3bf51928e36162b18a8b88ed76447a1a366338df37dd8887687bce"
   },
   "rendered_evaluation": {
@@ -19,19 +19,21 @@
     "episodes": 1,
     "success_rate": 1.0,
     "entry_error_m_max": 0.0008836032939143479,
-    "exit_error_m_max": 0.00009401272109244019,
+    "exit_error_m_max": 0.000053342046157922596,
     "tangent_error_deg_max": 7.107021808624268,
     "plane_error_deg_max": 7.590936660766602,
-    "normalized_peak_force_max": 1.0403528213500977,
+    "normalized_peak_force_max": 1.046310544013977,
     "right_underside_event_count": 1,
     "presentation_exposed_fraction": 0.2265625,
     "final_exposed_fraction_min": 1.0,
     "final_embedded_arc_length_m_max": 0.0,
-    "receiver_pull_steps_min": 64,
+    "receiver_pull_steps_min": 855,
+    "receiver_curve_rotation_deg_min": 149.49082946777344,
+    "receiver_curve_center_error_m_max": 0.0007662244024686515,
     "hard_safety_failures": 0,
     "timeouts": 0,
     "receipt": "seed17_fem_rendered_success.json",
-    "gif_sha256": "77eeba13936561e2db4db6f35b393180e6f400961588d12d1539841b71c6c0c3"
+    "gif_sha256": "f19b6dc45c7d5b50864d80cf333870ce944b8c6fa9b698761b7b8e63fe24d636"
   },
   "promotion_eligible": false,
   "remaining_gate": "three_untouched_seeds_with_256_isolated_episodes_each",

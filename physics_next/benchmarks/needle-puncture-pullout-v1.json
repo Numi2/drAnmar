@@ -5,15 +5,18 @@
   "status": "rendered_fixed_domain_success_statistical_promotion_pending",
   "promotion_eligible": false,
   "qualification_evidence": {
-    "rendered_seed": 7012,
+    "rendered_seed": 17,
     "rendered_success": true,
-    "entry_error_m": 0.0008890150929801166,
-    "exit_error_m": 0.00004431727938936092,
+    "entry_error_m": 0.0008836032939143479,
+    "exit_error_m": 0.000053342046157922596,
     "presentation_exposed_fraction": 0.2265625,
     "final_exposed_fraction": 1.0,
     "final_embedded_arc_length_m": 0.0,
+    "receiver_curve_rotation_deg": 149.49082946777344,
+    "receiver_curve_center_error_m_max": 0.0007662244024686515,
+    "receiver_pull_steps": 855,
     "hard_safety_failures": 0,
-    "receipt": "docs/tissue_puncture_pullout/seed7012_rendered_success.json",
+    "receipt": "docs/tissue_puncture_pullout/seed17_fem_rendered_success.json",
     "remaining_gate": "three_untouched_seeds_with_256_isolated_episodes_each"
   },
   "engineering_acceptance": {
