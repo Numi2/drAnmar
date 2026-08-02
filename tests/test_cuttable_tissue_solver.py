@@ -50,7 +50,9 @@ def test_reference_solver_uses_nonlinear_stress_relaxation_and_fixed_anchors():
     assert "inverse_transpose" in source
     assert "prony_history" in source
     assert "self.position[self.fixed] = self.fixed_position" in source
-    assert "normal_stiffness_n_m" in source
+    assert "normal_stiffness_pa_m" in source
+    assert "selected_triangles" in source
+    assert "strip_width" in source
 
 
 def test_neo_hookean_reference_is_objective_under_rigid_rotation():
@@ -85,6 +87,14 @@ def test_scalpel_contact_is_two_way_and_uses_a_finite_edge():
     assert np.allclose(np.sum(tissue_force, axis=0) + scalpel_reaction, 0.0)
 
 
+def test_surface_quadrature_prevents_off_grid_contact_holes():
+    module = _module()
+    solver = module.CuttableTissueReferenceSolver(module.load_profile())
+    coverage, variation = module._off_grid_contact_sweep(solver)
+    assert coverage == 1.0
+    assert variation <= solver.profile["qualification"]["maximum_off_grid_force_variation_fraction"]
+
+
 def test_fracture_is_fail_closed_for_the_first_milestone():
     module = _module()
     profile = module.load_profile()
@@ -104,6 +114,7 @@ def test_intact_scalpel_contact_qualifies_and_replays_exactly():
     assert first.fracture_event_count == 0
     assert first.peak_scalpel_force_n > 0.0
     assert first.peak_scalpel_tangential_force_n > 0.0
+    assert first.off_grid_contact_coverage_fraction == 1.0
     assert first.force_at_hold_end_n < first.force_at_hold_start_n
     assert first.deterministic_trace_sha256 == second.deterministic_trace_sha256
     assert first.payload() == second.payload()

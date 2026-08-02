@@ -47,6 +47,8 @@ class CuttableTissueReceipt:
     maximum_anchor_drift_m: float
     maximum_volume_error_fraction: float
     maximum_contact_penetration_m: float
+    off_grid_contact_coverage_fraction: float
+    off_grid_force_variation_fraction: float
     peak_scalpel_force_n: float
     peak_scalpel_tangential_force_n: float
     force_at_hold_start_n: float
@@ -193,12 +195,31 @@ class CuttableTissueReferenceSolver:
 
         top = np.isclose(self.rest[:, 2], np.max(self.rest[:, 2]), atol=1.0e-12)
         self.top_nodes = np.flatnonzero(top)
+        self.top_triangles = self._top_surface_triangles()
         self.prony_history = np.zeros((len(self.tets), 3, 3), dtype=np.float64)
         self.previous_elastic_stress = np.zeros_like(self.prony_history)
         self.fracture_work_j = np.zeros(len(self.tets), dtype=np.float64)
         self.damage = np.zeros(len(self.tets), dtype=np.float64)
         self.fracture_event_count = 0
         self.steps = 0
+
+    def _top_surface_triangles(self) -> np.ndarray:
+        faces: dict[tuple[int, int, int], tuple[int, int, int]] = {}
+        counts: dict[tuple[int, int, int], int] = {}
+        for a, b, c, d in self.tets:
+            for face in ((b, c, d), (a, d, c), (a, b, d), (a, c, b)):
+                key = tuple(sorted(int(index) for index in face))
+                counts[key] = counts.get(key, 0) + 1
+                faces.setdefault(key, tuple(int(index) for index in face))
+        maximum_z = float(np.max(self.rest[:, 2]))
+        top_faces = [
+            faces[key]
+            for key, count in counts.items()
+            if count == 1 and np.allclose(self.rest[list(key), 2], maximum_z, atol=1.0e-12)
+        ]
+        if not top_faces:
+            raise ValueError("Coupon must expose a triangulated top collision surface")
+        return np.asarray(sorted(top_faces), dtype=np.int64)
 
     def _deformation(self) -> tuple[np.ndarray, np.ndarray]:
         x0 = self.position[self.tets[:, 0]]
@@ -254,26 +275,68 @@ class CuttableTissueReferenceSolver:
         blade_velocity = np.asarray(pose.velocity_m_s, dtype=np.float64)
         half_length = float(contact["edge_length_m"]) / 2.0
         radius = float(contact["edge_radius_m"])
-        points = self.position[self.top_nodes]
-        axial = np.clip((points - center) @ tangent, -half_length, half_length)
-        closest = center + axial[:, None] * tangent
-        offset = points - closest
-        distance = np.linalg.norm(offset, axis=1)
-        penetration = np.maximum(0.0, radius - distance)
-        active = penetration > 0.0
+        if abs(float(tangent[2])) > 1.0e-6:
+            raise ValueError("Reference top-surface contact requires an in-plane scalpel edge")
+        segment_count = int(contact["edge_quadrature_segments"])
+        if segment_count < 2:
+            raise ValueError("Scalpel edge quadrature requires at least two segments")
+        segment_length = 2.0 * half_length / segment_count
+        offsets = -half_length + (np.arange(segment_count) + 0.5) * segment_length
+        axis_points = center + offsets[:, None] * tangent
+
+        triangles = self.position[self.top_triangles]
+        p0 = triangles[:, 0, :2]
+        edge_0 = triangles[:, 1, :2] - p0
+        edge_1 = triangles[:, 2, :2] - p0
+        denominator = edge_0[:, 0] * edge_1[:, 1] - edge_0[:, 1] * edge_1[:, 0]
+        query = axis_points[:, None, :2] - p0[None, :, :]
+        bary_1 = (
+            query[:, :, 0] * edge_1[None, :, 1] - query[:, :, 1] * edge_1[None, :, 0]
+        ) / denominator[None, :]
+        bary_2 = (
+            edge_0[None, :, 0] * query[:, :, 1] - edge_0[None, :, 1] * query[:, :, 0]
+        ) / denominator[None, :]
+        bary_0 = 1.0 - bary_1 - bary_2
+        inside = (bary_0 >= -1.0e-10) & (bary_1 >= -1.0e-10) & (bary_2 >= -1.0e-10)
+        valid = np.any(inside, axis=1)
+        triangle_slot = np.argmax(inside, axis=1)
+        barycentric = np.stack(
+            (
+                bary_0[np.arange(segment_count), triangle_slot],
+                bary_1[np.arange(segment_count), triangle_slot],
+                bary_2[np.arange(segment_count), triangle_slot],
+            ),
+            axis=1,
+        )
+        selected_triangles = self.top_triangles[triangle_slot]
+        selected_position = self.position[selected_triangles]
+        selected_velocity = self.velocity[selected_triangles]
+        surface_point = np.einsum("si,sij->sj", barycentric, selected_position)
+        surface_velocity = np.einsum("si,sij->sj", barycentric, selected_velocity)
+        surface_normal = np.cross(
+            selected_position[:, 1] - selected_position[:, 0],
+            selected_position[:, 2] - selected_position[:, 0],
+        )
+        surface_normal /= np.maximum(np.linalg.norm(surface_normal, axis=1)[:, None], 1.0e-12)
+        surface_normal = np.where(surface_normal[:, 2, None] < 0.0, -surface_normal, surface_normal)
+        signed_gap = np.sum((axis_points - surface_point) * surface_normal, axis=1)
+        penetration = np.maximum(0.0, radius - signed_gap)
+        active = valid & (penetration > 0.0)
         force = np.zeros_like(self.position)
         reaction = np.zeros(3, dtype=np.float64)
         if not np.any(active):
             return force, reaction, 0.0
 
-        active_nodes = self.top_nodes[active]
-        normals = offset[active] / np.maximum(distance[active, None], 1.0e-12)
-        relative_velocity = self.velocity[active_nodes] - blade_velocity
+        normals = -surface_normal[active]
+        relative_velocity = surface_velocity[active] - blade_velocity
         normal_velocity = np.sum(relative_velocity * normals, axis=1)
-        normal_magnitude = float(contact["normal_stiffness_n_m"]) * penetration[active] - float(
-            contact["normal_damping_n_s_m"]
+        normal_pressure = float(contact["normal_stiffness_pa_m"]) * penetration[active] - float(
+            contact["normal_damping_pa_s_m"]
         ) * np.minimum(normal_velocity, 0.0)
-        normal_magnitude = np.maximum(0.0, normal_magnitude)
+        normal_pressure = np.maximum(0.0, normal_pressure)
+        effective_gap = np.clip(signed_gap[active], 0.0, radius)
+        strip_width = 2.0 * np.sqrt(np.maximum(0.0, radius * radius - effective_gap**2))
+        normal_magnitude = normal_pressure * strip_width * segment_length
         nodal_force = normal_magnitude[:, None] * normals
 
         tangential_velocity = relative_velocity - normal_velocity[:, None] * normals
@@ -284,7 +347,14 @@ class CuttableTissueReferenceSolver:
         nodal_force -= (float(contact["dynamic_friction"]) * normal_magnitude * friction_scale)[
             :, None
         ] * tangential_direction
-        np.add.at(force, active_nodes, nodal_force)
+        active_triangles = selected_triangles[active]
+        active_barycentric = barycentric[active]
+        for local in range(3):
+            np.add.at(
+                force,
+                active_triangles[:, local],
+                active_barycentric[:, local, None] * nodal_force,
+            )
         reaction = -np.sum(nodal_force, axis=0)
         return force, reaction, float(np.max(penetration[active]))
 
@@ -340,6 +410,29 @@ def _smoothstep_rate(value: float) -> float:
     return 6.0 * value * (1.0 - value)
 
 
+def _off_grid_contact_sweep(
+    solver: CuttableTissueReferenceSolver,
+) -> tuple[float, float]:
+    geometry = solver.profile["geometry"]
+    contact = solver.profile["scalpel_contact"]
+    cell_width = (
+        float(geometry["width_m"])
+        * (1.0 + float(geometry["prestrain_x"]))
+        / int(geometry["cells_x"])
+    )
+    surface_z = float(np.max(solver.position[:, 2]))
+    edge_z = surface_z + float(contact["edge_radius_m"]) - 0.0001
+    sample_count = 9
+    forces: list[float] = []
+    for offset in np.linspace(-cell_width / 2.0, cell_width / 2.0, sample_count):
+        _, reaction, _ = solver._scalpel_contact(ScalpelPose((float(offset), 0.0, edge_z)))
+        forces.append(float(np.linalg.norm(reaction)))
+    coverage = sum(force > 1.0e-12 for force in forces) / sample_count
+    mean_force = float(np.mean(forces))
+    variation = (max(forces) - min(forces)) / max(mean_force, 1.0e-12)
+    return coverage, variation
+
+
 def run_intact_scalpel_qualification(
     profile: dict[str, Any] | None = None,
     *,
@@ -347,6 +440,7 @@ def run_intact_scalpel_qualification(
 ) -> CuttableTissueReceipt:
     profile = profile or load_profile(profile_path)
     solver = CuttableTissueReferenceSolver(profile)
+    off_grid_coverage, off_grid_variation = _off_grid_contact_sweep(solver)
     settings = profile["solver"]
     dt = float(settings["time_step_s"])
     surface_z = float(np.max(solver.initial_position[:, 2]))
@@ -450,6 +544,10 @@ def run_intact_scalpel_qualification(
         "anchor_drift": solver.maximum_anchor_drift_m() <= float(limits["maximum_anchor_drift_m"]),
         "volume_error": volume_error <= float(limits["maximum_volume_error_fraction"]),
         "contact_penetration": max_penetration <= float(limits["maximum_contact_penetration_m"]),
+        "off_grid_contact_coverage": off_grid_coverage
+        >= float(limits["minimum_off_grid_contact_coverage_fraction"]),
+        "off_grid_force_variation": off_grid_variation
+        <= float(limits["maximum_off_grid_force_variation_fraction"]),
         "force_relaxation_min": relaxation >= float(limits["minimum_force_relaxation_fraction"]),
         "force_relaxation_max": relaxation <= float(limits["maximum_force_relaxation_fraction"]),
         "recovery": recovery <= float(limits["maximum_recovery_residual_m"]),
@@ -470,6 +568,8 @@ def run_intact_scalpel_qualification(
         maximum_anchor_drift_m=solver.maximum_anchor_drift_m(),
         maximum_volume_error_fraction=volume_error,
         maximum_contact_penetration_m=max_penetration,
+        off_grid_contact_coverage_fraction=off_grid_coverage,
+        off_grid_force_variation_fraction=off_grid_variation,
         peak_scalpel_force_n=max(all_force),
         peak_scalpel_tangential_force_n=peak_tangential_force,
         force_at_hold_start_n=hold_start,

@@ -25,11 +25,12 @@
     "velocity_damping_per_s": 18.0
   },
   "scalpel_contact": {
-    "representation": "finite_rounded_edge_capsule",
+    "representation": "finite_rounded_edge_capsule_with_surface_triangle_projection_and_analytic_contact_strip",
     "edge_length_m": 0.018,
     "edge_radius_m": 0.00045,
-    "normal_stiffness_n_m": 3200.0,
-    "normal_damping_n_s_m": 0.42,
+    "edge_quadrature_segments": 36,
+    "normal_stiffness_pa_m": 600000000.0,
+    "normal_damping_pa_s_m": 80000.0,
     "dynamic_friction": 0.22,
     "friction_regularization_m_s": 0.002,
     "maximum_command_speed_m_s": 0.01
@@ -62,6 +63,8 @@
   },
   "qualification": {
     "maximum_contact_penetration_m": 0.00025,
+    "minimum_off_grid_contact_coverage_fraction": 1.0,
+    "maximum_off_grid_force_variation_fraction": 0.35,
     "maximum_anchor_drift_m": 1e-10,
     "maximum_volume_error_fraction": 0.08,
     "maximum_recovery_residual_m": 0.00035,
@@ -70,6 +73,13 @@
     "require_zero_inverted_tetrahedra": true,
     "require_zero_fracture_events": true,
     "require_exact_replay": true
+  },
+  "warp_parity": {
+    "required_runtime": "NVIDIA Warp supplied by the isolated Isaac Sim or parity environment",
+    "maximum_internal_force_relative_l2_error": 0.0005,
+    "maximum_contact_force_relative_l2_error": 0.001,
+    "maximum_contact_penetration_absolute_error_m": 1e-7,
+    "cuda_qualification_required_for_promotion": true
   },
   "evidence_boundary": {
     "claims": "simulator engineering evidence only",

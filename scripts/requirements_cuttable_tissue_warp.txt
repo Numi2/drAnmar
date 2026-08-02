@@ -1,0 +1,4 @@
+# Use the Warp bundled with the isolated Isaac runtime for promotion.
+# This range is only for standalone CPU/CUDA kernel parity checks.
+warp-lang>=1.9,<2
+numpy>=2,<3
