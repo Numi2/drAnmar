@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import importlib.util
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts/dr_anmar_dynamic_curved_cut_fem.py"
 RECEIPT_PATH = ROOT / "physics_next/receipts/dynamic-curved-cut-reference.json"
+RUNTIME_LOCK_PATH = ROOT / "physics_next/receipts/dynamic-curved-cut-runtime-lock.json"
 
 
 def _module():
@@ -76,3 +78,16 @@ def test_dynamic_curved_cut_qualifies_replays_and_matches_receipt():
     assert first.nonmanifold_face_count == 0
     retained = json.loads(RECEIPT_PATH.read_text(encoding="utf-8"))
     _assert_retained_receipt_matches(first.payload(), retained)
+
+
+def test_isaac_runtime_lock_is_hashed_and_keeps_cuda_claim_blocked():
+    lock = json.loads(RUNTIME_LOCK_PATH.read_text(encoding="utf-8"))
+    for field in ("profile", "implementation", "local_reference", "isaac_runtime_reference"):
+        path = ROOT / lock[field]["path"]
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == lock[field]["sha256"]
+    local = json.loads((ROOT / lock["local_reference"]["path"]).read_text())
+    remote = json.loads((ROOT / lock["isaac_runtime_reference"]["path"]).read_text())
+    assert local["topology_sha256"] == remote["topology_sha256"]
+    assert local["deterministic_trace_sha256"] == remote["deterministic_trace_sha256"]
+    assert lock["qualification_host"]["execution_backend"] == "numpy_cpu"
+    assert lock["cuda_dynamic_cut_qualified"] is False

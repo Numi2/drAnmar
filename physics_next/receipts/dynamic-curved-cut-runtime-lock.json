@@ -1,0 +1,50 @@
+{
+  "schema": "dr.anmar.dynamic-curved-cut-runtime-lock.v1",
+  "source_revision": "3caecb23631dbe032d59e47e6000849be53bc3af",
+  "branch": "research/cuttable-tissue-solver",
+  "profile": {
+    "path": "physics_next/tissues/dr-anmar-dynamic-curved-cut-v1.json",
+    "sha256": "e4504687d2474ec2cb42f7c5c496691e72f642d4b0a79679aed694247e8f678e"
+  },
+  "implementation": {
+    "path": "scripts/dr_anmar_dynamic_curved_cut_fem.py",
+    "sha256": "64f2806e0721d59d8ab80aa3035c8040b7d537b7fb91469f01267a46117bf280"
+  },
+  "local_reference": {
+    "path": "physics_next/receipts/dynamic-curved-cut-reference.json",
+    "sha256": "cc483a8cac6ecdf7a50d6856c1a387cf934951308bbd48aedc5a758ed753d496"
+  },
+  "isaac_runtime_reference": {
+    "path": "physics_next/receipts/dynamic-curved-cut-isaac-runtime-reference.json",
+    "sha256": "0bd7c1c2c6c00da1074c23869533352fd796db164cb538f4c31842537dbb0181"
+  },
+  "qualification_host": {
+    "hostname": "gilgamesh",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "580.159.03",
+    "python": "3.11.15",
+    "numpy": "1.26.4",
+    "scipy": "1.15.3",
+    "runtime": "Isaac Lab Python environment",
+    "execution_backend": "numpy_cpu"
+  },
+  "remote_tests": {
+    "passed": 3,
+    "failed": 0
+  },
+  "cross_architecture_evidence": {
+    "topology_sha256_equal": true,
+    "deterministic_trace_sha256_equal": true,
+    "qualified_on_both_hosts": true
+  },
+  "qualified_claim": "curved_implicit_surface_dynamic_cut_cell_cpu_reference_replayed_under_isaac_python",
+  "cuda_dynamic_cut_qualified": false,
+  "blocked_claims": [
+    "intersecting_dynamic_cut",
+    "scalpel_driven_dynamic_fracture_front",
+    "cuda_dynamic_cut",
+    "human_skin_calibration",
+    "biomechanical_validation",
+    "clinical_validation"
+  ]
+}
