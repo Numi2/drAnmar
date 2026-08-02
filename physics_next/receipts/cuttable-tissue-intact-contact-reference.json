@@ -1,7 +1,7 @@
 {
   "schema": "dr.anmar.cuttable-tissue-intact-contact-receipt.v1",
   "profile_id": "dr-anmar-cuttable-tissue-v1",
-  "profile_sha256": "775335f164c11b4cd4294c3b28c82598928ef173fa018484249a59173e452725",
+  "profile_sha256": "1ea9d4a54cc8d81619825b097d8687dbe0e383a583d1de0e02117a437de6f9d1",
   "point_count": 189,
   "tetrahedron_count": 576,
   "steps": 17600,

@@ -2,7 +2,7 @@
   "schema": "dr.anmar.cuttable-tissue-profile.v1",
   "id": "dr-anmar-cuttable-tissue-v1",
   "name": "DrAnmar Cuttable Tissue Reference Coupon",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "status": "simulation_engineering_reference_pending_specimen_calibration",
   "purpose": "An intact, anchored tissue coupon for qualifying nonlinear deformation and non-penetrating scalpel contact before fracture is enabled.",
   "geometry": {
@@ -107,6 +107,27 @@
     "maximum_cohesive_damage_absolute_error": 1e-6,
     "maximum_cohesive_separation_absolute_error_m": 1e-8,
     "cuda_qualification_required_for_promotion": true
+  },
+  "persistent_topology": {
+    "representation": "uniform_cut_cell_field_with_multiple_oriented_zero_volume_discontinuity_patches_per_cell",
+    "cells_x": 48,
+    "cells_y": 32,
+    "cells_z": 12,
+    "patch_merge_angle_deg": 12.0,
+    "patch_merge_distance_fraction_of_minimum_cell": 0.25,
+    "wound_reconstruction": "plane_box_polygon_duplicated_as_opposed_positive_and_negative_collision_sheets",
+    "removed_material_model": "zero_volume_strong_discontinuity",
+    "qualification": {
+      "minimum_arbitrary_origin_coverage_fraction": 1.0,
+      "minimum_intersection_cell_count": 1,
+      "maximum_removed_volume_m3": 0.0,
+      "maximum_opposed_surface_area_relative_error": 1e-12,
+      "minimum_wound_collision_coverage_fraction": 1.0,
+      "require_repeated_cut_idempotence": true,
+      "require_persistent_topology_hash": true,
+      "require_separate_work_channels": true,
+      "require_exact_replay": true
+    }
   },
   "evidence_boundary": {
     "claims": "simulator engineering evidence only",

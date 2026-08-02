@@ -83,3 +83,30 @@ tool contact described in [Moreno-Mateos and Steinmann
 (2026)](https://doi.org/10.1038/s41524-025-01869-y). Parameters in this profile
 remain provisional until matched to measurements from the exact tissue analog;
 they must not be presented as human-skin or clinical validation.
+
+## Persistent arbitrary topology
+
+The cut-cell topology reference is qualified with:
+
+```bash
+python scripts/qualify_dranmar_persistent_cut_topology.py
+```
+
+The 48×32×12 field stores multiple oriented discontinuity patches per cell.
+It does not delete voxels or remove tissue volume. Fracture work alone advances
+damage; adhesion, wear, viscous dissipation, and Coulomb friction are retained
+as separate auditable channels. This prevents a large friction impulse from
+being mislabeled as material fracture.
+
+Each fractured patch is clipped against its cell and reconstructed twice with
+opposed normals. These paired zero-volume sheets are the persistent wound
+surfaces and collision source for the later discontinuous FEM runtime. Multiple
+patches in one cell permit curved and intersecting incisions; replaying an
+existing incision is topology-idempotent.
+
+The retained reference covers 18,432 field cells, nine arbitrary entry origins,
+a curved incision, a repeated incision, and a crossing incision. It produced
+72 intersection cells, exactly equal positive/negative wound area, zero removed
+volume, complete wound-collision sampling, and deterministic replay. These are
+topology/reference results—not yet proof that the dynamic FEM opens and collides
+correctly under a robot-held scalpel.
