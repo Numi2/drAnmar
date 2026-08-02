@@ -235,6 +235,19 @@ motion. The GIF uses only frames from this successful RTX rollout, keeps the
 first-entry and final curved-clearance intervals near real-time, compresses the
 long middle handover, and omits the post-success reset frame.
 
+The same seed-17 sequence also succeeds after replacing only the rigid needle
+asset with the DrAnmar native threaded variant. The compound asset contains one
+rigid needle and one 722-node triangular surface-FEM 4-0 strand, hard-attached
+at six swage vertices; it has no segmented rigid chain or legacy D6 joints.
+On the RTX 4090, the strand remained finite for 2,000 steps at 2 ms with a
+maximum swage error of 30 nm. The unchanged puncture/pullout controller then
+completed one left entry, one right-underside puncture, one right-top exit,
+handover, and full receiver-owned curved clearance with zero hard failures.
+The exact receipts are
+[`threaded_fem_asset_qualification.json`](docs/tissue_puncture_pullout/threaded_fem_asset_qualification.json)
+and
+[`seed17_threaded_fem_success.json`](docs/tissue_puncture_pullout/seed17_threaded_fem_success.json).
+
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.
 

@@ -63,16 +63,17 @@ def _make_volume_tissue_flap_cfg(*, side: str) -> DeformableObjectCfg:
 class PenetrationSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = MISSING
     needle: RigidObjectCfg = MISSING
+    needle_thread: DeformableObjectCfg = MISSING
     ee_frame: FrameTransformerCfg = MISSING
 
     jaw_1_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper1_link",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"],
         history_length=2,
     )
     jaw_2_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper2_link",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"],
         history_length=2,
     )
     giver_all_links_tissue_contact = ContactSensorCfg(
@@ -267,7 +268,7 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
             spawn=UsdFileCfg(
                 usd_path=(
                     f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/SurgicalClosure/Needle/"
-                    "dranmar_needle_entry_proxy.usda"
+                    "dranmar_needle_thread_fem.usda"
                 ),
                 # Use the 21 mm-diameter variant of the authored semicircular
                 # needle so the PSM distal jaw can remain above tissue while
@@ -280,13 +281,20 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                     disable_gravity=True,
                     enable_gyroscopic_forces=True,
                 ),
-                physics_material=sim_utils.RigidBodyMaterialCfg(
-                    static_friction=2.0,
-                    dynamic_friction=1.5,
-                    restitution=0.0,
-                    friction_combine_mode="max",
-                ),
+                # The compound asset scopes these unchanged grip-friction
+                # values to NeedleRigid. A spawn-wide override would replace
+                # the sibling FEM thread's deformable material after cloning.
             ),
+        )
+        # Register the already-authored sibling FEM actor for nodal reset and
+        # tensor lifecycle management.  It is spawned by the compound needle
+        # asset above; no tissue, robot, or controller setting changes here.
+        self.scene.needle_thread = DeformableObjectCfg(
+            # Resolve from the compound root so cloned material relationships
+            # remain inside Isaac Lab's walk root. Exactly one deformable body
+            # is discovered beneath this path.
+            prim_path="{ENV_REGEX_NS}/Needle",
+            spawn=None,
         )
         marker_cfg = FRAME_MARKER_CFG.copy()
         marker_cfg.prim_path = "/Visuals/PenetrationFrame"

@@ -1,0 +1,43 @@
+{
+  "schema": "dr.anmar.needle-thread-asset-qualification.v1",
+  "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/dranmar_needle_thread_fem.usda",
+  "asset_sha256": "b670dfa9f822e25cde1ba0ae0dc6e743181057999b467a6e13045cde0c238b14",
+  "source_base_revision": "de82b6a8cfc9a1dc68ac84c318938867d10f4683",
+  "asset_submodule_base_revision": "1da869dd692f76a7edab33b687a18b573c81610d",
+  "runtime": {
+    "host_gpu": "NVIDIA GeForce RTX 4090",
+    "device": "cuda:0",
+    "kit_version": "110.1.2+production.326809.f9bf0dda.gl",
+    "kit_hash": "f9bf0dda",
+    "warp_version": "1.16.0.dev20260723",
+    "dt_s": 0.002,
+    "steps": 2000
+  },
+  "topology": {
+    "rigid_bodies": 1,
+    "surface_deformables": 1,
+    "legacy_joints": 0,
+    "simulation_collision_vertices": 722,
+    "triangles": 720,
+    "swage_attachment": "OmniPhysicsVtxXformAttachment",
+    "attached_vertices": 6
+  },
+  "material_binding": {
+    "body": "/World/envs/env_0/Needle/ThreadFEM",
+    "physics_target": "/World/envs/env_0/Needle/ThreadMaterial",
+    "deformable_material_discovered_after_clone": true,
+    "rigid_grip_material_scope": "/World/envs/env_0/Needle/NeedleRigid"
+  },
+  "metrics": {
+    "finite_step_fraction": 1.0,
+    "swage_attachment_error_m_max": 2.9817098123885444e-08,
+    "free_strand_displacement_m_max": 0.18496105074882507,
+    "nodal_speed_m_s_max": 0.7374010682106018,
+    "nodal_speed_m_s_tail_max": 0.6636375784873962,
+    "nodal_speed_m_s_final": 0.4237932860851288
+  },
+  "passed": true,
+  "failures": [],
+  "evidence_level": "simulator_engineering_only",
+  "clinical_validation": false
+}

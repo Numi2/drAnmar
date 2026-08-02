@@ -44,12 +44,12 @@ class PulloutSceneCfg(PenetrationSceneCfg):
 
     receiver_jaw_1_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_gripper1_link",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"],
         history_length=2,
     )
     receiver_jaw_2_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_gripper2_link",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"],
         history_length=2,
     )
     receiver_all_links_tissue_contact = ContactSensorCfg(
@@ -179,10 +179,9 @@ class PulloutEnvCfg(ThroughPunctureEnvCfg):
             }
         )
         self.scene.robot_receiver = receiver
-        # Retain the collision-free authored needle proxy inherited from the
-        # entry task. The native backend owns needle/tissue resistance and the
-        # receiver uses the disclosed sustained geometry custody fallback.
-        # Tissue itself stays collision-enabled, so both PSMs remain blocked.
+        # Retain the qualified rigid needle geometry and trajectory inherited
+        # from the entry task.  Its sibling native FEM strand is attached at
+        # the swage; the tissue and both complete PSM chains stay unchanged.
         self.actions.giver_gripper_action = BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["psm_tool_gripper.*_joint"],

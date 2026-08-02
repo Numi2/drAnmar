@@ -69,7 +69,9 @@ app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
 
 import gymnasium as gym  # noqa: E402
+import omni.usd  # noqa: E402
 import torch  # noqa: E402
+from pxr import UsdShade  # noqa: E402
 
 from rsl_rl.runners import OnPolicyRunner  # noqa: E402
 
@@ -123,6 +125,9 @@ def main() -> int:
         use_fabric=True,
     )
     env_cfg.seed = args.seed
+    needle_asset = Path(env_cfg.scene.needle.spawn.usd_path).resolve()
+    if not needle_asset.is_file():
+        raise FileNotFoundError(needle_asset)
     if args.giver_base_lift_m is not None:
         if not 0.0 <= args.giver_base_lift_m <= 0.040:
             raise ValueError("giver_base_lift_m must be in [0.0, 0.040]")
@@ -186,6 +191,35 @@ def main() -> int:
         env_cfg.viewer.eye = (0.075, 0.16, 0.105)
         env_cfg.viewer.lookat = (0.0, 0.0, 0.047)
     gym_env = gym.make(args.task, cfg=env_cfg, render_mode=render_mode)
+    thread_prim = omni.usd.get_context().get_stage().GetPrimAtPath(
+        "/World/envs/env_0/Needle/ThreadFEM"
+    )
+    thread_binding_targets = []
+    thread_binding_target_schemas = []
+    if thread_prim.IsValid() and thread_prim.HasAPI(UsdShade.MaterialBindingAPI):
+        thread_binding_targets = [
+            target.pathString
+            for target in UsdShade.MaterialBindingAPI(thread_prim)
+            .GetDirectBindingRel("physics")
+            .GetTargets()
+        ]
+        stage = thread_prim.GetStage()
+        thread_binding_target_schemas = [
+            list(stage.GetPrimAtPath(target).GetAppliedSchemas())
+            for target in thread_binding_targets
+        ]
+    thread_binding_receipt = {
+        "body_prim_valid": thread_prim.IsValid(),
+        "body_schemas": list(thread_prim.GetAppliedSchemas())
+        if thread_prim.IsValid()
+        else [],
+        "physics_targets": thread_binding_targets,
+        "target_schemas": thread_binding_target_schemas,
+    }
+    print(
+        "[DR_ANMAR_NEEDLE_THREAD_BINDING] "
+        + json.dumps(thread_binding_receipt, sort_keys=True)
+    )
     video_writer = None
     video_path = None
     if args.video:
@@ -583,6 +617,14 @@ def main() -> int:
                 args.receiver_ik_orientation_weight
             ),
             "diagnostic_episode_length_s": args.episode_length_s,
+            "needle_asset": str(needle_asset),
+            "needle_asset_sha256": _sha256(needle_asset),
+            "needle_representation": (
+                "single_rigid_needle_plus_surface_fem_suture"
+                if needle_asset.name == "dranmar_needle_thread_fem.usda"
+                else "other"
+            ),
+            "needle_thread_binding": thread_binding_receipt,
             "entry_error_m_max": max(entry_errors, default=None),
             "entry_error_m_mean": (
                 sum(entry_errors) / len(entry_errors) if entry_errors else None

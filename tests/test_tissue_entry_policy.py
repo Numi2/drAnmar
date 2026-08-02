@@ -316,16 +316,41 @@ def test_giver_reset_lifts_base_and_targets_the_left_tissue_span():
     assert "Enter the left tissue span 5 mm from the wound edge" in config
 
 
-def test_entry_proxy_is_static_and_table_keeps_handover_clearance():
+def test_native_threaded_needle_keeps_single_rigid_task_abi_and_table_clearance():
     config = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
-    proxy = (
+    threaded_asset = (
+        ROOT / "source/extensions/orbit.surgical.assets/data/Props/"
+        "SurgicalClosure/Needle/dranmar_needle_thread_fem.usda"
+    ).read_text(encoding="utf-8")
+    rigid_proxy = (
         ROOT / "source/extensions/orbit.surgical.assets/data/Props/"
         "SurgicalClosure/Needle/dranmar_needle_entry_proxy.usda"
     ).read_text(encoding="utf-8")
-    assert "dranmar_needle_entry_proxy.usda" in config
+    assert "dranmar_needle_thread_fem.usda" in config
+    assert 'filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"]' in config
+    assert "self.scene.needle_thread = DeformableObjectCfg(" in config
+    assert 'prim_path="{ENV_REGEX_NS}/Needle"' in config
+    assert "spawn=None" in config
     assert 'pos=(0.0, 0.0, -0.457)' in config
-    assert proxy.count("physics:collisionEnabled = false") == 48
-    assert "physics:collisionEnabled = true" not in proxy
+    assert "dranmar_needle_entry_proxy.usda" in threaded_asset
+    assert threaded_asset.count("OmniPhysicsDeformableBodyAPI") == 1
+    assert threaded_asset.count("OmniPhysicsVtxXformAttachment") == 1
+    assert 'def Material "NeedleGripPhysics"' in threaded_asset
+    assert "physics:staticFriction = 2" in threaded_asset
+    assert "physics:dynamicFriction = 1.5" in threaded_asset
+    assert (
+        "rel material:binding:physics = </DrAnmarNeedle/ThreadMaterial>"
+        in threaded_asset
+    )
+    assert "physics_material=sim_utils.RigidBodyMaterialCfg" not in config
+    assert rigid_proxy.count("physics:collisionEnabled = false") == 48
+    assert "physics:collisionEnabled = true" not in rigid_proxy
+
+    evaluator = (ROOT / "scripts/evaluate_dranmar_tissue_entry_policy.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"needle_asset_sha256": _sha256(needle_asset)' in evaluator
+    assert '"single_rigid_needle_plus_surface_fem_suture"' in evaluator
 
 
 def test_receipt_discloses_pregrasp_coupling_and_simulator_evidence():
