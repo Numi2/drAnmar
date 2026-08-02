@@ -39,7 +39,9 @@ def test_blade_release_is_local_irreversible_and_subcritical_safe():
     solver.advance_blade(0, poses[0], poses[1], work)
     after = np.count_nonzero(solver.released)
     assert after > before
-    assert np.max(solver.mesh.gap_rest_points[solver.released, 0]) <= poses[1].center_m[0] + moving["qualification"]["maximum_release_ahead_of_blade_m"]
+    material_end = module._material_pose(poses[1], base)
+    assert np.max(solver.mesh.gap_rest_points[solver.released, 0]) <= material_end.center_m[0] + moving["qualification"]["maximum_release_ahead_of_blade_m"]
+    assert np.isclose(poses[0].center_m[0], np.min(solver.position[:, 0]), atol=1e-12)
     solver.advance_blade(1, poses[1], poses[2], work)
     assert np.count_nonzero(solver.released) >= after
     subcritical = module.PersistentCutCellField(base)

@@ -106,7 +106,14 @@ def _curve_y(x: np.ndarray | float, curved: dict[str, Any]) -> np.ndarray | floa
 def _path_poses(moving: dict[str, Any], curved: dict[str, Any]) -> list[ScalpelPose]:
     path = moving["path"]
     x_values = np.linspace(float(path["start_x_m"]), float(path["end_x_m"]), int(path["segments"]) + 1)
-    centers = np.column_stack((x_values, _curve_y(x_values, curved), np.zeros_like(x_values)))
+    material_centers = np.column_stack(
+        (x_values, _curve_y(x_values, curved), np.zeros_like(x_values))
+    )
+    prestrain_scale = 1.0 + float(
+        load_profile(REPOSITORY_ROOT / moving["base_profile"])["geometry"]["prestrain_x"]
+    )
+    centers = material_centers.copy()
+    centers[:, 0] *= prestrain_scale
     tangent = tuple(float(value) for value in path["blade_tangent"])
     speed = float(path["command_speed_m_s"])
     poses: list[ScalpelPose] = []
@@ -119,6 +126,24 @@ def _path_poses(moving: dict[str, Any], curved: dict[str, Any]) -> list[ScalpelP
         velocity = tuple(float(value) for value in speed * direction)
         poses.append(ScalpelPose(tuple(float(value) for value in center), tangent=tangent, velocity_m_s=velocity))
     return poses
+
+
+def _material_pose(pose: ScalpelPose, base: dict[str, Any]) -> ScalpelPose:
+    """Map a world-space blade pose back to the pre-tension-free material frame."""
+
+    scale = 1.0 + float(base["geometry"]["prestrain_x"])
+    center = np.asarray(pose.center_m, dtype=np.float64).copy()
+    velocity = np.asarray(pose.velocity_m_s, dtype=np.float64).copy()
+    tangent = np.asarray(pose.tangent, dtype=np.float64).copy()
+    center[0] /= scale
+    velocity[0] /= scale
+    tangent[0] /= scale
+    tangent /= np.linalg.norm(tangent)
+    return ScalpelPose(
+        tuple(float(value) for value in center),
+        tangent=tuple(float(value) for value in tangent),
+        velocity_m_s=tuple(float(value) for value in velocity),
+    )
 
 
 def _crossing_poses(moving: dict[str, Any]) -> list[ScalpelPose]:
@@ -172,11 +197,20 @@ class MovingScalpelCutFEM:
         index = np.clip(index, 0, self.field.counts - 1)
         return tuple(int(value) for value in index)
 
-    def _sync_release_from_field(self, blade_x: float) -> int:
+    def _sync_release_from_field(self, blade_x: float, direction_x: float) -> int:
         before = int(np.count_nonzero(self.released))
         for pair, point in enumerate(self.mesh.gap_rest_points):
             cell = self.field.cells.get(self._cell_key(point))
-            if cell is not None and any(patch.fractured for patch in cell.patches):
+            behind_edge = (
+                point[0] <= blade_x + 1.0e-12
+                if direction_x >= 0.0
+                else point[0] >= blade_x - 1.0e-12
+            )
+            if (
+                behind_edge
+                and cell is not None
+                and any(patch.fractured for patch in cell.patches)
+            ):
                 self.released[pair] = True
         newly_released = int(np.count_nonzero(self.released)) - before
         released_points = self.mesh.gap_rest_points[self.released]
@@ -186,8 +220,13 @@ class MovingScalpelCutFEM:
         return newly_released
 
     def advance_blade(self, segment: int, start: ScalpelPose, end: ScalpelPose, work: WorkChannels) -> int:
-        new_patches = self.field.apply_sweep(start, end, work)
-        newly_released = self._sync_release_from_field(float(end.center_m[0]))
+        material_start = _material_pose(start, self.base)
+        material_end = _material_pose(end, self.base)
+        new_patches = self.field.apply_sweep(material_start, material_end, work)
+        direction_x = float(material_end.center_m[0] - material_start.center_m[0])
+        newly_released = self._sync_release_from_field(
+            float(material_end.center_m[0]), direction_x
+        )
         self.event_trace.append((segment, len(new_patches), newly_released, self.field.topology_sha256()))
         return newly_released
 
@@ -303,16 +342,16 @@ def _run_event_topology(base: dict[str, Any], moving: dict[str, Any], curved: di
     work = _work_channels(base, moving)
     trace = []
     for index, (start, end) in enumerate(zip(poses[:-1], poses[1:], strict=True)):
-        new = field.apply_sweep(start, end, work)
+        new = field.apply_sweep(_material_pose(start, base), _material_pose(end, base), work)
         trace.append((index, len(new), field.fracture_event_count, field.topology_sha256()))
     curved_events = field.fracture_event_count
     for start, end in zip(poses[:-1], poses[1:], strict=True):
-        field.apply_sweep(start, end, work)
+        field.apply_sweep(_material_pose(start, base), _material_pose(end, base), work)
     repeated = field.fracture_event_count - curved_events
     before_crossing = field.fracture_event_count
     crossing = _crossing_poses(moving)
     for start, end in zip(crossing[:-1], crossing[1:], strict=True):
-        field.apply_sweep(start, end, work)
+        field.apply_sweep(_material_pose(start, base), _material_pose(end, base), work)
     crossing_events = field.fracture_event_count - before_crossing
     return field, trace, repeated, crossing_events
 
@@ -351,10 +390,15 @@ def run_moving_scalpel_qualification(
     _, replay_trace, replay_repeated, replay_crossing = _run_event_topology(base, moving, curved)
     deterministic = event_trace == replay_trace and repeated == replay_repeated and crossing_events == replay_crossing
     subcritical = PersistentCutCellField(base)
-    subcritical.apply_sweep(poses[0], poses[1], _work_channels(base, moving, ratio=0.99))
+    subcritical.apply_sweep(
+        _material_pose(poses[0], base),
+        _material_pose(poses[1], base),
+        _work_channels(base, moving, ratio=0.99),
+    )
     stationary = PersistentCutCellField(base)
     still = ScalpelPose(poses[0].center_m, tangent=poses[0].tangent, velocity_m_s=(0.0, 0.0, 0.0))
-    stationary.apply_sweep(still, still, work)
+    stationary_still = _material_pose(still, base)
+    stationary.apply_sweep(stationary_still, stationary_still, work)
 
     mesh = solver.released_wound_mesh()
     if not len(mesh.triangles):

@@ -249,16 +249,16 @@ without pulling the entire wound open.
 
 The retained run advances 64 blade segments and 2,992 quasi-static relaxation
 steps. It releases all 85 interface pairs through 1,248 blade-owned fracture
-events, with no release more than 1.05 mm ahead of the blade. Repeating the path
+events, with zero release ahead of the blade. Repeating the path
 creates zero additional events. A crossing path creates 672 additional
 persistent events in 48 intersection cells. Subcritical and stationary sweeps
 create none.
 
-The live FEM remains finite with zero inversions, a 0.804 minimum Jacobian,
-0.063 mm mean relaxed wound opening, complete two-sided collision, and zero
+The live FEM remains finite with zero inversions, a 0.822 minimum Jacobian,
+0.065 mm mean relaxed wound opening, complete two-sided collision, and zero
 probe crossing. Cutting resistance from the separately audited fracture,
 adhesion, wear, viscous, and friction work channels peaks at approximately
-0.095 N.
+0.092 N.
 
 This is a slow-cut quasi-static qualification: its relaxation iterations are
 not physical elapsed time. The curved path is live in the deforming FEM;

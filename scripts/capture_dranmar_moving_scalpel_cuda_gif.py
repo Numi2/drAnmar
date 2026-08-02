@@ -254,14 +254,15 @@ def main() -> None:
     ):
         print(f"Rendering moving-scalpel CUDA frame {index + 1}/{len(trajectory)}: {label}", flush=True)
         released_triangles = []
-        unreleased_triangles = []
         for triangle in wound_all:
             is_released = all(released[node_to_pair[int(node)]] for node in triangle)
-            (released_triangles if is_released else unreleased_triangles).append(triangle)
+            if is_released:
+                released_triangles.append(triangle)
         released_array = np.asarray(released_triangles, dtype=np.int32).reshape((-1, 3))
-        unreleased_array = np.asarray(unreleased_triangles, dtype=np.int32).reshape((-1, 3))
         set_points(exterior_mesh, points); set_points(wound_mesh, points)
-        _set_triangles(exterior_mesh, np.concatenate((outer, unreleased_array), axis=0))
+        # Latent cohesive sheets are a mechanical enrichment, not visible
+        # geometry. Render only the continuous exterior ahead of the blade.
+        _set_triangles(exterior_mesh, outer)
         _set_triangles(wound_mesh, released_array)
         if center is None:
             hidden = np.asarray((0.0, 0.0, 0.06))
