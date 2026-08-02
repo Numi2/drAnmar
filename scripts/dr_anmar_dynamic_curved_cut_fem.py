@@ -462,12 +462,38 @@ class EmbeddedCurvedCutMesh:
         return unexpected, sum(count > 2 for count in counts.values())
 
 
-def _build_settled_mesh(base: dict[str, Any], curved: dict[str, Any]) -> EmbeddedCurvedCutMesh:
+def _exclude_cut_corridor_from_anchors(
+    solver: Any,
+    curved: dict[str, Any],
+    half_width_m: float | None,
+) -> None:
+    """Leave the cut/side-face intersection free while retaining nearby anchors."""
+
+    if half_width_m is None:
+        return
+    if half_width_m <= 0.0:
+        raise ValueError("Anchor-exclusion corridor half-width must be positive")
+    in_corridor = np.abs(_level_set(solver.rest, curved["implicit_cut"])) <= half_width_m
+    solver.fixed = np.asarray(solver.fixed & ~in_corridor, dtype=bool)
+    if not np.any(solver.fixed):
+        raise ValueError("Cut corridor removed every tissue anchor")
+    solver.fixed_position = solver.position[solver.fixed].copy()
+
+
+def _build_settled_mesh(
+    base: dict[str, Any],
+    curved: dict[str, Any],
+    *,
+    anchor_exclusion_half_width_m: float | None = None,
+) -> EmbeddedCurvedCutMesh:
     connected = CuttableTissueReferenceSolver(base)
+    _exclude_cut_corridor_from_anchors(
+        connected, curved, anchor_exclusion_half_width_m
+    )
     dt = float(curved["solver"]["connected_settle_time_step_s"])
     for _ in range(int(round(float(curved["solver"]["connected_settle_s"]) / dt))):
         connected.step(dt)
-    return EmbeddedCurvedCutMesh(
+    embedded = EmbeddedCurvedCutMesh(
         base,
         curved,
         connected.position,
@@ -475,6 +501,10 @@ def _build_settled_mesh(base: dict[str, Any], curved: dict[str, Any]) -> Embedde
         connected.prony_history,
         connected.previous_elastic_stress,
     )
+    _exclude_cut_corridor_from_anchors(
+        embedded, curved, anchor_exclusion_half_width_m
+    )
+    return embedded
 
 
 def run_dynamic_curved_cut_qualification(

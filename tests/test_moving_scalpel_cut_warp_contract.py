@@ -25,6 +25,9 @@ def test_moving_scalpel_warp_contract_requires_real_cuda_and_event_parity():
     assert "released.assign" in source
     assert '"cuda_device": is_cuda' in source
     assert '"event_trace": event_match' in source
+    assert '"entry_boundary_open": entry_boundary_gap' in source
+    assert '"exit_boundary_open": exit_boundary_gap' in source
+    assert '"cpu_entry_boundary_gap_parity": entry_gap_error' in source
     assert "cuda_promotion_pending=not (is_cuda and not failed)" in source
 
 

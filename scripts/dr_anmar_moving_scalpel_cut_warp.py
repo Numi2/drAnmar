@@ -21,6 +21,7 @@ from dr_anmar_dynamic_curved_cut_warp import _accumulate_jacobian_bounds, _integ
 from dr_anmar_moving_scalpel_cut_fem import (
     DEFAULT_MOVING_PROFILE_PATH,
     MovingScalpelCutFEM,
+    _boundary_gap_metrics,
     _path_poses,
     _work_channels,
     load_moving_profile,
@@ -104,6 +105,15 @@ class WarpMovingScalpelReceipt:
     mass_relative_error: float
     mean_wound_gap_m: float
     maximum_wound_gap_m: float
+    retained_anchor_node_count: int
+    entry_boundary_pair_count: int
+    exit_boundary_pair_count: int
+    entry_boundary_released_pair_count: int
+    exit_boundary_released_pair_count: int
+    entry_boundary_mean_gap_m: float
+    exit_boundary_mean_gap_m: float
+    cpu_entry_boundary_gap_absolute_error_m: float
+    cpu_exit_boundary_gap_absolute_error_m: float
     cpu_mean_gap_absolute_error_m: float
     cpu_minimum_jacobian_absolute_error: float
     two_sided_collision_coverage_fraction: float
@@ -232,10 +242,24 @@ def run_warp_moving_scalpel(
     min_j = float(minimum_jacobian.numpy()[0])
     inversions = int(inversion_count.numpy()[0])
     mean_gap = float(np.mean(gaps))
+    (
+        entry_boundary_pairs,
+        exit_boundary_pairs,
+        entry_boundary_released,
+        exit_boundary_released,
+        entry_boundary_gap,
+        exit_boundary_gap,
+    ) = _boundary_gap_metrics(solver)
     trace_sha = hashlib.sha256(json.dumps(solver.event_trace, separators=(",", ":")).encode()).hexdigest()
     event_match = trace_sha == cpu_receipt["event_trace_sha256"]
     gap_error = abs(mean_gap - float(cpu_receipt["mean_wound_gap_m"]))
     jacobian_error = abs(min_j - float(cpu_receipt["minimum_jacobian"]))
+    entry_gap_error = abs(
+        entry_boundary_gap - float(cpu_receipt["entry_boundary_mean_gap_m"])
+    )
+    exit_gap_error = abs(
+        exit_boundary_gap - float(cpu_receipt["exit_boundary_mean_gap_m"])
+    )
     limits = moving["qualification"]
     gates = {
         "cuda_device": is_cuda,
@@ -248,6 +272,16 @@ def run_warp_moving_scalpel(
         "mass": mass_error <= float(limits["maximum_mass_relative_error"]),
         "minimum_gap": mean_gap >= float(limits["minimum_mean_wound_gap_m"]),
         "maximum_gap": mean_gap <= float(limits["maximum_mean_wound_gap_m"]),
+        "entry_boundary_released": entry_boundary_pairs > 0
+        and entry_boundary_released == entry_boundary_pairs,
+        "exit_boundary_released": exit_boundary_pairs > 0
+        and exit_boundary_released == exit_boundary_pairs,
+        "entry_boundary_open": entry_boundary_gap
+        >= float(limits["minimum_entry_boundary_mean_gap_m"]),
+        "exit_boundary_open": exit_boundary_gap
+        >= float(limits["minimum_exit_boundary_mean_gap_m"]),
+        "cpu_entry_boundary_gap_parity": entry_gap_error <= 0.00001,
+        "cpu_exit_boundary_gap_parity": exit_gap_error <= 0.00001,
         "cpu_gap_parity": gap_error <= 0.00001,
         "cpu_jacobian_parity": jacobian_error <= 0.01,
         "collision": collision >= float(limits["minimum_two_sided_collision_coverage_fraction"]),
@@ -264,6 +298,15 @@ def run_warp_moving_scalpel(
         event_trace_matches_cpu=event_match, finite=finite, inversion_observation_count=inversions,
         minimum_jacobian=min_j, mass_relative_error=mass_error, mean_wound_gap_m=mean_gap,
         maximum_wound_gap_m=float(np.max(gaps)), cpu_mean_gap_absolute_error_m=gap_error,
+        retained_anchor_node_count=int(np.count_nonzero(mesh.fixed)),
+        entry_boundary_pair_count=entry_boundary_pairs,
+        exit_boundary_pair_count=exit_boundary_pairs,
+        entry_boundary_released_pair_count=entry_boundary_released,
+        exit_boundary_released_pair_count=exit_boundary_released,
+        entry_boundary_mean_gap_m=entry_boundary_gap,
+        exit_boundary_mean_gap_m=exit_boundary_gap,
+        cpu_entry_boundary_gap_absolute_error_m=entry_gap_error,
+        cpu_exit_boundary_gap_absolute_error_m=exit_gap_error,
         cpu_minimum_jacobian_absolute_error=jacobian_error,
         two_sided_collision_coverage_fraction=collision, maximum_probe_surface_crossing_m=crossing,
         qualified=not failed, failed_gates=failed, cuda_promotion_pending=not (is_cuda and not failed),

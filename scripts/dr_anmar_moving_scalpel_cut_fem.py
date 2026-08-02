@@ -73,6 +73,13 @@ class MovingScalpelCutReceipt:
     mass_relative_error: float
     mean_wound_gap_m: float
     maximum_wound_gap_m: float
+    retained_anchor_node_count: int
+    entry_boundary_pair_count: int
+    exit_boundary_pair_count: int
+    entry_boundary_released_pair_count: int
+    exit_boundary_released_pair_count: int
+    entry_boundary_mean_gap_m: float
+    exit_boundary_mean_gap_m: float
     positive_wound_area_m2: float
     negative_wound_area_m2: float
     opposed_area_relative_error: float
@@ -174,7 +181,14 @@ class MovingScalpelCutFEM:
         self.base = base
         self.curved = curved
         self.moving = moving
-        self.mesh = _build_settled_mesh(base, curved)
+        corridor = moving["boundary_entry_exit"]
+        self.mesh = _build_settled_mesh(
+            base,
+            curved,
+            anchor_exclusion_half_width_m=float(
+                corridor["anchor_exclusion_half_width_m"]
+            ),
+        )
         self.position = self.mesh.position
         self.velocity = self.mesh.velocity
         self.released = np.zeros(len(self.mesh.gap_plus_nodes), dtype=bool)
@@ -336,6 +350,45 @@ class MovingScalpelCutFEM:
             self.mesh.wound_triangles_by_side = saved
 
 
+def _boundary_gap_metrics(
+    solver: MovingScalpelCutFEM,
+) -> tuple[int, int, int, int, float, float]:
+    """Measure actual two-sided separation where the cut meets each side face."""
+
+    path = solver.moving["path"]
+    tolerance = float(
+        solver.moving["boundary_entry_exit"]["boundary_pair_tolerance_m"]
+    )
+    x = solver.mesh.gap_rest_points[:, 0]
+    entry = np.isclose(x, float(path["start_x_m"]), rtol=0.0, atol=tolerance)
+    exit = np.isclose(x, float(path["end_x_m"]), rtol=0.0, atol=tolerance)
+    jump = (
+        solver.position[solver.mesh.gap_plus_nodes]
+        - solver.position[solver.mesh.gap_minus_nodes]
+    )
+    opening = np.maximum(
+        np.sum(jump * solver.mesh.gap_normals, axis=1),
+        0.0,
+    )
+
+    def metrics(mask: np.ndarray) -> tuple[int, int, float]:
+        count = int(np.count_nonzero(mask))
+        released = int(np.count_nonzero(mask & solver.released))
+        mean_gap = float(np.mean(opening[mask])) if count else 0.0
+        return count, released, mean_gap
+
+    entry_count, entry_released, entry_gap = metrics(entry)
+    exit_count, exit_released, exit_gap = metrics(exit)
+    return (
+        entry_count,
+        exit_count,
+        entry_released,
+        exit_released,
+        entry_gap,
+        exit_gap,
+    )
+
+
 def _run_event_topology(base: dict[str, Any], moving: dict[str, Any], curved: dict[str, Any]):
     poses = _path_poses(moving, curved)
     field = PersistentCutCellField(base)
@@ -414,6 +467,14 @@ def run_moving_scalpel_qualification(
     initial_mass = float(base["material"]["density_kg_m3"]) * float(np.sum(solver.mesh.rest_volume))
     mass_error = abs(float(np.sum(solver.mesh.mass)) - initial_mass) / initial_mass
     released_fraction = float(np.mean(solver.released))
+    (
+        entry_boundary_pairs,
+        exit_boundary_pairs,
+        entry_boundary_released,
+        exit_boundary_released,
+        entry_boundary_gap,
+        exit_boundary_gap,
+    ) = _boundary_gap_metrics(solver)
     monotonic = all(right >= left for left, right in zip(solver.release_history[:-1], solver.release_history[1:], strict=True))
     max_ahead = max(solver.release_ahead_history, default=0.0)
     geometry = base["geometry"]
@@ -449,6 +510,14 @@ def run_moving_scalpel_qualification(
         "mass": mass_error <= float(limits["maximum_mass_relative_error"]),
         "minimum_gap": float(np.mean(gaps)) >= float(limits["minimum_mean_wound_gap_m"]),
         "maximum_gap": float(np.mean(gaps)) <= float(limits["maximum_mean_wound_gap_m"]),
+        "entry_boundary_released": entry_boundary_pairs > 0
+        and entry_boundary_released == entry_boundary_pairs,
+        "exit_boundary_released": exit_boundary_pairs > 0
+        and exit_boundary_released == exit_boundary_pairs,
+        "entry_boundary_open": entry_boundary_gap
+        >= float(limits["minimum_entry_boundary_mean_gap_m"]),
+        "exit_boundary_open": exit_boundary_gap
+        >= float(limits["minimum_exit_boundary_mean_gap_m"]),
         "opposed_area": area_error <= float(limits["maximum_opposed_area_relative_error"]),
         "two_sided_collision": collision_coverage >= float(limits["minimum_two_sided_collision_coverage_fraction"]),
         "probe_crossing": maximum_crossing <= float(limits["maximum_probe_surface_crossing_m"]),
@@ -472,6 +541,13 @@ def run_moving_scalpel_qualification(
         finite=solver.finite, inversion_observation_count=solver.inversion_observations,
         minimum_jacobian=solver.minimum_jacobian, mass_relative_error=mass_error,
         mean_wound_gap_m=float(np.mean(gaps)), maximum_wound_gap_m=float(np.max(gaps)),
+        retained_anchor_node_count=int(np.count_nonzero(solver.mesh.fixed)),
+        entry_boundary_pair_count=entry_boundary_pairs,
+        exit_boundary_pair_count=exit_boundary_pairs,
+        entry_boundary_released_pair_count=entry_boundary_released,
+        exit_boundary_released_pair_count=exit_boundary_released,
+        entry_boundary_mean_gap_m=entry_boundary_gap,
+        exit_boundary_mean_gap_m=exit_boundary_gap,
         positive_wound_area_m2=mesh.positive_area_m2, negative_wound_area_m2=mesh.negative_area_m2,
         opposed_area_relative_error=area_error, two_sided_collision_coverage_fraction=collision_coverage,
         maximum_probe_surface_crossing_m=maximum_crossing, event_trace_sha256=trace_sha,

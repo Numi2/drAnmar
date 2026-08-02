@@ -17,6 +17,11 @@
     "viscous_energy_j_m2": 0.2,
     "friction_energy_j_m2": 0.3
   },
+  "boundary_entry_exit": {
+    "anchor_exclusion_half_width_m": 0.0025,
+    "boundary_pair_tolerance_m": 1e-12,
+    "mechanical_intent": "retain side-face anchors outside a narrow corridor while leaving both cut intersections free"
+  },
   "quasi_static_solver": {
     "pseudo_time_step_s": 0.000005,
     "relaxation_steps_per_segment": 28,
@@ -37,6 +42,8 @@
     "minimum_jacobian": 0.2,
     "minimum_mean_wound_gap_m": 0.00002,
     "maximum_mean_wound_gap_m": 0.0015,
+    "minimum_entry_boundary_mean_gap_m": 0.00001,
+    "minimum_exit_boundary_mean_gap_m": 0.00001,
     "maximum_mass_relative_error": 1e-11,
     "maximum_opposed_area_relative_error": 0.03,
     "minimum_two_sided_collision_coverage_fraction": 1.0,

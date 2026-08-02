@@ -33,6 +33,22 @@ def test_blade_release_is_local_irreversible_and_subcritical_safe():
     base = module.load_profile(module.REPOSITORY_ROOT / moving["base_profile"])
     curved = module.load_curved_profile(module.REPOSITORY_ROOT / moving["embedded_profile"])
     solver = module.MovingScalpelCutFEM(base, curved, moving)
+    half_width = float(base["geometry"]["width_m"]) / 2.0
+    boundary = np.isclose(
+        np.abs(solver.mesh.gap_rest_points[:, 0]), half_width, atol=1.0e-12
+    )
+    boundary_nodes = np.concatenate(
+        (
+            solver.mesh.gap_plus_nodes[boundary],
+            solver.mesh.gap_minus_nodes[boundary],
+        )
+    )
+    assert len(boundary_nodes) > 0
+    assert not np.any(solver.mesh.fixed[boundary_nodes])
+    assert np.count_nonzero(solver.mesh.fixed) > 0
+    fixed_rest = solver.mesh.rest[solver.mesh.fixed]
+    assert np.any(fixed_rest[:, 0] < 0.0)
+    assert np.any(fixed_rest[:, 0] > 0.0)
     poses = module._path_poses(moving, curved)
     work = module._work_channels(base, moving)
     before = np.count_nonzero(solver.released)
@@ -56,6 +72,12 @@ def test_moving_scalpel_qualification_replays_and_matches_receipt():
     assert first.qualified, first.failed_gates
     assert first.event_trace_sha256 == second.event_trace_sha256
     assert first.fracture_event_count == second.fracture_event_count
+    assert first.entry_boundary_pair_count > 0
+    assert first.exit_boundary_pair_count > 0
+    assert first.entry_boundary_released_pair_count == first.entry_boundary_pair_count
+    assert first.exit_boundary_released_pair_count == first.exit_boundary_pair_count
+    assert first.entry_boundary_mean_gap_m >= 1.0e-5
+    assert first.exit_boundary_mean_gap_m >= 1.0e-5
     retained = json.loads(RECEIPT_PATH.read_text(encoding="utf-8"))
     assert first.payload().keys() == retained.keys()
     for key, expected in retained.items():
