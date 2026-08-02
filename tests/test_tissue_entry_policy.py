@@ -608,6 +608,15 @@ def test_fem_tract_load_stretches_and_recoils_through_free_nodes():
         assert "float physxDeformableMaterial:elasticityDamping = 0.08" in asset
 
 
+def test_receiver_follows_needle_tangent_until_backend_clearance():
+    state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
+    assert "exposed_grasp_target - root_pos" in state
+    assert "torch.linalg.cross(plane_normal, exposed_radial)" in state
+    assert "pull_tangent * tangent" in state
+    assert "tract_clear = embedded_arc_length" in state
+    assert "tract_clear.unsqueeze(-1), surface_normal, pull_tangent" in state
+
+
 def test_whole_psm_link_tissue_contacts_are_authoritative():
     scene = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
     pullout = (TASK_ROOT / "pullout_env_cfg.py").read_text(encoding="utf-8")

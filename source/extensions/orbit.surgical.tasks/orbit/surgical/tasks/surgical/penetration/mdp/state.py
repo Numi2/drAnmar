@@ -890,11 +890,28 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             dim=-1,
         ).clamp(-1.0, 1.0)
         pull_active = current_phase >= 10
-        # After transfer, retract upward on the free operative side.
-        # Rotating about the receiver tool tip pivots the distal link into the
-        # tissue before the embedded arc can clear; fixed-attitude translation
-        # instead carries both the captured needle and receiver away safely.
-        pull_delta_r = quat_apply_inverse(receiver_root_quat, surface_normal)
+        # Continue the curved bite through the right flap along the
+        # instantaneous tangent at the receiver's grasp point. A straight
+        # surface-normal lift drags the remaining embedded arc across the top
+        # surface and visually tears the FEM. Choose the tangent sign that
+        # agrees with sharp-tip advance; lift away only after backend clearance.
+        exposed_radial = torch.nn.functional.normalize(
+            exposed_grasp_target - root_pos, dim=-1
+        )
+        pull_tangent = torch.nn.functional.normalize(
+            torch.linalg.cross(plane_normal, exposed_radial), dim=-1
+        )
+        tangent_sign = torch.where(
+            torch.sum(pull_tangent * tangent, dim=-1, keepdim=True) >= 0.0,
+            torch.ones_like(pull_tangent[..., :1]),
+            -torch.ones_like(pull_tangent[..., :1]),
+        )
+        pull_tangent = pull_tangent * tangent_sign
+        tract_clear = embedded_arc_length <= PulloutThresholds().embedded_arc_clearance_m
+        pull_direction_w = torch.where(
+            tract_clear.unsqueeze(-1), surface_normal, pull_tangent
+        )
+        pull_delta_r = quat_apply_inverse(receiver_root_quat, pull_direction_w)
         pull_guidance = torch.cat(
             (
                 torch.nn.functional.normalize(pull_delta_r, dim=-1),
