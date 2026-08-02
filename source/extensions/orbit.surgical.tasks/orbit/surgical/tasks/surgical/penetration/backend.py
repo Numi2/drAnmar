@@ -113,7 +113,7 @@ class DrAnmarNativeTissueEntryBackend:
     lateral_damping_n_s_m = 0.02
     postpuncture_bias_n = 0.012
     postpuncture_stiffness_n_m = 8.0
-    curvature_radius_m = 0.0070028174960433945
+    curvature_radius_m = 0.010504226244065092
     arc_sample_count = 17
 
     def __init__(self, num_scenes: int, *, integration_step_s: float = 0.002) -> None:

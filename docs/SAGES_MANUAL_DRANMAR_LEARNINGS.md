@@ -83,10 +83,18 @@ DrAnmar-Reach-PSM-IK-Rel-v0
 -> needle lift
 -> block handover
 -> needle handover
+-> force-gated left-span needle entry
+-> curved subsurface drive and right-span top exit
+-> opposite-PSM acquisition and receiver-only pull-through
 ```
 
 That path qualifies control and contact infrastructure. It should feed the
 first surgical layer below; it should not be labeled laparoscopic competence.
+For the tissue-interaction stages, the simulator owns entry, exit, embedded
+arc, custody, and complete-clearance events. A policy may command only bounded
+relative motion and jaw intent. Contact by either PSM shaft or wrist is a hard
+failure, and a visually plausible needle pose without the matching physics
+receipt is not a completed bite.
 
 ### 2. Treat setup as a learned safety skill
 

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import math
+
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -56,7 +58,7 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
-NEEDLE_TIP_LOCAL_M = (0.0, -0.0070028174960433945, 0.0)
+NEEDLE_TIP_LOCAL_M = (0.0, -0.010504226244065092, 0.0)
 NEEDLE_TANGENT_LOCAL = (-1.0, 0.0, 0.0)
 NEEDLE_PLANE_NORMAL_LOCAL = (0.0, 0.0, 1.0)
 TISSUE_CENTER_LOCAL_M = (0.0, 0.0, 0.05)
@@ -137,7 +139,15 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         receiver_tool_body_ids = []
         receiver_tool_pos = torch.zeros_like(tool_pos)
         receiver_tool_quat = torch.zeros_like(tool_quat)
-    giver_held = state["bilateral_seen"] & (state["custody_owner"] < 2)
+    tract_held = pullout & (
+        (state["giver_regrasp_stage"] >= 1)
+        & (state["giver_regrasp_stage"] <= 4)
+    )
+    giver_held = (
+        state["bilateral_seen"]
+        & (state["custody_owner"] < 2)
+        & ~tract_held
+    )
     if torch.any(giver_held):
         held_ids = torch.nonzero(giver_held, as_tuple=False).squeeze(-1)
         held_grasp_quat = state["grasp_local_quaternion_xyzw"][held_ids].to(
@@ -176,6 +186,22 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         root_quat[held_ids] = held_quat
         root_lin_vel[held_ids] = tool_velocity[:, :3]
         root_ang_vel[held_ids] = tool_velocity[:, 3:]
+    if pullout and torch.any(tract_held):
+        held_ids = torch.nonzero(tract_held, as_tuple=False).squeeze(-1)
+        held_pose = state["tract_support_pose"][held_ids].to(dtype=root_pos.dtype)
+        zero_velocity = torch.zeros((len(held_ids), 6), device=env.device, dtype=root_pos.dtype)
+        needle.write_root_pose_to_sim_index(root_pose=held_pose, env_ids=held_ids)
+        needle.write_root_velocity_to_sim_index(
+            root_velocity=zero_velocity, env_ids=held_ids
+        )
+        root_pos = root_pos.clone()
+        root_quat = root_quat.clone()
+        root_lin_vel = root_lin_vel.clone()
+        root_ang_vel = root_ang_vel.clone()
+        root_pos[held_ids] = held_pose[:, :3]
+        root_quat[held_ids] = held_pose[:, 3:]
+        root_lin_vel[held_ids] = 0.0
+        root_ang_vel[held_ids] = 0.0
     receiver_held = state["custody_owner"] == 2
     if pullout and torch.any(receiver_held):
         held_ids = torch.nonzero(receiver_held, as_tuple=False).squeeze(-1)
@@ -229,6 +255,15 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     entry_error = torch.linalg.vector_norm((tip_pos - target)[:, :2], dim=-1)
     tangent_error = _angle_deg(tangent, -surface_normal)
     plane_error = _angle_deg(plane_normal, wound_tangent, unsigned=True)
+    oblique_drive_direction = torch.nn.functional.normalize(
+        torch.linalg.cross(-surface_normal, wound_tangent), dim=-1
+    )
+    oblique_entry_tangent = torch.nn.functional.normalize(
+        -surface_normal * math.cos(math.radians(8.0))
+        + oblique_drive_direction * math.sin(math.radians(8.0)),
+        dim=-1,
+    )
+    oblique_alignment_error = _angle_deg(tangent, oblique_entry_tangent)
     indentation = torch.relu(tissue_top_z - tip_pos[:, 2])
     settling = state["settle_control_steps"] > 0
     settled = ~settling
@@ -371,7 +406,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     # The authored held-object transform is the v1 custody authority. Pose
     # errors remain diagnostics and cannot create a one-step false loss while
     # the scene synchronizes the collision-free needle proxy.
-    custody_valid = state["bilateral_seen"].clone()
+    custody_valid = state["bilateral_seen"].clone() | tract_held
     if pullout:
         custody_valid &= state["custody_owner"] < 2
     state["grasp_loss_steps"] = torch.where(
@@ -394,13 +429,16 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         unintended_jaw &= state["custody_owner"] < 2
 
     if through_puncture:
-        curvature_radius_m = 0.0070028174960433945
-        # A standard curved bite enters and exits through the operative top
-        # surface.  A half-circle therefore re-emerges two radii across the
-        # wound, on the right tissue span—not through the slab underside.
-        exit_chord_m = 2.0 * curvature_radius_m
-        drive_direction = torch.linalg.cross(-surface_normal, wound_tangent)
-        exit_target = target + drive_direction * exit_chord_m
+        # Fixed-domain first-crossing goal for the qualified 145-degree arc.
+        # The offset is measured from the authored entry goal and lands inside
+        # the right collision-enabled slab.  The backend freezes this event
+        # coordinate so later presentation and pullout cannot rewrite accuracy.
+        exit_offset_w = torch.tensor(
+            (0.01955, -0.00318, 0.0),
+            device=env.device,
+            dtype=root_pos.dtype,
+        ).expand_as(target)
+        exit_target = target + exit_offset_w
         exit_position = tissue_center + torch.tensor(
             [item.exit_position_m for item in tissue_state],
             device=env.device,
@@ -463,7 +501,171 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         current_phase = torch.tensor(
             [int(gate.phase) for gate in state["gates"]], device=env.device
         )
-        radius_m = 0.0070028174960433945
+        drive_active = current_phase == 4
+        initialize_drive = drive_active & ~state["drive_start_tangent_valid"]
+        if torch.any(initialize_drive):
+            state["drive_start_tangent_w"][initialize_drive] = tangent[
+                initialize_drive
+            ]
+            state["drive_start_tool_quat_w"][initialize_drive] = tool_quat[
+                initialize_drive
+            ]
+            state["drive_start_tangent_valid"][initialize_drive] = True
+        start_tangent = torch.nn.functional.normalize(
+            state["drive_start_tangent_w"], dim=-1
+        )
+        drive_rotation_deg = torch.rad2deg(
+            torch.acos(
+                torch.sum(start_tangent * tangent, dim=-1).clamp(-1.0, 1.0)
+            )
+        )
+
+        regrasp_stage = state["giver_regrasp_stage"]
+        completed_regrasps = torch.tensor(
+            [item.tract_support_event_count for item in tissue_state],
+            device=env.device,
+            dtype=torch.long,
+        )
+        next_regrasp_angle_deg = 65.0 + 20.0 * completed_regrasps
+        request_regrasp = (
+            drive_active
+            & state["drive_start_tangent_valid"]
+            & (drive_rotation_deg >= next_regrasp_angle_deg)
+            & ((regrasp_stage == 0) | (regrasp_stage == 5))
+            & (completed_regrasps < 4)
+        )
+        if torch.any(request_regrasp):
+            requested_ids = torch.nonzero(
+                request_regrasp, as_tuple=False
+            ).squeeze(-1)
+            authorized = adapter.request_tract_support(
+                requested_ids.detach().cpu().tolist()
+            )
+            authorized_mask = torch.tensor(
+                authorized, device=env.device, dtype=torch.bool
+            )
+            authorized_ids = requested_ids[authorized_mask]
+            if authorized_ids.numel() > 0:
+                state["giver_regrasp_stage"][authorized_ids] = 1
+                state["giver_regrasp_stage_steps"][authorized_ids] = 0
+                state["tract_support_pose"][authorized_ids] = torch.cat(
+                    (root_pos[authorized_ids], root_quat[authorized_ids]), dim=-1
+                )
+                state["giver_regrasp_retreat_target_w"][authorized_ids] = (
+                    tool_pos[authorized_ids]
+                    + 0.005 * surface_normal[authorized_ids]
+                )
+
+        trailing_grasp_target = tissue_center + torch.tensor(
+            [item.trailing_grasp_position_m for item in tissue_state],
+            device=env.device,
+            dtype=root_pos.dtype,
+        )
+        jaw_capture_position = tool_pos + quat_apply(tool_quat, jaw_offset)
+        regrasp_approach_capture = trailing_grasp_target + 0.003 * surface_normal
+        retreat_target = state["giver_regrasp_retreat_target_w"]
+        regrasp_stage = state["giver_regrasp_stage"]
+        desired_capture = torch.where(
+            (regrasp_stage == 2).unsqueeze(-1),
+            retreat_target + quat_apply(tool_quat, jaw_offset),
+            torch.where(
+                (regrasp_stage == 3).unsqueeze(-1),
+                regrasp_approach_capture,
+                trailing_grasp_target,
+            ),
+        )
+        regrasp_delta_w = desired_capture - jaw_capture_position
+        giver_root_quat = mdp_common.as_torch(robot.data.root_quat_w)
+        regrasp_delta_r = quat_apply_inverse(giver_root_quat, regrasp_delta_w)
+        # Reuse the pickup/handover policy's identity tool attitude in the PSM
+        # root frame for late gap access.  It keeps the shaft on the authored
+        # trocar axis and the jaw opening in the field plane instead of
+        # carrying the increasingly oblique needle-drive wrist attitude down
+        # between the tissue slabs.  Earlier regrips retain the drive-start
+        # attitude because they occur safely above the tissue surface.
+        late_gap_regrasp = completed_regrasps >= 3
+        desired_regrasp_quat_w = torch.where(
+            late_gap_regrasp.unsqueeze(-1),
+            giver_root_quat,
+            state["drive_start_tool_quat_w"].to(dtype=tool_quat.dtype),
+        )
+        regrasp_rotation_error_w = axis_angle_from_quat(
+            quat_mul(desired_regrasp_quat_w, quat_conjugate(tool_quat))
+        )
+        regrasp_rotation_error_r = quat_apply_inverse(
+            giver_root_quat, regrasp_rotation_error_w
+        )
+        unwind_active = regrasp_stage >= 3
+        giver_regrasp_guidance = torch.cat(
+            (
+                regrasp_delta_r / 0.00025,
+                torch.where(
+                    unwind_active.unsqueeze(-1),
+                    regrasp_rotation_error_r / 0.00872664626,
+                    torch.zeros_like(regrasp_rotation_error_r),
+                ),
+            ),
+            dim=-1,
+        ).clamp(-1.0, 1.0)
+        state["giver_regrasp_stage_steps"] = torch.where(
+            (regrasp_stage >= 1) & (regrasp_stage <= 4),
+            state["giver_regrasp_stage_steps"] + 1,
+            state["giver_regrasp_stage_steps"],
+        )
+        action = mdp_common.as_torch(env.action_manager.action)
+        giver_open_commanded = action[:, 6] > 0.0
+        release_complete = (
+            (regrasp_stage == 1)
+            & giver_open_commanded
+            & (state["giver_regrasp_stage_steps"] >= 3)
+        )
+        state["bilateral_seen"][release_complete] = False
+        state["giver_regrasp_stage"][release_complete] = 2
+        retreat_reached = (regrasp_stage == 2) & (
+            torch.linalg.vector_norm(tool_pos - retreat_target, dim=-1) <= 0.00035
+        )
+        state["giver_regrasp_stage"][retreat_reached] = 3
+        approach_reached = (regrasp_stage == 3) & (
+            torch.linalg.vector_norm(
+                jaw_capture_position - regrasp_approach_capture, dim=-1
+            )
+            <= 0.00035
+        ) & (
+            torch.linalg.vector_norm(regrasp_rotation_error_w, dim=-1)
+            <= torch.deg2rad(torch.tensor(2.0, device=env.device))
+        )
+        state["giver_regrasp_stage"][approach_reached] = 4
+        regrasp_stage = state["giver_regrasp_stage"]
+        regrasp_geometry_contact = (
+            (regrasp_stage == 4)
+            & ~giver_open_commanded
+            & (
+                torch.linalg.vector_norm(
+                    jaw_capture_position - trailing_grasp_target, dim=-1
+                )
+                <= 0.00015
+            )
+        )
+        state["giver_regrasp_contact_history"] = torch.roll(
+            state["giver_regrasp_contact_history"], shifts=-1, dims=-1
+        )
+        state["giver_regrasp_contact_history"][:, -1] = regrasp_geometry_contact
+        regrasp_acquire = (
+            (regrasp_stage == 4)
+            & (state["giver_regrasp_contact_history"].sum(dim=-1) >= 3)
+        )
+        if torch.any(regrasp_acquire):
+            ids = torch.nonzero(regrasp_acquire, as_tuple=False).squeeze(-1)
+            state["grasp_local_quaternion_xyzw"][ids] = quat_mul(
+                quat_conjugate(root_quat[ids]), tool_quat[ids]
+            )
+            state["grasp_local_position_m"][ids] = quat_apply_inverse(
+                root_quat[ids], jaw_capture_position[ids] - root_pos[ids]
+            )
+            state["bilateral_seen"][ids] = True
+            state["giver_regrasp_stage"][ids] = 5
+            adapter.release_tract_support(ids.detach().cpu().tolist())
+        radius_m = 0.010504226244065092
         exposed_mid_direction = torch.nn.functional.normalize(
             (tip_pos - root_pos) + (exit_position - root_pos), dim=-1
         )
@@ -518,7 +720,6 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         receiver_distance = torch.linalg.vector_norm(
             receiver_capture_position - exposed_grasp_target, dim=-1
         )
-        action = mdp_common.as_torch(env.action_manager.action)
         receiver_close_commanded = action[:, 13] < 0.0
         # Some Isaac/PhysX builds do not route child-collider contacts from the
         # authored needle aggregate into filtered jaw sensors. Use the same
@@ -568,7 +769,6 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 root_quat[ids], receiver_tool_pos[ids] - root_pos[ids]
             )
             state["custody_owner"][ids] = 1
-        giver_open_commanded = action[:, 6] > 0.0
         transfer_ready = (
             (current_phase >= 10)
             & (state["custody_owner"] >= 1)
@@ -593,6 +793,8 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         giver_released = torch.zeros(
             env.num_envs, dtype=torch.bool, device=env.device
         )
+        drive_rotation_deg = torch.zeros(env.num_envs, device=env.device)
+        giver_regrasp_guidance = torch.zeros((env.num_envs, 6), device=env.device)
 
     successes: list[bool] = []
     unintended_robot_contact = settled & (
@@ -631,6 +833,14 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 exit_slab=tissue_state[index].exit_slab,
                 cross_slab_route_valid=tissue_state[index].cross_slab_route_valid,
                 invalid_exit_route=tissue_state[index].invalid_exit_route,
+                tract_support_active=tissue_state[index].tract_support_active,
+                tract_support_event_count=tissue_state[
+                    index
+                ].tract_support_event_count,
+                giver_regrasp_stage=int(state["giver_regrasp_stage"][index]),
+                giver_regrasp_complete=bool(
+                    state["giver_regrasp_stage"][index] == 5
+                ),
                 giver_custody=bool(
                     effective_custody[index]
                     and state["custody_owner"][index] < 2
@@ -661,7 +871,17 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         # Reset seating can briefly pass geometric thresholds while the jaws
         # and fixed grasp converge. It must never advance the authoritative
         # procedure state before settled bilateral custody is evaluated.
-        if bool(settled[index]):
+        # The public contract allows up to ten degrees from the local normal,
+        # but the through-task phase machine must not latch ALIGN at the exact
+        # normal reset pose before the controller establishes the intended
+        # eight-degree forward bite.  This internal two-degree lock preserves
+        # truthful reporting of the actual local-normal angle above.
+        through_alignment_ready = not (
+            through_puncture
+            and int(gate.phase) == 1
+            and float(oblique_alignment_error[index]) > 2.0
+        )
+        if bool(settled[index]) and through_alignment_ready:
             if pullout:
                 advance_pullout_gate(
                     gate,
@@ -781,6 +1001,20 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "receiver_distance": receiver_distance,
             "receiver_bilateral": receiver_bilateral,
             "receiver_guidance": receiver_guidance,
+            "giver_regrasp_guidance": giver_regrasp_guidance,
+            "giver_regrasp_stage": state["giver_regrasp_stage"].clone(),
+            "giver_regrasp_complete": state["giver_regrasp_stage"] == 5,
+            "drive_rotation_deg": drive_rotation_deg,
+            "tract_support_active": torch.tensor(
+                [item.tract_support_active for item in tissue_state],
+                device=env.device,
+                dtype=torch.bool,
+            ),
+            "tract_support_event_count": torch.tensor(
+                [item.tract_support_event_count for item in tissue_state],
+                device=env.device,
+                dtype=torch.long,
+            ),
             "receiver_custody": receiver_custody,
             "giver_released": giver_released,
             "custody_owner": state["custody_owner"].clone(),

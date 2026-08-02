@@ -2,8 +2,20 @@
   "schema": "dr.anmar.needle-puncture-pullout-benchmark.v1",
   "task": "DrAnmar-Puncture-Pullout-Tissue-Needle-PSM-IK-Rel-v0",
   "scope": "curved_needle_entry_exit_receiver_transfer_and_complete_clearance",
-  "status": "blocked_pending_collision_enabled_success",
+  "status": "rendered_fixed_domain_success_statistical_promotion_pending",
   "promotion_eligible": false,
+  "qualification_evidence": {
+    "rendered_seed": 7012,
+    "rendered_success": true,
+    "entry_error_m": 0.0008890150929801166,
+    "exit_error_m": 0.00004431727938936092,
+    "presentation_exposed_fraction": 0.2265625,
+    "final_exposed_fraction": 1.0,
+    "final_embedded_arc_length_m": 0.0,
+    "hard_safety_failures": 0,
+    "receipt": "docs/tissue_puncture_pullout/seed7012_rendered_success.json",
+    "remaining_gate": "three_untouched_seeds_with_256_isolated_episodes_each"
+  },
   "engineering_acceptance": {
     "entry_event_count": 1,
     "exit_event_count": 1,

@@ -38,10 +38,11 @@ class PulloutThresholds:
     # native compression law; the entry proxy's separate 1.5 mm contract is
     # intentionally unchanged.
     prepuncture_depth_m: float = 0.0008
-    # The receiver can safely acquire the 21/128 sampled leading arc before
-    # the giver wrist reaches the tissue; the receiver then owns the remaining
-    # exposure and must still prove at least 95% complete clearance.
-    presented_fraction_min: float = 0.16
+    # Present at least one fifth of the sampled leading arc before receiver
+    # approach; the qualified controller settles at 21/128 samples.  The
+    # receiver then owns the remaining exposure and must still prove at least
+    # 95% complete clearance.
+    presented_fraction_min: float = 0.20
     presented_fraction_max: float = 0.30
     presentation_steps: int = 10
     receiver_approach_m: float = 0.004
@@ -81,6 +82,10 @@ class PulloutMeasurement:
     exit_slab: str = "none"
     cross_slab_route_valid: bool = False
     invalid_exit_route: bool = False
+    tract_support_active: bool = False
+    tract_support_event_count: int = 0
+    giver_regrasp_stage: int = 0
+    giver_regrasp_complete: bool = False
     solver_finite: bool = True
     unintended_jaw_contact: bool = False
     unintended_robot_contact: bool = False
@@ -98,6 +103,7 @@ class PulloutGateState:
     cleared_steps: int = 0
     peak_force_n: float = 0.0
     entry_error_at_puncture_m: float | None = None
+    exit_error_at_event_m: float | None = None
     tangent_error_at_puncture_deg: float | None = None
     plane_error_at_puncture_deg: float | None = None
     hard_failures: set[str] = field(default_factory=set)
@@ -163,6 +169,14 @@ def advance_pullout_gate(
         state.hard_failures.add("multiple_exit_events")
     if measurement.invalid_exit_route:
         state.hard_failures.add("invalid_cross_slab_exit_route")
+    if measurement.tract_support_event_count > 4:
+        state.hard_failures.add("multiple_tract_support_events")
+    if measurement.tract_support_active and not state.punctured:
+        state.hard_failures.add("tract_support_before_puncture")
+    if measurement.tract_support_active and state.phase >= PulloutPhase.EXIT:
+        state.hard_failures.add("tract_support_after_exit")
+    if measurement.giver_regrasp_stage not in range(6):
+        state.hard_failures.add("invalid_giver_regrasp_stage")
     if state.phase >= PulloutPhase.PULL and not measurement.receiver_custody:
         state.hard_failures.add("receiver_custody_loss")
     if state.failed:
@@ -201,6 +215,7 @@ def advance_pullout_gate(
     elif state.phase == PulloutPhase.DRIVE:
         if measurement.backend_exit_count == 1 and measurement.exposed_arc_length_m > 0.0:
             state.exit_event_count = 1
+            state.exit_error_at_event_m = measurement.exit_error_m
             next_phase = PulloutPhase.EXIT
     elif state.phase == PulloutPhase.EXIT:
         if (
@@ -278,6 +293,9 @@ def pullout_success(
         and measurement.entry_slab == "left"
         and measurement.exit_slab == "right"
         and measurement.cross_slab_route_valid
+        and measurement.tract_support_event_count == 4
+        and not measurement.tract_support_active
+        and measurement.giver_regrasp_complete
         and state.phase == PulloutPhase.CLEAR
         and state.cleared_steps >= thresholds.clearance_steps
         and measurement.receiver_custody
@@ -313,6 +331,8 @@ class PulloutReceipt:
     entry_slab: str
     exit_slab: str
     cross_slab_route_valid: bool
+    tract_support_event_count: int
+    giver_regrasp_complete: bool
     custody_model: str = (
         "bilateral_force_or_calibrated_geometry_then_receiver_pose_coupling"
     )

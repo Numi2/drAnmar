@@ -71,7 +71,7 @@ def normalized_tissue_wrench(env: ManagerBasedRLEnv) -> torch.Tensor:
     state = penetration_state(env)
     threshold = state["puncture_force_n"].clamp_min(1.0e-6).unsqueeze(-1)
     force = state["wrench"][:, :3] / threshold
-    torque = state["wrench"][:, 3:] / (threshold * 0.0070028175)
+    torque = state["wrench"][:, 3:] / (threshold * 0.0105042262)
     return torch.cat((force, torque), dim=-1).clamp(-5.0, 5.0)
 
 
@@ -175,6 +175,16 @@ def pullout_custody(env: ManagerBasedRLEnv) -> torch.Tensor:
     ).float()
 
 
+def pullout_giver_regrasp_guidance(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return penetration_state(env)["giver_regrasp_guidance"]
+
+
+def pullout_giver_regrasp_stage(env: ManagerBasedRLEnv) -> torch.Tensor:
+    return functional.one_hot(
+        penetration_state(env)["giver_regrasp_stage"], num_classes=6
+    ).float()
+
+
 def privileged_pullout_state(env: ManagerBasedRLEnv) -> torch.Tensor:
     state = penetration_state(env)
     return torch.cat(
@@ -184,6 +194,10 @@ def privileged_pullout_state(env: ManagerBasedRLEnv) -> torch.Tensor:
             state["receiver_custody"].float().unsqueeze(-1),
             state["giver_released"].float().unsqueeze(-1),
             state["custody_owner"].float().unsqueeze(-1),
+            state["drive_rotation_deg"].unsqueeze(-1) / 180.0,
+            state["tract_support_active"].float().unsqueeze(-1),
+            state["tract_support_event_count"].float().unsqueeze(-1),
+            state["giver_regrasp_complete"].float().unsqueeze(-1),
         ),
         dim=-1,
     )

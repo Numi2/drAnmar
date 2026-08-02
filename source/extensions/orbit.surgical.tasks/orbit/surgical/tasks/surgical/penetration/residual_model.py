@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 from rsl_rl.models import RNNModel
 from rsl_rl.utils import unpad_trajectories
@@ -22,13 +24,14 @@ from isaaclab.utils.math import (
 class PenetrationAnalyticController(nn.Module):
     """Approach, align, indent, puncture and stabilize at measured depth."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, tangent_bias_deg: float = 0.0) -> None:
         super().__init__()
         self.translation_scale_m = 0.00025
         self.rotation_scale_rad = 0.00872664626
         self.normal_advance_limit = 0.4  # 0.1 mm per 20 ms
         self.normalized_contact_threshold = 0.02
         self.normalized_force_limit = 1.25
+        self.tangent_bias_rad = math.radians(tangent_bias_deg)
 
     def forward(self, raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         needle_position = raw[..., 23:26]
@@ -89,7 +92,14 @@ class PenetrationAnalyticController(nn.Module):
         plane_sign = torch.sign(torch.sum(current_plane_normal * wound_tangent, dim=-1, keepdim=True))
         plane_sign = torch.where(plane_sign == 0.0, torch.ones_like(plane_sign), plane_sign)
         wound_tangent = wound_tangent * plane_sign
-        desired_tangent = -surface_normal
+        drive_direction = torch.nn.functional.normalize(
+            torch.linalg.cross(-surface_normal, wound_tangent), dim=-1
+        )
+        desired_tangent = torch.nn.functional.normalize(
+            -surface_normal * math.cos(self.tangent_bias_rad)
+            + drive_direction * math.sin(self.tangent_bias_rad),
+            dim=-1,
+        )
         desired_local_x = -desired_tangent
         desired_second_axis = torch.linalg.cross(wound_tangent, desired_local_x)
         desired_needle_matrix = torch.stack(
@@ -146,7 +156,15 @@ class PenetrationAnalyticController(nn.Module):
         # larger rotation residual starve PSM translation. Use the same
         # ten-degree boundary as the authoritative gate; the phase transition
         # itself latches alignment once the measured entry region is valid.
-        tangent_aligned = torch.sum(current_tangent * desired_tangent, dim=-1) >= 0.984807753
+        tangent_alignment_cosine = (
+            math.cos(math.radians(1.0))
+            if self.tangent_bias_rad > 0.0
+            else 0.984807753
+        )
+        tangent_aligned = (
+            torch.sum(current_tangent * desired_tangent, dim=-1)
+            >= tangent_alignment_cosine
+        )
         plane_aligned = torch.abs(torch.sum(current_plane_normal * wound_tangent, dim=-1)) >= 0.984807753
         rotation = torch.where(
             (tangent_aligned & plane_aligned).unsqueeze(-1), torch.zeros_like(rotation), rotation
@@ -251,10 +269,11 @@ class ThroughPunctureAnalyticController(nn.Module):
 
     def __init__(self) -> None:
         super().__init__()
-        self.entry_controller = PenetrationAnalyticController()
+        self.entry_tangent_bias_rad = math.radians(8.0)
+        self.entry_controller = PenetrationAnalyticController(tangent_bias_deg=8.0)
         self.translation_scale_m = 0.00025
         self.rotation_scale_rad = 0.00872664626
-        self.curvature_radius_m = 0.0070028174960433945
+        self.curvature_radius_m = 0.010504226244065092
         self.tissue_thickness_m = 0.006
         self.target_exposed_fraction = 0.22
         # Use the full bounded 0.5 degree command during the drive. The former
@@ -300,7 +319,15 @@ class ThroughPunctureAnalyticController(nn.Module):
         wound_tangent = wound_tangent * torch.where(
             plane_sign == 0.0, torch.ones_like(plane_sign), plane_sign
         )
-        start_tangent = -surface_normal
+        normal_entry_tangent = -surface_normal
+        normal_drive_direction = torch.nn.functional.normalize(
+            torch.linalg.cross(normal_entry_tangent, wound_tangent), dim=-1
+        )
+        start_tangent = torch.nn.functional.normalize(
+            normal_entry_tangent * math.cos(self.entry_tangent_bias_rad)
+            + normal_drive_direction * math.sin(self.entry_tangent_bias_rad),
+            dim=-1,
+        )
         current_tangent = quat_apply(
             needle_quaternion,
             torch.tensor((-1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype).expand_as(
@@ -332,17 +359,39 @@ class ThroughPunctureAnalyticController(nn.Module):
         ) / self.translation_scale_m
 
         # The sharp tip re-emerges through the top surface after a half turn.
-        exit_angle = torch.tensor(torch.pi, device=raw.device, dtype=raw.dtype)
+        exit_angle = torch.tensor(
+            math.pi - 2.0 * self.entry_tangent_bias_rad,
+            device=raw.device,
+            dtype=raw.dtype,
+        )
         target_angle = exit_angle + self.target_exposed_fraction * torch.pi
+        late_exit_lift = (
+            (phase >= 4)
+            & (orientation_angle >= math.radians(145.0))
+            & (exposed_fraction < self.target_exposed_fraction)
+        )
         rotate_active = (orientation_angle < target_angle) & (
             exposed_fraction < self.target_exposed_fraction
-        ) & (phase <= 5)
+        ) & (phase <= 5) & ~late_exit_lift
         rotation = (
             -wound_tangent
             * rotate_active.unsqueeze(-1).to(raw.dtype)
             * self.drive_rotation_command
         )
+        translation = torch.where(
+            late_exit_lift.unsqueeze(-1),
+            surface_normal * 0.4,
+            translation,
+        )
+        presentation_hold = (phase >= 5) & (
+            exposed_fraction >= self.target_exposed_fraction
+        )
         through_base = torch.cat((translation, rotation), dim=-1).clamp(-1.0, 1.0)
+        through_base = torch.where(
+            presentation_hold.unsqueeze(-1),
+            torch.zeros_like(through_base),
+            through_base,
+        )
         # Keep following the same circular tip trajectory after top re-emergence.
         # Switching to a static historical exit-point correction
         # rotates about the jaws, lifts the sharp tip back into the tract, and
@@ -467,10 +516,15 @@ class PulloutAnalyticController(nn.Module):
         )
         giver_body, _, unsafe = self.through_controller(through_raw)
         phase = torch.argmax(raw[..., 116:128], dim=-1)
+        giver_regrasp_guidance = raw[..., 131:137].clamp(-1.0, 1.0)
+        giver_regrasp_stage = torch.argmax(raw[..., 137:143], dim=-1)
+        tract_regrasp_active = (
+            (giver_regrasp_stage >= 1) & (giver_regrasp_stage <= 4)
+        )
         # Giver contact loss is unsafe before transfer, but intentional after
         # receiver custody. The environment separately hard-fails any receiver
         # custody loss during pull/clear.
-        unsafe = unsafe & (phase < 9)
+        unsafe = unsafe & (phase < 9) & ~tract_regrasp_active
         receiver_guidance = raw[..., 110:116].clamp(-1.0, 1.0)
         receiver_active = phase >= 7
         receiver_body = torch.where(
@@ -478,14 +532,29 @@ class PulloutAnalyticController(nn.Module):
             receiver_guidance,
             torch.zeros_like(receiver_guidance),
         )
-        receiver_body = torch.where(
-            (phase >= 11).unsqueeze(-1), torch.zeros_like(receiver_body), receiver_body
-        )
+        # CLEAR is a confirmation phase, not a hold phase.  A curved needle
+        # can momentarily satisfy the clearance geometry and elastically settle
+        # back while the gate accumulates its ten stable control steps.  Keep
+        # the receiver retracting through CLEAR; successful termination owns
+        # the eventual stop after sustained, fully-clear custody is proven.
         receiver_body = torch.where(
             (phase == 9).unsqueeze(-1), torch.zeros_like(receiver_body), receiver_body
         )
         giver_body = torch.where(
             (phase >= 7).unsqueeze(-1), torch.zeros_like(giver_body), giver_body
+        )
+        giver_body = torch.where(
+            (giver_regrasp_stage == 1).unsqueeze(-1),
+            torch.zeros_like(giver_body),
+            giver_body,
+        )
+        giver_body = torch.where(
+            (
+                (giver_regrasp_stage >= 2)
+                & (giver_regrasp_stage <= 4)
+            ).unsqueeze(-1),
+            giver_regrasp_guidance,
+            giver_body,
         )
         giver_retreat = torch.cat(
             (
@@ -503,6 +572,14 @@ class PulloutAnalyticController(nn.Module):
             torch.ones_like(phase, dtype=raw.dtype),
             -torch.ones_like(phase, dtype=raw.dtype),
         ).unsqueeze(-1)
+        giver_regrasp_open = (
+            (giver_regrasp_stage >= 1) & (giver_regrasp_stage <= 3)
+        )
+        giver_gripper = torch.where(
+            giver_regrasp_open.unsqueeze(-1),
+            torch.ones_like(giver_gripper),
+            giver_gripper,
+        )
         receiver_gripper = torch.where(
             phase >= 8,
             -torch.ones_like(phase, dtype=raw.dtype),

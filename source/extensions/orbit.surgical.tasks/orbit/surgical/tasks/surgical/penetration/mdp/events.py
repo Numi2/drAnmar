@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 # sharp direction is local -X (toward the endpoint at -pi/2); treating +X as
 # sharp put this valid grasp ahead of the tip and led to an artificial mirrored
 # grasp outside the rendered semicircle.
-NEEDLE_MID_GRASP_POSITION_M = (0.00613661575091, 0.00337363305778, 0.0)
+NEEDLE_MID_GRASP_POSITION_M = (0.009204923626365, 0.00506044958667, 0.0)
 # This Isaac Lab build exposes tensors in XYZW, while OpenUSD authors quatf in
 # WXYZ.  Keep the calibrated jaw-seat rotation in tensor convention and
 # convert only at the USD boundary below.
@@ -211,6 +211,24 @@ def reset_penetration_evidence(
             "receiver_grasp_local_quaternion_xyzw": torch.zeros(
                 (env.num_envs, 4), device=env.device
             ),
+            "giver_regrasp_stage": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "giver_regrasp_stage_steps": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "giver_regrasp_contact_history": torch.zeros(
+                (env.num_envs, 5), dtype=torch.bool, device=env.device
+            ),
+            "tract_support_pose": torch.zeros((env.num_envs, 7), device=env.device),
+            "giver_regrasp_retreat_target_w": torch.zeros(
+                (env.num_envs, 3), device=env.device
+            ),
+            "drive_start_tangent_w": torch.zeros((env.num_envs, 3), device=env.device),
+            "drive_start_tool_quat_w": torch.zeros((env.num_envs, 4), device=env.device),
+            "drive_start_tangent_valid": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
         }
         env._dr_anmar_penetration_state = state
     count = len(env_ids)
@@ -234,6 +252,14 @@ def reset_penetration_evidence(
     state["receiver_contact_history"][env_ids] = False
     state["receiver_grasp_local_position_m"][env_ids] = 0.0
     state["receiver_grasp_local_quaternion_xyzw"][env_ids] = 0.0
+    state["giver_regrasp_stage"][env_ids] = 0
+    state["giver_regrasp_stage_steps"][env_ids] = 0
+    state["giver_regrasp_contact_history"][env_ids] = False
+    state["tract_support_pose"][env_ids] = 0.0
+    state["giver_regrasp_retreat_target_w"][env_ids] = 0.0
+    state["drive_start_tangent_w"][env_ids] = 0.0
+    state["drive_start_tool_quat_w"][env_ids] = 0.0
+    state["drive_start_tangent_valid"][env_ids] = False
     state["grasp_local_position_m"][env_ids] = torch.tensor(
         NEEDLE_MID_GRASP_POSITION_M, device=env.device
     )

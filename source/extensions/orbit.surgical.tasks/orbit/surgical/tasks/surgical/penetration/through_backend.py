@@ -19,13 +19,14 @@ from .backend import (
 )
 
 
-DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v3-cross-slab"
+DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v11-fixed-exit-receipt"
 
 # Tissue coordinates are relative to the midpoint between the two authored
-# slabs.  Keep these bounds synchronized with PenetrationSceneCfg: the 3 mm
-# wound gap is deliberately not tissue and therefore cannot own an event.
-LEFT_SLAB_X_BOUNDS_M = (-0.035, -0.002)
-RIGHT_SLAB_X_BOUNDS_M = (0.002, 0.035)
+# slabs.  Keep these bounds synchronized with PenetrationSceneCfg: the 10 mm
+# wound gap admits a PSM distal shaft but is deliberately not tissue and
+# therefore cannot own an entry or exit event.
+LEFT_SLAB_X_BOUNDS_M = (-0.035, -0.005)
+RIGHT_SLAB_X_BOUNDS_M = (0.005, 0.035)
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,11 @@ class ThroughTissueSceneState:
     embedded_arc_length_m: float
     exposed_arc_length_m: float
     exposed_fraction: float
+    trailing_exposed_arc_length_m: float
+    trailing_grasp_position_m: tuple[float, float, float]
+    trailing_grasp_over_wound_gap: bool
+    tract_support_active: bool
+    tract_support_event_count: int
     exit_position_m: tuple[float, float, float]
     entry_slab: str
     exit_slab: str
@@ -53,6 +59,11 @@ class _ThroughState:
     previous_tip_z_m: float | None = None
     embedded_arc_length_m: float = 0.0
     exposed_arc_length_m: float = 0.0
+    trailing_exposed_arc_length_m: float = 0.0
+    trailing_grasp_position_m: tuple[float, float, float] = (0.0, 0.0, 0.003)
+    trailing_grasp_over_wound_gap: bool = False
+    tract_support_active: bool = False
+    tract_support_event_count: int = 0
     exit_position_m: tuple[float, float, float] = (0.0, 0.0, -0.003)
     entry_slab: str = "none"
     exit_slab: str = "none"
@@ -92,6 +103,11 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
                 embedded_arc_length_m=through.embedded_arc_length_m,
                 exposed_arc_length_m=through.exposed_arc_length_m,
                 exposed_fraction=through.exposed_arc_length_m / total_length,
+                trailing_exposed_arc_length_m=through.trailing_exposed_arc_length_m,
+                trailing_grasp_position_m=through.trailing_grasp_position_m,
+                trailing_grasp_over_wound_gap=through.trailing_grasp_over_wound_gap,
+                tract_support_active=through.tract_support_active,
+                tract_support_event_count=through.tract_support_event_count,
                 exit_position_m=through.exit_position_m,
                 entry_slab=through.entry_slab,
                 exit_slab=through.exit_slab,
@@ -134,6 +150,11 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
             state.previous_tip_z_m = None
             state.embedded_arc_length_m = 0.0
             state.exposed_arc_length_m = 0.0
+            state.trailing_exposed_arc_length_m = 0.0
+            state.trailing_grasp_position_m = (0.0, 0.0, 0.003)
+            state.trailing_grasp_over_wound_gap = False
+            state.tract_support_active = False
+            state.tract_support_event_count = 0
             state.exit_position_m = (0.0, 0.0, -0.003)
             state.entry_slab = "none"
             state.exit_slab = "none"
@@ -146,12 +167,18 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
         segment_length = math.pi * self.curvature_radius_m / (len(points) - 1)
         embedded = 0.0
         exposed = 0.0
+        trailing_exposed = 0.0
         leading_exposed = True
-        exit_position = state.exit_position_m
+        candidate_exit_position = state.exit_position_m
         crossing_found = False
         for first, second in zip(points[:-1], points[1:], strict=True):
+            midpoint_x = 0.5 * (first[0] + second[0])
             midpoint_z = 0.5 * (first[2] + second[2])
-            if bottom_z <= midpoint_z <= self.surface_z_m:
+            midpoint_slab = self._classify_slab(midpoint_x)
+            if (
+                midpoint_slab in {"left", "right"}
+                and bottom_z <= midpoint_z <= self.surface_z_m
+            ):
                 embedded += segment_length
             # Exposure is the contiguous leading arc above the operative top
             # after re-emergence.  Arc elsewhere above the slab is not a free
@@ -167,26 +194,117 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
                     if abs(span) > 1.0e-12
                     else 0.0
                 )
-                exit_position = tuple(
+                candidate_exit_position = tuple(
                     first[axis] + ratio * (second[axis] - first[axis])
                     for axis in range(3)
                 )
                 crossing_found = True
+        trailing_segments: list[tuple[tuple[float, float, float], tuple[float, float, float]]] = []
+        for first, second in reversed(list(zip(points[:-1], points[1:], strict=True))):
+            midpoint_x = 0.5 * (first[0] + second[0])
+            midpoint_z = 0.5 * (first[2] + second[2])
+            midpoint_slab = self._classify_slab(midpoint_x)
+            segment_is_in_tissue = (
+                midpoint_slab in {"left", "right"}
+                and bottom_z <= midpoint_z <= self.surface_z_m
+            )
+            if segment_is_in_tissue:
+                break
+            trailing_exposed += segment_length
+            trailing_segments.append((first, second))
+        # A wound-gap segment is directly accessible from above even if it is
+        # not contiguous with the trailing free arc: the two slab colliders do
+        # not occupy the gap at any depth.  Searching the whole centerline is
+        # essential late in the drive, when both ends can be separated from
+        # the gap by portions of needle that remain embedded in the slabs.
+        all_segments = list(zip(points[:-1], points[1:], strict=True))
+        gap_segments = [
+            segment
+            for segment in all_segments
+            if LEFT_SLAB_X_BOUNDS_M[1]
+            < 0.5 * (segment[0][0] + segment[1][0])
+            < RIGHT_SLAB_X_BOUNDS_M[0]
+        ]
+        final_drive_regrasp = state.tract_support_event_count >= 3
+        candidates = (
+            trailing_segments
+            if final_drive_regrasp and trailing_segments
+            else gap_segments or trailing_segments
+        )
+        if candidates:
+            if final_drive_regrasp:
+                # The final giver grasp must stay above the tissue so the jaw
+                # can sweep the remaining arc without entering the right slab.
+                first, second = max(
+                    candidates,
+                    key=lambda segment: 0.5 * (segment[0][2] + segment[1][2]),
+                )
+            elif gap_segments:
+                first, second = max(
+                    candidates,
+                    key=lambda segment: 0.5 * (segment[0][2] + segment[1][2]),
+                )
+            else:
+                divisor = 2 + min(state.tract_support_event_count, 5)
+                first, second = candidates[len(candidates) // divisor]
+            state.trailing_grasp_position_m = tuple(
+                0.5 * (first[axis] + second[axis]) for axis in range(3)
+            )
+            state.trailing_grasp_over_wound_gap = bool(
+                gap_segments and not final_drive_regrasp
+            )
         tip_z = points[0][2]
         if tip_z < self.surface_z_m - 1.0e-5:
             state.tip_has_entered = True
         tip_reemerged = state.tip_has_entered and tip_z >= self.surface_z_m
         if tip_reemerged and state.exit_event_count == 0:
-            state.exit_slab = self._classify_slab(exit_position[0])
+            state.exit_slab = self._classify_slab(candidate_exit_position[0])
             valid_route = state.entry_slab == "left" and state.exit_slab == "right"
             if valid_route:
                 state.exit_event_count += 1
+                # Exit is an event coordinate, not a live intersection that
+                # follows the needle after it has emerged and is presented or
+                # pulled away.  Freeze it at the first authorized top crossing.
+                state.exit_position_m = candidate_exit_position
             else:
                 state.invalid_exit_route = True
         state.previous_tip_z_m = tip_z
         state.embedded_arc_length_m = embedded
         state.exposed_arc_length_m = exposed
-        state.exit_position_m = exit_position
+        state.trailing_exposed_arc_length_m = trailing_exposed
+
+    def request_tract_support(self, scene_ids: Sequence[int]) -> tuple[bool, ...]:
+        """Authorize at most four tissue-held regrips of a genuinely embedded arc."""
+
+        results: list[bool] = []
+        for index in scene_ids:
+            entry = self._scenes[index]
+            state = self._through[index]
+            eligible = (
+                entry.punctured
+                and entry.switch_count == 1
+                and state.exit_event_count == 0
+                and not state.invalid_exit_route
+                # The instrument-width incision leaves shorter tissue
+                # purchase on the 7 mm-radius needle.
+                and state.embedded_arc_length_m >= 0.0015
+                and state.trailing_exposed_arc_length_m >= 0.002
+                and (
+                    state.trailing_grasp_over_wound_gap
+                    or state.trailing_grasp_position_m[2]
+                    >= self.surface_z_m + 0.0015
+                )
+                and state.tract_support_event_count < 4
+            )
+            if eligible:
+                state.tract_support_active = True
+                state.tract_support_event_count += 1
+            results.append(eligible)
+        return tuple(results)
+
+    def release_tract_support(self, scene_ids: Sequence[int]) -> None:
+        for index in scene_ids:
+            self._through[index].tract_support_active = False
 
     @staticmethod
     def _classify_slab(x_m: float) -> str:

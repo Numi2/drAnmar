@@ -187,29 +187,39 @@ and recovery gates.
 
 ### Tissue puncture and pullout status
 
-The puncture-and-pullout candidate remains blocked from promotion. The latest
-rendered replay was rejected because it modeled the exit on the underside of
-the tissue, placed the PSMs outside standard operative geometry, and did not
-prove collision authority for every instrument link. Its receipt and GIF are
-not retained as evidence. The replacement must keep both instruments on the
-operative side, enter the left tissue span, follow the curved needle below the
-surface, re-emerge through the top of the right span, and reject any whole-link
-tissue crossing before a new README GIF can be accepted.
+The simulation champion now completes the full entry-and-pullout sequence with
+both PSMs in opposing, above-tissue operative geometry. The giver enters the
+left collision-enabled span, follows the 21 mm curved needle below the surface,
+re-emerges through the top of the right span, presents more than one fifth of
+the arc, and stops. The opposite PSM then acquires the exposed arc, the giver
+releases, and the receiver pulls the needle completely clear on the right.
 
-The replacement backend now owns explicit slab identities and emits an exit
+<p align="center">
+  <img src="docs/media/dranmar-champion-tissue-puncture-pullout.gif"
+       width="600"
+       alt="Real Isaac Sim rollout of the Dr.Anmar policy driving a curved needle from the left tissue span through the right span, transferring it to the opposite PSM, and pulling it fully clear">
+</p>
+
+<p align="center">
+  <em>Real seed-7012 RTX render: left-span entry, curved subsurface drive,
+  right-span top exit, opposite-arm handover, and receiver-only clearance.</em>
+</p>
+
+The native backend owns explicit slab identities and emits exactly one exit
 event only for a `left -> right` top-surface route; same-slab, wound-gap,
-outside-span, and underside routes fail closed. Both giver and receiver
-insertion-shaft/wrist chains remain collision-authoritative in PhysX.
+outside-span, and underside routes fail closed. PhysX remains authoritative
+for both complete PSM chains. Any jaw, distal-link, shaft, or wrist tissue
+contact is a hard failure; puncture permission applies only to the needle.
 
-The standard posterior-above giver reset is now kinematically qualified on the
-RTX 4090 (sub-micrometre target error, 0.028 degree orientation error, and no
-initial shaft/wrist contact). Seed 7010 then drove the physical curved needle
-to 99 degrees below the surface before correctly terminating on
-`unintended_robot_tissue_contact`. A trailing-end grasp was also rejected
-before puncture because it removed the sharp-tip clearance. The remaining
-blocker is therefore a tract-supported giver regrasp before wrist contact,
-followed by right-side receiver acquisition and complete clearance. No GIF or
-promotion is permitted until that complete rendered sequence succeeds.
+The rendered seed-7012 receipt records one entry and one exit, 0.889 mm entry
+error, 0.044 mm immutable exit-event error, 7.10 degree tangent error,
+7.59 degree plane error, zero hard failures, zero embedded arc after pullout,
+and 100% final exposure. The analytical policy runs at 50 Hz with 0.25 mm and
+0.5 degree command bounds, four tissue-supported giver regrips, a fixed giver
+hold during receiver approach, sustained receiver custody, and continued pull
+through the clearance-confirmation phase. The machine-readable rendered
+evidence is in
+[`docs/tissue_puncture_pullout/seed7012_rendered_success.json`](docs/tissue_puncture_pullout/seed7012_rendered_success.json).
 
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.

@@ -97,6 +97,8 @@ class PulloutObservationsCfg:
         receiver_guidance = ObsTerm(func=mdp.pullout_receiver_guidance)
         pullout_phase = ObsTerm(func=mdp.pullout_phase)
         custody = ObsTerm(func=mdp.pullout_custody)
+        giver_regrasp_guidance = ObsTerm(func=mdp.pullout_giver_regrasp_guidance)
+        giver_regrasp_stage = ObsTerm(func=mdp.pullout_giver_regrasp_stage)
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -150,9 +152,11 @@ class PulloutEnvCfg(ThroughPunctureEnvCfg):
                 ),
             ),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
-                # Park fully lateral to the 70 mm-wide tissue span.
-                pos=(0.080, -0.0730, 0.04676338424909),
-                rot=(0.175850305627, -0.684891721377, 0.684891721377, 0.175850305627),
+                # Mirrored standard above-field trocar placement.  The old
+                # low lateral reset forced the receiver tip to approach the
+                # exposed needle through the collision-enabled right slab.
+                pos=(0.040, -0.120, 0.140),
+                rot=(0.4816338, 0.15930964, 0.0, 0.86177104),
             ),
         )
         receiver.actuators["psm_tool"].effort_limit_sim = 0.8
@@ -161,12 +165,14 @@ class PulloutEnvCfg(ThroughPunctureEnvCfg):
         receiver.init_state.joint_pos.update(psm_gripper_open_command_expr())
         receiver.init_state.joint_pos.update(
             {
-                "psm_yaw_joint": 0.026266563683748245,
-                "psm_pitch_end_joint": 0.05557627975940704,
-                "psm_main_insertion_joint": 0.07030967622995377,
-                "psm_tool_roll_joint": -0.000004311198154027807,
-                "psm_tool_pitch_joint": -0.05519611015915871,
-                "psm_tool_yaw_joint": -0.0260869599878788,
+                "psm_yaw_joint": 0.03736152499914169,
+                "psm_pitch_end_joint": 0.05148158594965935,
+                # Retracted standby: preserve the standard mirrored trocar
+                # while keeping the complete distal chain above tissue.
+                "psm_main_insertion_joint": 0.080,
+                "psm_tool_roll_joint": 2.2345759868621826,
+                "psm_tool_pitch_joint": 0.5623907446861267,
+                "psm_tool_yaw_joint": -0.3484970033168793,
             }
         )
         self.scene.robot_receiver = receiver
@@ -223,7 +229,10 @@ class PulloutEnvCfg(ThroughPunctureEnvCfg):
                 )
             ],
         )
-        self.episode_length_s = 60.0
+        # Four tissue-supported regrips are intentionally slower than
+        # an unsafe continuous wrist sweep. Preserve time for the receiver to
+        # acquire and clear the emerged arc after the bounded giver sequence.
+        self.episode_length_s = 90.0
 
 
 @configclass

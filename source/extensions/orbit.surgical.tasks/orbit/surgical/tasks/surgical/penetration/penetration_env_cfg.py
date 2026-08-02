@@ -74,9 +74,11 @@ class PenetrationSceneCfg(InteractiveSceneCfg):
     )
     tissue_left = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/TissueLeft",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(-0.0185, 0.0, 0.05)),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(-0.020, 0.0, 0.05)),
         spawn=sim_utils.CuboidCfg(
-            size=(0.033, 0.045, 0.006),
+            # A 10 mm open incision admits the 5 mm-class PSM distal shaft
+            # without disabling collision on either tissue edge.
+            size=(0.030, 0.045, 0.006),
             collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
             visual_material=sim_utils.PreviewSurfaceCfg(
                 diffuse_color=(0.58, 0.18, 0.16), roughness=0.58
@@ -85,9 +87,9 @@ class PenetrationSceneCfg(InteractiveSceneCfg):
     )
     tissue_right = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/TissueRight",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0185, 0.0, 0.05)),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.020, 0.0, 0.05)),
         spawn=sim_utils.CuboidCfg(
-            size=(0.033, 0.045, 0.006),
+            size=(0.030, 0.045, 0.006),
             collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
             visual_material=sim_utils.PreviewSurfaceCfg(
                 diffuse_color=(0.58, 0.18, 0.16), roughness=0.58
@@ -255,6 +257,10 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                     f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/SurgicalClosure/Needle/"
                     "dranmar_needle_entry_proxy.usda"
                 ),
+                # Use the 21 mm-diameter variant of the authored semicircular
+                # needle so the PSM distal jaw can remain above tissue while
+                # the tip completes a top-to-top bite.
+                scale=(1.5, 1.5, 1.5),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
                     solver_velocity_iteration_count=8,

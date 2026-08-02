@@ -491,6 +491,13 @@ Dr.Anmar translation:
   penetration event, suture tension, knot state, and retained attachment.
 - Separate approach, needle pickup, reorientation, bite, pull-through, knot,
   cut, and release as inspectable subskills.
+- Make the bite route explicit: enter the declared tissue span, keep the curved
+  arc subsurface, re-emerge through the top of the opposite span, transfer the
+  exposed arc to the second instrument, and prove receiver-only clearance.
+- Keep tissue collision authoritative for every instrument link. Needle-only
+  puncture permission must never make a PSM shaft or wrist ghost through the
+  tissue, and the environment—not policy phase labels—owns entry, exit,
+  custody, and clearance receipts.
 - Include 2D projection, camera handoff, port geometry, and suture slack in the
   task state.
 

@@ -473,7 +473,7 @@ def test_through_puncture_backend_and_task_are_distinct_from_qualified_entry():
     )
     controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
     assert (
-        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v3-cross-slab"'
+        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v11-fixed-exit-receipt"'
         in backend
     )
     assert "through_sample_count = 129" in backend
@@ -501,7 +501,10 @@ def test_through_backend_emits_one_top_exit_after_the_tip_first_enters():
     before_exit = backend.scene_state[0]
     backend.step([entry_tip], [reemerged], [True])
     first = backend.scene_state[0]
-    backend.step([entry_tip], [reemerged], [True])
+    moved_after_exit = module.NeedlePose(
+        (0.002, 0.001, 0.004), reemerged.quaternion_xyzw
+    )
+    backend.step([entry_tip], [moved_after_exit], [True])
     second = backend.scene_state[0]
     backend._through[0].tip_has_entered = True
     backend.step([entry_tip], [reemerged], [True])
@@ -509,6 +512,7 @@ def test_through_backend_emits_one_top_exit_after_the_tip_first_enters():
     assert before_exit.exit_event_count == 0
     assert first.exit_event_count == 1
     assert second.exit_event_count == 1
+    assert second.exit_position_m == first.exit_position_m
     assert replay_crossing.exit_event_count == 1
     assert first.exposed_arc_length_m > 0.0
     assert first.embedded_arc_length_m > 0.0
@@ -539,6 +543,38 @@ def test_through_backend_rejects_same_slab_or_gap_exit_route():
     assert not state.cross_slab_route_valid
 
 
+def test_through_backend_authorizes_four_bounded_embedded_tract_regrasps():
+    module = _through_backend()
+    backend = module.DrAnmarNativeTissueThroughBackend(1)
+    pose = module.NeedlePose(
+        (-0.009, 0.0, 0.003),
+        (0.2588190451, 0.0, 0.0, 0.9659258263),
+    )
+    tip = module.NeedlePose((-0.006, 0.0, 0.002), pose.quaternion_xyzw)
+    backend.step([tip], [pose], [True])
+    before = backend.scene_state[0]
+    assert before.embedded_arc_length_m >= 0.0015
+    assert before.trailing_exposed_arc_length_m >= 0.002
+    assert before.trailing_grasp_over_wound_gap
+    assert module.LEFT_SLAB_X_BOUNDS_M[1] < before.trailing_grasp_position_m[0]
+    assert before.trailing_grasp_position_m[0] < module.RIGHT_SLAB_X_BOUNDS_M[0]
+    assert backend.request_tract_support([0]) == (True,)
+    active = backend.scene_state[0]
+    assert active.tract_support_active
+    assert active.tract_support_event_count == 1
+    backend.release_tract_support([0])
+    assert backend.request_tract_support([0]) == (True,)
+    backend.release_tract_support([0])
+    assert backend.request_tract_support([0]) == (True,)
+    backend.release_tract_support([0])
+    assert backend.request_tract_support([0]) == (True,)
+    backend.release_tract_support([0])
+    assert backend.request_tract_support([0]) == (False,)
+    released = backend.scene_state[0]
+    assert not released.tract_support_active
+    assert released.tract_support_event_count == 4
+
+
 def test_whole_psm_link_tissue_contacts_are_authoritative():
     scene = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
     pullout = (TASK_ROOT / "pullout_env_cfg.py").read_text(encoding="utf-8")
@@ -567,7 +603,7 @@ def test_through_backend_samples_the_rendered_positive_x_semicircle():
 def test_policy_uses_authored_grasp_and_negative_x_sharp_tangent():
     events = (TASK_ROOT / "mdp/events.py").read_text(encoding="utf-8")
     state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
-    assert "NEEDLE_MID_GRASP_POSITION_M = (0.00613661575091" in events
+    assert "NEEDLE_MID_GRASP_POSITION_M = (0.009204923626365" in events
     assert "NEEDLE_TANGENT_LOCAL = (-1.0, 0.0, 0.0)" in state
 
 
@@ -628,8 +664,18 @@ def test_pullout_requires_receiver_contact_transfer_and_complete_clearance():
         "entry_slab": "left",
         "exit_slab": "right",
         "cross_slab_route_valid": True,
+        "tract_support_event_count": 4,
+        "giver_regrasp_stage": 5,
+        "giver_regrasp_complete": True,
     }
     measurement = module.PulloutMeasurement(**values)
+    drive_state = module.PulloutGateState(
+        phase=module.PulloutPhase.DRIVE,
+        entry_event_count=1,
+    )
+    module.advance_pullout_gate(drive_state, measurement, puncture_force_n=2.0)
+    assert drive_state.phase == module.PulloutPhase.EXIT
+    assert drive_state.exit_error_at_event_m == values["exit_error_m"]
     module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
     assert state.phase == module.PulloutPhase.RECEIVER_GRASP
     for _ in range(thresholds.receiver_contact_steps):
@@ -667,8 +713,10 @@ def test_pullout_task_has_dual_psm_controller_and_receipt_contract():
     assert 'asset_name="robot_receiver"' in scene
     assert "receiver_jaw_1_needle_contact" in scene
     assert "receiver_tip_tissue_contact" in scene
-    assert "pos=(0.080, -0.0730, 0.04676338424909)" in scene
+    assert "pos=(0.040, -0.120, 0.140)" in scene
     assert "class PulloutAnalyticController" in controller
+    assert "giver_regrasp_guidance" in controller
+    assert "tract_regrasp_active" in controller
     assert "normal_advance_limit = 0.10" not in controller
     assert "entry_lateral_delta" in controller
     assert "tangential_error <= 0.0009" in controller
@@ -677,9 +725,13 @@ def test_pullout_task_has_dual_psm_controller_and_receipt_contract():
     assert "self.drive_rotation_command = 1.0" in controller
     assert "torch.linalg.cross(current_tangent, start_tangent)" in controller
     assert ") & (phase <= 5)" in controller
+    assert "receiver retracting through CLEAR" in controller
+    assert "(phase >= 11).unsqueeze(-1)" not in controller
     assert fields["custody_model"].default == (
         "bilateral_force_or_calibrated_geometry_then_receiver_pose_coupling"
     )
+    assert "tract_support_event_count" in fields
+    assert "giver_regrasp_complete" in fields
 
 
 def test_tissue_blocks_psms_but_filters_only_the_needle_pair():

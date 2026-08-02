@@ -30,6 +30,8 @@ parser.add_argument("--video_folder", type=Path)
 parser.add_argument("--video_length", type=int, default=1800)
 parser.add_argument("--video_width", type=int, default=960)
 parser.add_argument("--video_height", type=int, default=720)
+parser.add_argument("--video_frame_interval", type=int, default=5)
+parser.add_argument("--video_fps", type=int, default=10)
 parser.add_argument(
     "--giver_base_lift_m",
     type=float,
@@ -176,25 +178,31 @@ def main() -> int:
             raise ValueError("video recording requires --num_envs 1")
         if args.video_length <= 0:
             raise ValueError("video_length must be positive")
+        if args.video_frame_interval <= 0 or args.video_fps <= 0:
+            raise ValueError("video frame interval and fps must be positive")
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
         env_cfg.viewer.origin_type = "env"
         env_cfg.viewer.env_index = 0
         env_cfg.viewer.eye = (0.075, 0.16, 0.105)
         env_cfg.viewer.lookat = (0.0, 0.0, 0.047)
     gym_env = gym.make(args.task, cfg=env_cfg, render_mode=render_mode)
+    video_writer = None
+    video_path = None
     if args.video:
         video_folder = (
             args.video_folder
             or args.report.resolve().parent / f"{args.report.stem}-video"
         ).resolve()
         video_folder.mkdir(parents=True, exist_ok=True)
-        gym_env = gym.wrappers.RecordVideo(
-            gym_env,
-            video_folder=str(video_folder),
-            step_trigger=lambda step: step == 0,
-            video_length=args.video_length,
-            name_prefix=f"{args.task}-seed{args.seed}",
-            disable_logger=True,
+        video_path = video_folder / f"{args.task}-seed{args.seed}.mp4"
+        import imageio.v2 as imageio
+
+        video_writer = imageio.get_writer(
+            video_path,
+            fps=args.video_fps,
+            codec="libx264",
+            quality=8,
+            macro_block_size=None,
         )
     env = RslRlVecEnvWrapper(gym_env)
     runner = None
@@ -264,6 +272,7 @@ def main() -> int:
     backend_hashes: set[str] = set()
     failure_flags: dict[str, int] = {}
     control_steps = 0
+    previous_trace_phase: int | None = None
     try:
         while completed < args.episodes and simulation_app.is_running():
             with torch.inference_mode():
@@ -272,10 +281,28 @@ def main() -> int:
                 if runner is not None:
                     policy.reset(dones)
             control_steps += 1
-            if args.trace_interval and (
-                control_steps % args.trace_interval == 0 or bool(torch.any(dones))
+            trace_state = getattr(env.unwrapped, "_dr_anmar_penetration_state", {})
+            trace_phase = int(trace_state.get("phase", torch.tensor([-1]))[0])
+            phase_changed = trace_phase != previous_trace_phase
+            if (
+                video_writer is not None
+                and control_steps <= args.video_length
+                and (
+                    control_steps % args.video_frame_interval == 0
+                    or phase_changed
+                    or bool(torch.any(dones))
+                )
             ):
-                state = getattr(env.unwrapped, "_dr_anmar_penetration_state", {})
+                frame = gym_env.render()
+                if isinstance(frame, list):
+                    frame = frame[-1]
+                video_writer.append_data(frame)
+            if args.trace_interval and (
+                control_steps % args.trace_interval == 0
+                or phase_changed
+                or bool(torch.any(dones))
+            ):
+                state = trace_state
                 measurement = state.get("measurement", {})
                 policy_observation = observation["policy"][0]
                 print(
@@ -390,11 +417,33 @@ def main() -> int:
                             "custody_owner": int(
                                 state.get("custody_owner", torch.tensor([-1]))[0]
                             ),
+                            "giver_regrasp_stage": int(
+                                state.get(
+                                    "giver_regrasp_stage", torch.tensor([-1])
+                                )[0]
+                            ),
+                            "tract_support_active": bool(
+                                state.get(
+                                    "tract_support_active", torch.tensor([False])
+                                )[0]
+                            ),
+                            "tract_support_event_count": int(
+                                state.get(
+                                    "tract_support_event_count", torch.tensor([0])
+                                )[0]
+                            ),
+                            "drive_rotation_deg": float(
+                                state.get(
+                                    "drive_rotation_deg",
+                                    torch.tensor([float("nan")]),
+                                )[0]
+                            ),
                             "action": [float(value) for value in actions[0]],
                         },
                         sort_keys=True,
                     )
                 )
+            previous_trace_phase = trace_phase
             if not bool(torch.any(dones)):
                 continue
             termination_manager = env.unwrapped.termination_manager
@@ -561,8 +610,12 @@ def main() -> int:
         )
         os.replace(temporary, args.report)
         print("[DR_ANMAR_TISSUE_ENTRY_EVALUATION] " + json.dumps(report, sort_keys=True))
+        if video_path is not None:
+            print(f"[DR_ANMAR_TISSUE_VIDEO] {video_path}")
         return 0
     finally:
+        if video_writer is not None:
+            video_writer.close()
         env.close()
 
 

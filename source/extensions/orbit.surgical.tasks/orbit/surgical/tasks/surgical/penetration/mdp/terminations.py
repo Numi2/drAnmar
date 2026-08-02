@@ -142,7 +142,7 @@ def successful_pullout(env: ManagerBasedRLEnv) -> torch.Tensor:
                     state["representation_switch_count"][index]
                 ),
                 entry_error_m=float(gate.entry_error_at_puncture_m),
-                exit_error_m=float(state["measurement"]["exit_error"][index]),
+                exit_error_m=float(gate.exit_error_at_event_m),
                 tangent_error_deg=float(gate.tangent_error_at_puncture_deg),
                 plane_error_deg=float(gate.plane_error_at_puncture_deg),
                 sampled_puncture_force_n=float(state["puncture_force_n"][index]),
@@ -169,6 +169,12 @@ def successful_pullout(env: ManagerBasedRLEnv) -> torch.Tensor:
                 exit_slab=state["measurement"]["exit_slab"][index],
                 cross_slab_route_valid=bool(
                     state["measurement"]["cross_slab_route_valid"][index]
+                ),
+                tract_support_event_count=int(
+                    state["tract_support_event_count"][index]
+                ),
+                giver_regrasp_complete=bool(
+                    state["giver_regrasp_complete"][index]
                 ),
             ).as_dict()
             if bool(result[index])
