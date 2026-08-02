@@ -275,3 +275,19 @@ event traces; their minimum-Jacobian envelope was 3.4e-6 wide. The raw receipt,
 source/profile hashes, hardware/runtime, 30-test result, replay receipts and
 metric envelopes are frozen in
 `moving-scalpel-cut-cuda-promotion-lock.json`.
+
+### Real moving-blade render
+
+![DrAnmar moving scalpel creating an energy-gated curved incision under Warp CUDA](../media/dranmar-moving-scalpel-cut-cuda.gif)
+
+This 77-frame Isaac Lab GIF is rendered from the actual promoted moving-front
+Warp CUDA trajectory. The blade pose is the same pose used by the fracture
+authority. Ahead of the edge, latent interface pairs remain mechanically tied
+and tissue-coloured. Behind it, energy-qualified pairs release, deform, and
+become the dark collidable wound sheets. The final relaxation frames remove the
+blade and retain the persistent incision.
+
+The animation uses physical node positions with no displacement exaggeration.
+Its receipt binds the GIF hash, renderer revision, CPU-matching event trace,
+1,248 fracture events, 85 released pairs, 551 nodes, 1,760 tetrahedra and the
+non-real-time/non-clinical evidence boundary.
