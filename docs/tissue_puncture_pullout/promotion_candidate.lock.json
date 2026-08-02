@@ -29,7 +29,7 @@
     "hard_safety_failures": 0,
     "timeouts": 0,
     "receipt": "seed7012_rendered_success.json",
-    "gif_sha256": "9d0a0dd4d3c6c1ece0ab69ab050333842ef725849ce2d2d215b439c20326153b"
+    "gif_sha256": "d154ed66db490cb5cc9d99fdb21fdd98ff5d698ccb299c4574bc9a4244177bf1"
   },
   "promotion_eligible": false,
   "remaining_gate": "three_untouched_seeds_with_256_isolated_episodes_each",

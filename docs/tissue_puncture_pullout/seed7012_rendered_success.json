@@ -27,10 +27,10 @@
     "source": "real_isaac_sim_rtx_rollout",
     "source_mp4_sha256": "e3fa1ec2828bbf02d3d0cc072dc3c91bff5ffd53b0ef9b544609c850ef9d9355",
     "readme_gif": "docs/media/dranmar-champion-tissue-puncture-pullout.gif",
-    "readme_gif_sha256": "9d0a0dd4d3c6c1ece0ab69ab050333842ef725849ce2d2d215b439c20326153b",
-    "gif_frames": 120,
-    "gif_duration_s": 10.0,
-    "frame_generation": "every_tenth_real_renderer_frame_then_temporal_rescale_only"
+    "readme_gif_sha256": "d154ed66db490cb5cc9d99fdb21fdd98ff5d698ccb299c4574bc9a4244177bf1",
+    "gif_frames": 121,
+    "gif_duration_s": 10.08,
+    "frame_generation": "complete_40.3_second_real_renderer_rollout_resampled_to_12_fps_and_time_compressed_4x"
   },
   "evidence_level": "simulator_engineering_only",
   "clinical_validation": false
