@@ -356,7 +356,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     )
     giver_held = (
         state["bilateral_seen"]
-        & (state["custody_owner"] < 2)
+        & (state["custody_owner"] == 0)
         & ~tract_held
     )
     if torch.any(giver_held):
@@ -413,7 +413,10 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         root_quat[held_ids] = held_pose[:, 3:]
         root_lin_vel[held_ids] = 0.0
         root_ang_vel[held_ids] = 0.0
-    receiver_held = state["custody_owner"] == 2
+    # Receiver acquisition transfers pose authority immediately. During the
+    # following dual-custody dwell the giver can retreat without dragging the
+    # needle out along its surface normal; jaw opening only finalizes ownership.
+    receiver_held = state["custody_owner"] >= 1
     if pullout and torch.any(receiver_held):
         held_ids = torch.nonzero(receiver_held, as_tuple=False).squeeze(-1)
         held_grasp_quat = state["receiver_grasp_local_quaternion_xyzw"][held_ids].to(

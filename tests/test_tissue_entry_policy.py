@@ -647,6 +647,8 @@ def test_receiver_follows_needle_tangent_through_final_clearance():
     assert "pull_tangent * tangent" in state
     assert "pull_direction_w = pull_tangent" in state
     assert "tract_clear.unsqueeze(-1), surface_normal" not in state
+    assert 'state["custody_owner"] == 0' in state
+    assert 'receiver_held = state["custody_owner"] >= 1' in state
 
 
 def test_whole_psm_link_tissue_contacts_are_authoritative():
