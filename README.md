@@ -201,7 +201,7 @@ releases, and the receiver pulls the needle completely clear on the right.
 </p>
 
 <p align="center">
-  <em>Real seed-7012 RTX render: left-span entry, curved subsurface drive,
+  <em>Real seed-17 RTX render: left-span entry, curved subsurface drive,
   right-span top exit, opposite-arm handover, and receiver-only clearance.</em>
 </p>
 
@@ -211,15 +211,18 @@ outside-span, and underside routes fail closed. PhysX remains authoritative
 for both complete PSM chains. Any jaw, distal-link, shaft, or wrist tissue
 contact is a hard failure; puncture permission applies only to the needle.
 
-The rendered seed-7012 receipt records one entry and one exit, 0.889 mm entry
-error, 0.044 mm immutable exit-event error, 7.10 degree tangent error,
+The rendered seed-17 receipt records one entry and one exit, 0.884 mm entry
+error, 0.094 mm immutable exit-event error, 7.11 degree tangent error,
 7.59 degree plane error, zero hard failures, zero embedded arc after pullout,
 and 100% final exposure. The analytical policy runs at 50 Hz with 0.25 mm and
 0.5 degree command bounds, four tissue-supported giver regrips, a fixed giver
 hold during receiver approach, sustained receiver custody, and continued pull
 through the clearance-confirmation phase. The machine-readable rendered
 evidence is in
-[`docs/tissue_puncture_pullout/seed7012_rendered_success.json`](docs/tissue_puncture_pullout/seed7012_rendered_success.json).
+[`docs/tissue_puncture_pullout/seed17_fem_rendered_success.json`](docs/tissue_puncture_pullout/seed17_fem_rendered_success.json).
+The receiver follows the instantaneous curved-needle tangent while any arc
+remains embedded; it separates upward only after backend-confirmed clearance,
+avoiding a cross-surface pull through the right FEM flap.
 
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.
