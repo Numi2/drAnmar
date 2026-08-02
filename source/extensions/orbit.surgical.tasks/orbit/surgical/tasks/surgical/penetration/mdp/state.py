@@ -283,6 +283,212 @@ def _couple_fem_contact_patch(
         tissue.write_data_to_sim()
 
 
+def _couple_mimithread_tissue_contact(
+    env: ManagerBasedRLEnv,
+    target: torch.Tensor,
+    tip_position: torch.Tensor,
+    punctured: list[bool],
+) -> None:
+    """Support exposed Mimithread and guide embedded nodes along the open tract.
+
+    The native table collider can act on the complete strand. The two tissue
+    meshes cannot: their tetrahedral topology remains closed after the
+    environment-owned puncture event, so raw deformable/deformable collision
+    expels the legitimately embedded strand. This contact layer instead uses
+    the live FEM top surface for one-sided, compliant support and the recorded
+    needle-tip path for low-drag interior confinement.
+    """
+
+    thread: DeformableObject = env.scene["needle_thread"]
+    nodal_state = mdp_common.as_torch(thread.data.nodal_state_w).clone()
+    positions = nodal_state[..., :3]
+    velocities = nodal_state[..., 3:]
+    previous = getattr(env, "_dranmar_mimithread_previous_positions", None)
+    if previous is None or previous.shape != positions.shape:
+        env._dranmar_mimithread_previous_positions = positions.clone()
+        env._dranmar_mimithread_tract_points = torch.zeros(
+            (env.num_envs, 256, 3), device=env.device, dtype=positions.dtype
+        )
+        env._dranmar_mimithread_tract_counts = torch.zeros(
+            env.num_envs, device=env.device, dtype=torch.long
+        )
+        env._dranmar_mimithread_surface_contact_nodes = torch.zeros(
+            env.num_envs, device=env.device, dtype=torch.long
+        )
+        env._dranmar_mimithread_interior_contact_nodes = torch.zeros(
+            env.num_envs, device=env.device, dtype=torch.long
+        )
+        env._dranmar_mimithread_max_surface_penetration_m = torch.zeros(
+            env.num_envs, device=env.device, dtype=positions.dtype
+        )
+        previous = positions.clone()
+
+    tract_points = env._dranmar_mimithread_tract_points
+    tract_counts = env._dranmar_mimithread_tract_counts
+    punctured_mask = torch.tensor(punctured, device=env.device, dtype=torch.bool)
+    for env_index in torch.nonzero(punctured_mask, as_tuple=False).squeeze(-1).tolist():
+        count = int(tract_counts[env_index])
+        if count == 0:
+            tract_points[env_index, 0] = target[env_index]
+            count = 1
+        point = tip_position[env_index]
+        if (
+            count < tract_points.shape[1]
+            and torch.linalg.vector_norm(point - tract_points[env_index, count - 1])
+            >= 0.00025
+        ):
+            tract_points[env_index, count] = point
+            count += 1
+        tract_counts[env_index] = count
+
+    swage_mask = torch.zeros(
+        positions.shape[:2], device=env.device, dtype=torch.bool
+    )
+    swage_ids = getattr(env, "_dranmar_suture_swage_node_ids", None)
+    if swage_ids is not None:
+        swage_mask.scatter_(1, swage_ids.clamp(min=0), True)
+
+    contact_radius_m = 0.0004
+    surface_compliance_m = 0.00012
+    tract_radius_m = 0.0010
+    hole_radius_m = 0.0022
+    exit_target = target + torch.tensor(
+        (0.02063458, -0.00333510, 0.0),
+        device=env.device,
+        dtype=positions.dtype,
+    )
+    surface_contact = torch.zeros_like(swage_mask)
+    inside_volume = torch.zeros_like(swage_mask)
+    max_penetration = torch.zeros(
+        env.num_envs, device=env.device, dtype=positions.dtype
+    )
+
+    for asset_name in ("tissue_left", "tissue_right"):
+        tissue: DeformableObject = env.scene[asset_name]
+        live = mdp_common.as_torch(tissue.data.nodal_pos_w)
+        default = mdp_common.as_torch(tissue.data.default_nodal_state_w)[..., :3]
+        default_top = default[..., 2].amax(dim=1, keepdim=True)
+        top_ids = default[..., 2] >= default_top - 0.0006
+        for env_index in range(env.num_envs):
+            surface_nodes = live[env_index, top_ids[env_index]]
+            if surface_nodes.shape[0] == 0:
+                continue
+            nearest_distance = torch.cdist(
+                positions[env_index, :, :2], surface_nodes[:, :2]
+            )
+            nearest_index = nearest_distance.argmin(dim=1)
+            nearest_xy_distance = nearest_distance.gather(
+                1, nearest_index[:, None]
+            ).squeeze(1)
+            support_z = surface_nodes[nearest_index, 2] + contact_radius_m
+            xy_min = default[env_index, :, :2].amin(dim=0)
+            xy_max = default[env_index, :, :2].amax(dim=0)
+            within_xy = torch.all(
+                (positions[env_index, :, :2] >= xy_min)
+                & (positions[env_index, :, :2] <= xy_max),
+                dim=1,
+            )
+            inside_volume[env_index] |= (
+                within_xy
+                & (positions[env_index, :, 2] >= default[env_index, :, 2].amin())
+                & (positions[env_index, :, 2] <= default_top[env_index, 0])
+            )
+            entry_distance = torch.linalg.vector_norm(
+                positions[env_index, :, :2] - target[env_index, None, :2], dim=1
+            )
+            exit_distance = torch.linalg.vector_norm(
+                positions[env_index, :, :2]
+                - exit_target[env_index, None, :2],
+                dim=1,
+            )
+            outside_tract_openings = (entry_distance > hole_radius_m) & (
+                exit_distance > hole_radius_m
+            )
+            penetration = support_z - positions[env_index, :, 2]
+            previous_above = previous[env_index, :, 2] >= support_z - 0.0005
+            current_near_or_below = positions[env_index, :, 2] <= support_z + 0.00025
+            # Continuous one-sided contact: at 50 Hz a freely falling 4-0
+            # strand can move almost 2 mm between policy updates. A narrow
+            # depth window therefore misses the complete crossing and lets the
+            # strand tunnel through a 6 mm flap. Crossing from the supported
+            # side is authoritative regardless of the final sampled depth.
+            swept_surface_crossing = previous_above & current_near_or_below
+            contact = (
+                within_xy
+                & (nearest_xy_distance <= 0.0018)
+                & outside_tract_openings
+                & swept_surface_crossing
+                & ~swage_mask[env_index]
+            )
+            if torch.any(contact):
+                resting_z = support_z - surface_compliance_m
+                positions[env_index, contact, 2] = torch.maximum(
+                    positions[env_index, contact, 2], resting_z[contact]
+                )
+                velocities[env_index, contact, :2] *= 0.998
+                normal_velocity = velocities[env_index, contact, 2]
+                velocities[env_index, contact, 2] = torch.where(
+                    normal_velocity < 0.0,
+                    -0.02 * normal_velocity,
+                    normal_velocity,
+                )
+                surface_contact[env_index] |= contact
+                max_penetration[env_index] = torch.maximum(
+                    max_penetration[env_index], penetration[contact].amax()
+                )
+
+    interior_contact = torch.zeros_like(swage_mask)
+    for env_index in range(env.num_envs):
+        count = int(tract_counts[env_index])
+        candidate = inside_volume[env_index] & ~swage_mask[env_index]
+        if count < 2 or not torch.any(candidate):
+            continue
+        candidate_ids = torch.nonzero(candidate, as_tuple=False).squeeze(-1)
+        path = tract_points[env_index, :count]
+        distances = torch.cdist(positions[env_index, candidate_ids], path)
+        nearest_path_id = distances.argmin(dim=1)
+        nearest = path[nearest_path_id]
+        radial = positions[env_index, candidate_ids] - nearest
+        radial_distance = torch.linalg.vector_norm(radial, dim=1).clamp(min=1.0e-9)
+        active = radial_distance > tract_radius_m
+        if not torch.any(active):
+            continue
+        active_ids = candidate_ids[active]
+        path_ids = nearest_path_id[active]
+        radial_active = radial[active]
+        radial_distance_active = radial_distance[active]
+        correction = radial_active * (
+            0.35
+            * (radial_distance_active - tract_radius_m)
+            / radial_distance_active
+        )[:, None]
+        positions[env_index, active_ids] -= correction
+        before = torch.clamp(path_ids - 1, min=0)
+        after = torch.clamp(path_ids + 1, max=count - 1)
+        tangent = torch.nn.functional.normalize(path[after] - path[before], dim=1)
+        velocity = velocities[env_index, active_ids]
+        axial = torch.sum(velocity * tangent, dim=1, keepdim=True) * tangent
+        radial_velocity = velocity - axial
+        velocities[env_index, active_ids] = 0.999 * axial + 0.2 * radial_velocity
+        interior_contact[env_index, active_ids] = True
+
+    nodal_state[..., :3] = positions
+    nodal_state[..., 3:] = velocities
+    if torch.any(surface_contact | interior_contact):
+        thread.write_nodal_state_to_sim(nodal_state)
+        thread.write_data_to_sim()
+    env._dranmar_mimithread_previous_positions = positions.clone()
+    env._dranmar_mimithread_surface_contact_nodes = torch.maximum(
+        env._dranmar_mimithread_surface_contact_nodes, surface_contact.sum(dim=1)
+    )
+    env._dranmar_mimithread_interior_contact_nodes = torch.maximum(
+        env._dranmar_mimithread_interior_contact_nodes, interior_contact.sum(dim=1)
+    )
+    env._dranmar_mimithread_max_surface_penetration_m = torch.maximum(
+        env._dranmar_mimithread_max_surface_penetration_m, max_penetration
+    )
+
+
 def _step_number(env: ManagerBasedRLEnv) -> int:
     value = env.common_step_counter
     return int(value.item()) if isinstance(value, torch.Tensor) else int(value)
@@ -556,6 +762,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     _couple_fem_contact_patch(
         env, target, tip_pos, tissue_center, tissue_state, punctured
     )
+    _couple_mimithread_tissue_contact(env, target, tip_pos, punctured)
     raw_wrench = torch.tensor(
         [(*item.force_n, *item.torque_nm) for item in coupling],
         device=env.device,

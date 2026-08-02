@@ -55,10 +55,12 @@ def _needle_asset(filename: str) -> str:
     raise FileNotFoundError(f"DrAnmar needle asset is missing: {filename}")
 
 
-def _native_white_suture_asset() -> str:
-    """Resolve the pinned white SoftMimicGen strand used by Operation Bench."""
+def _mimithread_source_asset() -> str:
+    """Resolve the pinned volume strand used as Mimithread's source topology."""
 
-    configured = os.environ.get("DR_ANMAR_SOFTMIMICGEN_ROOT")
+    configured = os.environ.get("DR_ANMAR_MIMITHREAD_SOURCE_ROOT") or os.environ.get(
+        "DR_ANMAR_SOFTMIMICGEN_ROOT"
+    )
     roots = [
         Path(configured).expanduser() if configured else None,
         Path.home() / "dr_anmar/native-suture-runtime/SoftMimicGen",
@@ -69,7 +71,8 @@ def _native_white_suture_asset() -> str:
         if root is not None and (root / relative).is_file():
             return str((root / relative).resolve())
     raise FileNotFoundError(
-        "Pinned SoftMimicGen Rope.usd is missing; set DR_ANMAR_SOFTMIMICGEN_ROOT"
+        "DrAnmar Mimithread source topology is missing; set "
+        "DR_ANMAR_MIMITHREAD_SOURCE_ROOT"
     )
 
 
@@ -302,16 +305,15 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
             }
         )
         self.scene.robot = robot
-        # Reuse the white native PhysX deformable strand already integrated by
-        # the Operation Bench.  Its initial endpoint is aligned to the scaled
-        # needle swage; the reset event rigidly carries every strand node with
-        # the needle when the authored pregrasp is seated.
+        # DrAnmar Mimithread retains the pinned strand's volume topology but
+        # replaces its legacy body, material, rendering, swage, contact and
+        # reset behavior. Its endpoint is aligned to the scaled needle swage.
         thread_spawn = UsdFileCfg(
-            usd_path=_native_white_suture_asset(),
+            usd_path=_mimithread_source_asset(),
         )
         source_thread_spawn = thread_spawn.func
 
-        def spawn_white_low_friction_suture(
+        def spawn_dranmar_mimithread(
             prim_path: str,
             cfg: UsdFileCfg,
             translation=None,
@@ -330,6 +332,15 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
 
             stage = omni.usd.get_context().get_stage()
             root_path = str(root_prim.GetPath())
+            root_prim.CreateAttribute(
+                "drAnmar:productName", Sdf.ValueTypeNames.String
+            ).Set("Mimithread")
+            root_prim.CreateAttribute(
+                "drAnmar:representationRevision", Sdf.ValueTypeNames.String
+            ).Set("dranmar-mimithread-v1-fem-surface-contact")
+            root_prim.CreateAttribute(
+                "drAnmar:sourceProvenance", Sdf.ValueTypeNames.String
+            ).Set("derived_from_pinned_nvidia_softmimicgen_volume_topology")
             material_prim = stage.GetPrimAtPath(f"{root_path}/PhysicsMaterial")
             for schema in (
                 "OmniPhysicsBaseMaterialAPI",
@@ -337,22 +348,31 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                 "PhysxDeformableMaterialAPI",
             ):
                 if not material_prim.ApplyAPI(schema):
-                    raise RuntimeError(f"Cannot apply {schema} to native suture")
-            for name, value in (
-                ("omniphysics:density", 1000.0),
-                ("omniphysics:staticFriction", 0.02),
-                ("omniphysics:dynamicFriction", 0.01),
-                ("omniphysics:youngsModulus", 50_000_000.0),
-                ("omniphysics:poissonsRatio", 0.45),
-                ("physxDeformableMaterial:elasticityDamping", 0.01),
+                    raise RuntimeError(f"Cannot apply {schema} to Mimithread")
+            for name, value_type, value in (
+                ("omniphysics:density", Sdf.ValueTypeNames.Float, 1000.0),
+                ("omniphysics:staticFriction", Sdf.ValueTypeNames.Float, 0.02),
+                ("omniphysics:dynamicFriction", Sdf.ValueTypeNames.Float, 0.01),
+                ("omniphysics:youngsModulus", Sdf.ValueTypeNames.Float, 50_000_000.0),
+                ("omniphysics:poissonsRatio", Sdf.ValueTypeNames.Float, 0.45),
+                ("physics:staticFriction", Sdf.ValueTypeNames.Float, 0.02),
+                ("physics:dynamicFriction", Sdf.ValueTypeNames.Float, 0.01),
+                ("physxMaterial:frictionCombineMode", Sdf.ValueTypeNames.Token, "min"),
+                ("physxMaterial:restitutionCombineMode", Sdf.ValueTypeNames.Token, "min"),
+                (
+                    "physxDeformableMaterial:elasticityDamping",
+                    Sdf.ValueTypeNames.Float,
+                    0.01,
+                ),
             ):
                 attribute = material_prim.GetAttribute(name)
-                if attribute and attribute.IsValid():
-                    attribute.Set(value)
+                if not attribute or not attribute.IsValid():
+                    attribute = material_prim.CreateAttribute(name, value_type)
+                attribute.Set(value)
 
             # Avoid the external bronze MDL carried by the generic Rope asset.
             # The Operation Bench strand is presented as matte surgical white.
-            visual_material_path = f"{root_path}/Looks/DrAnmarSutureWhite"
+            visual_material_path = f"{root_path}/Looks/DrAnmarMimithreadWhite"
             visual_material = UsdShade.Material.Define(stage, visual_material_path)
             shader = UsdShade.Shader.Define(
                 stage, f"{visual_material_path}/PreviewSurface"
@@ -369,9 +389,9 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
             mesh_prim = stage.GetPrimAtPath(f"{root_path}/Xform")
             UsdShade.MaterialBindingAPI.Apply(mesh_prim).Bind(visual_material)
 
-            # Upgrade SoftMimicGen's released legacy arrays into the explicit
-            # volume hierarchy required by Physics Next. The original 549
-            # simulation points and 1,200 tetrahedra remain authoritative.
+            # Upgrade the pinned source arrays into Mimithread's explicit
+            # Physics Next volume hierarchy. The 549 simulation points and
+            # 1,200 tetrahedra remain the topology basis.
             simulation_points = mesh_prim.GetAttribute(
                 "physxDeformable:simulationRestPoints"
             ).Get()
@@ -380,7 +400,7 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                 or []
             )
             if not simulation_points or len(flat_indices) % 4:
-                raise RuntimeError("Native suture lacks a valid legacy tet mesh")
+                raise RuntimeError("Mimithread source lacks a valid tet mesh")
             mesh_xform = UsdGeom.Xformable(mesh_prim)
             mesh_local = mesh_xform.GetLocalTransformation()
             visual_scale = Gf.Matrix4d().SetScale(Gf.Vec3d(0.2, 0.04, 0.04))
@@ -430,6 +450,9 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                     Sdf.Path(f"{environment_path}/Needle"),
                     Sdf.Path(f"{environment_path}/Robot"),
                     Sdf.Path(f"{environment_path}/RobotReceiver"),
+                    # A closed FEM volume cannot represent an already-open
+                    # puncture tract. Mimithread uses the task's tract-aware
+                    # surface/interior contact layer for these two bodies.
                     Sdf.Path(f"{environment_path}/TissueLeft"),
                     Sdf.Path(f"{environment_path}/TissueRight"),
                 ]
@@ -451,7 +474,7 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
             ).Set(UsdGeom.Mesh(mesh_prim).GetPointsAttr().Get())
             sim_utils.bind_physics_material(root_path, str(material_prim.GetPath()))
             for name, value in (
-                ("omniphysics:mass", 0.0001),
+                ("omniphysics:mass", 0.00001),
                 ("physxDeformableBody:disableGravity", False),
                 ("physxDeformableBody:selfCollision", True),
                 ("physxDeformableBody:solverPositionIterationCount", 24),
@@ -462,14 +485,18 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                     attribute.Set(value)
             return root_prim
 
-        thread_spawn.func = spawn_white_low_friction_suture
+        thread_spawn.func = spawn_dranmar_mimithread
         self.scene.needle_thread = DeformableObjectCfg(
             prim_path="{ENV_REGEX_NS}/NeedleThread",
             init_state=DeformableObjectCfg.InitialStateCfg(
-                # Put the lower endpoint at the initial needle swage and trail
-                # the 160 mm rest shape upward, entirely clear of both flaps.
-                pos=(0.0, 0.0105042262, 0.1501600000),
-                rot=(0.7071067812, 0.0, -0.7071067812, 0.0),
+                # The source strand is straight along local +X. Aim it from
+                # the swage toward the far outer corner of the entry (left)
+                # flap, not across the wound gap. This gives the free strand
+                # about 40 mm of supported tissue before it naturally drapes
+                # over the outer edge and comes to rest on the table.
+                # Quaternion order in this Isaac build is XYZW.
+                pos=(-0.0574850000, -0.0452210000, 0.0534500000),
+                rot=(0.0, 0.0, -0.927184, 0.374607),
             ),
             spawn=thread_spawn,
             debug_vis=False,

@@ -108,7 +108,7 @@ def configure_tissue_collision_filter(env: ManagerBasedRLEnv) -> None:
 
 
 def seat_pregrasped_needle(env: ManagerBasedRLEnv, env_ids: torch.Tensor) -> None:
-    """Place the needle and carry its attached native strand without preload."""
+    """Place the needle and carry Mimithread without preload or tissue overlap."""
 
     robot: Articulation = env.scene["robot"]
     needle: RigidObject = env.scene["needle"]
@@ -153,6 +153,112 @@ def seat_pregrasped_needle(env: ManagerBasedRLEnv, env_ids: torch.Tensor) -> Non
         new_swage = needle_pos + quat_apply(needle_quat, swage_local)
         nodal_state[..., :3] += (new_swage - old_swage)[:, None, :]
         nodal_state[..., 3:] = 0.0
+
+        positions = nodal_state[..., :3]
+        # The neutral strand lies on the entry flap. Blend only its first
+        # 20 mm upward to the swage so startup has a smooth hanging shoulder
+        # instead of four endpoint nodes impulsively stretching one tet ring.
+        for batch_index in range(len(env_ids)):
+            distance_to_swage = torch.linalg.vector_norm(
+                positions[batch_index] - new_swage[batch_index], dim=1
+            )
+            endpoint_nodes = distance_to_swage <= (
+                distance_to_swage.amin() + 0.0012
+            )
+            endpoint_center = positions[batch_index, endpoint_nodes].mean(dim=0)
+            distance_from_endpoint = torch.linalg.vector_norm(
+                positions[batch_index] - endpoint_center, dim=1
+            )
+            normalized_distance = torch.clamp(
+                distance_from_endpoint / 0.020, min=0.0, max=1.0
+            )
+            swage_blend = (1.0 - normalized_distance) ** 2
+            positions[batch_index] += (
+                swage_blend[:, None]
+                * (new_swage[batch_index] - endpoint_center)[None, :]
+            )
+        left_default = mdp_common.as_torch(
+            env.scene["tissue_left"].data.default_nodal_state_w
+        )[env_ids, ..., :3]
+        left_xy_min = left_default[..., :2].amin(dim=1)
+        left_xy_max = left_default[..., :2].amax(dim=1)
+        left_top = left_default[..., 2].amax(dim=1)
+        # A newly opened scene must never begin with the free strand already
+        # embedded in a closed FEM flap. Clear only nodes whose centers overlap
+        # a tissue volume after the existing rigid scene pose has seated the
+        # needle. This preserves every authored tissue/table/robot transform.
+        corrected = torch.zeros(
+            len(env_ids), device=env.device, dtype=torch.long
+        )
+        clearance_m = 0.00060
+        for tissue_name in ("tissue_left", "tissue_right"):
+            tissue: DeformableObject = env.scene[tissue_name]
+            tissue_default = mdp_common.as_torch(
+                tissue.data.default_nodal_state_w
+            )[env_ids, ..., :3]
+            xy_min = tissue_default[..., :2].amin(dim=1)
+            xy_max = tissue_default[..., :2].amax(dim=1)
+            z_min = tissue_default[..., 2].amin(dim=1)
+            z_top = tissue_default[..., 2].amax(dim=1)
+            within_xy = torch.all(
+                (positions[..., :2] >= xy_min[:, None, :])
+                & (positions[..., :2] <= xy_max[:, None, :]),
+                dim=-1,
+            )
+            overlapping = (
+                within_xy
+                & (positions[..., 2] >= z_min[:, None])
+                & (positions[..., 2] <= z_top[:, None] + clearance_m)
+            )
+            corrected += overlapping.sum(dim=1)
+            positions[..., 2] = torch.where(
+                overlapping,
+                z_top[:, None] + clearance_m,
+                positions[..., 2],
+            )
+
+        remaining_inside = torch.zeros_like(corrected)
+        for tissue_name in ("tissue_left", "tissue_right"):
+            tissue = env.scene[tissue_name]
+            tissue_default = mdp_common.as_torch(
+                tissue.data.default_nodal_state_w
+            )[env_ids, ..., :3]
+            xy_min = tissue_default[..., :2].amin(dim=1)
+            xy_max = tissue_default[..., :2].amax(dim=1)
+            z_min = tissue_default[..., 2].amin(dim=1)
+            z_top = tissue_default[..., 2].amax(dim=1)
+            remaining_inside += (
+                torch.all(
+                    (positions[..., :2] >= xy_min[:, None, :])
+                    & (positions[..., :2] <= xy_max[:, None, :]),
+                    dim=-1,
+                )
+                & (positions[..., 2] >= z_min[:, None])
+                & (positions[..., 2] <= z_top[:, None])
+            ).sum(dim=1)
+        if not hasattr(env, "_dranmar_mimithread_reset_corrected_nodes"):
+            env._dranmar_mimithread_reset_corrected_nodes = torch.zeros(
+                env.num_envs, device=env.device, dtype=torch.long
+            )
+            env._dranmar_mimithread_reset_inside_nodes_after = torch.zeros(
+                env.num_envs, device=env.device, dtype=torch.long
+            )
+            env._dranmar_mimithread_reset_surface_drape_nodes = torch.zeros(
+                env.num_envs, device=env.device, dtype=torch.long
+            )
+        env._dranmar_mimithread_reset_corrected_nodes[env_ids] = corrected
+        env._dranmar_mimithread_reset_inside_nodes_after[env_ids] = remaining_inside
+        over_left = torch.all(
+            (positions[..., :2] >= left_xy_min[:, None, :])
+            & (positions[..., :2] <= left_xy_max[:, None, :]),
+            dim=-1,
+        )
+        on_left_surface = over_left & (
+            torch.abs(positions[..., 2] - left_top[:, None]) <= 0.0012
+        )
+        env._dranmar_mimithread_reset_surface_drape_nodes[env_ids] = (
+            on_left_surface.sum(dim=1)
+        )
         needle_thread.write_nodal_state_to_sim(nodal_state, env_ids=env_ids)
         needle_thread.write_data_to_sim()
 
@@ -172,11 +278,11 @@ def anchor_native_suture_swage(
 ) -> None:
     """Constrain only the native strand endpoint to the moving needle swage.
 
-    Physics Next exposes the released SoftMimicGen strand as a legacy PhysX
-    deformable but exposes rigid/deformable attachments only through the newer
-    OmniPhysics schema. Those actor families cannot be joined directly. A
-    four-node kinematic boundary is the equivalent fixed swage condition while
-    leaving every other strand node under native deformable simulation.
+    Mimithread's pinned source topology originated as a legacy PhysX
+    deformable, while Physics Next exposes rigid/deformable attachments through
+    the newer OmniPhysics schema. Those actor families cannot be joined
+    directly. A four-node kinematic boundary is the equivalent fixed swage
+    condition while leaving every other strand node deformable.
     """
 
     if env_ids is None:
@@ -226,13 +332,16 @@ def anchor_native_suture_swage(
         ).indices
         batch_ids = torch.arange(len(env_ids), device=env.device)[:, None]
         selected_positions = positions[batch_ids, selected_ids]
+        endpoint_center = selected_positions.mean(dim=1, keepdim=True)
+        endpoint_cross_section = selected_positions - endpoint_center
         inverse_quat = quat_conjugate(needle_quat)[:, None, :].expand(
             -1, SUTURE_SWAGE_NODE_COUNT, -1
         )
         selected_offsets = quat_apply(
             inverse_quat.reshape(-1, 4),
-            (selected_positions - needle_pos[:, None, :]).reshape(-1, 3),
+            endpoint_cross_section.reshape(-1, 3),
         ).reshape(len(env_ids), SUTURE_SWAGE_NODE_COUNT, 3)
+        selected_offsets += swage_local[:, None, :]
         node_ids[env_ids] = selected_ids
         local_offsets[env_ids] = selected_offsets
 
@@ -445,3 +554,15 @@ def reset_penetration_evidence(
     state.pop("previous_receiver_distance", None)
     state.pop("previous_embedded_arc_length", None)
     state["last_update_step"] = -1
+    try:
+        thread: DeformableObject = env.scene["needle_thread"]
+    except KeyError:
+        thread = None
+    if thread is not None:
+        current_positions = mdp_common.as_torch(thread.data.nodal_pos_w)
+        previous = getattr(env, "_dranmar_mimithread_previous_positions", None)
+        if previous is not None and previous.shape == current_positions.shape:
+            previous[env_ids] = current_positions[env_ids]
+        tract_counts = getattr(env, "_dranmar_mimithread_tract_counts", None)
+        if tract_counts is not None:
+            tract_counts[env_ids] = 0

@@ -235,35 +235,44 @@ motion. The GIF uses only frames from this successful RTX rollout, keeps the
 first-entry and final curved-clearance intervals near real-time, compresses the
 long middle handover, and omits the post-success reset frame.
 
-The same seed-17 sequence also succeeds when only the needle payload is paired
-with the white native DrAnmar 4-0 suture. The active strand is a volume-filling
-549-node PhysX deformable driven by an explicit tetrahedral simulation mesh;
-four endpoint nodes form the moving swage boundary while every other node
-remains deformable. Its rendered diameter stays fine while a slightly larger
-simulation envelope prevents inverted microscopic tetrahedra. Dynamic friction
-is 0.01, and the strand follows the environment-owned puncture tract without
-adding artificial drag to the two tissue bodies.
+The same seed-17 sequence now succeeds with **DrAnmar Mimithread**, the refined
+white 4-0 strand paired with the validated needle. Mimithread retains the
+pinned source strand's volume topology but replaces its legacy body setup,
+material, rendering, reset, swage, and tissue interaction. It is a 549-node
+PhysX FEM body with four kinematic swage nodes; the other 545 nodes remain
+deformable. Dynamic friction is 0.01.
+
+At reset the neutral strand is aimed diagonally across the entry flap and all
+nodes are verified outside the closed tissue volume. Exposed nodes use
+one-sided swept contact against the live FEM top surface, so a thin strand
+cannot cross the entire surface between 50 Hz control samples. After the
+force-gated puncture event, embedded nodes instead receive low-drag radial
+confinement to the recorded needle-tip tract. This preserves surface rest and
+glide without letting the closed deformable tissue volume eject a legitimately
+threaded strand.
 
 <p align="center">
-  <img src="docs/media/dranmar-native-white-suture-puncture-pullout.gif"
+  <img src="docs/media/dranmar-mimithread-puncture-pullout.gif"
        width="600"
-       alt="Real RTX rollout of the white DrAnmar suture following a curved needle through the left and right tissue spans before opposite-arm handover and pullout">
+       alt="Real RTX rollout of DrAnmar Mimithread resting on the tissue, following the curved needle through both spans, and remaining attached during opposite-arm pullout">
 </p>
 
 <p align="center">
-  <em>Real seed-17 RTX render using the white native deformable suture: curved
-  two-span puncture, opposite-arm acquisition, and receiver-owned clearance
-  with the trailing strand retained through the stitch path.</em>
+  <em>Real seed-17 RTX render using DrAnmar Mimithread: supported surface rest,
+  curved two-span puncture, opposite-arm acquisition, and receiver-owned
+  clearance with the trailing strand retained through the stitch path.</em>
 </p>
 
-The unchanged controller completed the sequence in 4,172 control steps with
+The unchanged controller completed the sequence in 4,173 control steps with
 exactly one left entry, one right-underside puncture, one right-top exit, full
 receiver-owned clearance, and zero hard failures. Final evidence records four
 active swage nodes, 549 finite deformable nodes, 0.877 mm entry error, 0.067 mm
-exit error, 4.6% peak-force overshoot, 146.70 degrees of receiver curvature
-rotation, and 0.70 mm maximum curvature-centre drift. The exact rendered
-receipt is
-[`seed17_native_white_suture_rendered_success.json`](docs/tissue_puncture_pullout/seed17_native_white_suture_rendered_success.json).
+exit error, 4.6% peak-force overshoot, 145.30 degrees of receiver curvature
+rotation, and 0.69 mm maximum curvature-centre drift. During the rollout the
+contact layer supported up to 168 exposed nodes and guided up to 49 embedded
+nodes; the post-reset state remained finite with zero nodes inside either
+tissue volume. The exact rendered receipt is
+[`seed17_mimithread_rendered_success.json`](docs/tissue_puncture_pullout/seed17_mimithread_rendered_success.json).
 The rejected ribbon-like surface-FEM and violet v0.3 adapter experiments are
 retained outside the selectable catalog under
 `Props/SurgicalClosure/Needle/ExperimentalSurfaceFEM/` for reproducibility.

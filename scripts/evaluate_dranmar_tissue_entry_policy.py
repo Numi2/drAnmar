@@ -194,7 +194,7 @@ def main() -> int:
     stage = omni.usd.get_context().get_stage()
 
     def collect_thread_binding_receipt() -> dict:
-        """Read the final, post-reset native-suture state from the live scene."""
+        """Read the final, post-reset Mimithread state from the live scene."""
 
         thread_root = stage.GetPrimAtPath("/World/envs/env_0/NeedleThread")
         simulation_mesh = stage.GetPrimAtPath(
@@ -204,7 +204,7 @@ def main() -> int:
             "/World/envs/env_0/NeedleThread/PhysicsMaterial"
         )
         thread_visual = stage.GetPrimAtPath(
-            "/World/envs/env_0/NeedleThread/Looks/DrAnmarSutureWhite/PreviewSurface"
+            "/World/envs/env_0/NeedleThread/Looks/DrAnmarMimithreadWhite/PreviewSurface"
         )
         thread_object = gym_env.unwrapped.scene["needle_thread"]
         thread_targets = thread_object.data.nodal_kinematic_target
@@ -225,6 +225,17 @@ def main() -> int:
                 ).GetTargets()
             ]
         return {
+            "product_name": "DrAnmar Mimithread",
+            "representation_revision": (
+                thread_root.GetAttribute("drAnmar:representationRevision").Get()
+                if thread_root.IsValid()
+                else None
+            ),
+            "source_provenance": (
+                thread_root.GetAttribute("drAnmar:sourceProvenance").Get()
+                if thread_root.IsValid()
+                else None
+            ),
             "body_prim_valid": thread_root.IsValid(),
             "body_schemas": (
                 list(thread_root.GetAppliedSchemas())
@@ -243,8 +254,54 @@ def main() -> int:
             "kinematic_target_node_count": int(
                 (thread_targets[0, :, 3] < 0.5).sum().item()
             ),
-            "tissue_interaction": "collision_filtered_zero_drag_tract",
+            "tissue_interaction": "tract_aware_compliant_surface_and_interior_glide",
+            "surface_contact_mode": "one_sided_swept_ccd",
             "collision_filter_targets": filtered_targets,
+            "reset_corrected_overlap_node_count": int(
+                getattr(
+                    gym_env.unwrapped,
+                    "_dranmar_mimithread_reset_corrected_nodes",
+                    torch.zeros(1, device=gym_env.unwrapped.device),
+                )[0].item()
+            ),
+            "reset_inside_tissue_node_count_after": int(
+                getattr(
+                    gym_env.unwrapped,
+                    "_dranmar_mimithread_reset_inside_nodes_after",
+                    torch.zeros(1, device=gym_env.unwrapped.device),
+                )[0].item()
+            ),
+            "reset_left_surface_drape_node_count": int(
+                getattr(
+                    gym_env.unwrapped,
+                    "_dranmar_mimithread_reset_surface_drape_nodes",
+                    torch.zeros(1, device=gym_env.unwrapped.device),
+                )[0].item()
+            ),
+            "peak_surface_support_node_count": int(
+                getattr(
+                    gym_env.unwrapped,
+                    "_dranmar_mimithread_surface_contact_nodes",
+                    torch.zeros(1, device=gym_env.unwrapped.device),
+                )[0].item()
+            ),
+            "peak_interior_glide_node_count": int(
+                getattr(
+                    gym_env.unwrapped,
+                    "_dranmar_mimithread_interior_contact_nodes",
+                    torch.zeros(1, device=gym_env.unwrapped.device),
+                )[0].item()
+            ),
+            # This is the largest between-sample travel corrected by the
+            # swept test, measured before the node is restored to the live
+            # surface. It is deliberately not reported as residual overlap.
+            "max_swept_surface_correction_m": float(
+                getattr(
+                    gym_env.unwrapped,
+                    "_dranmar_mimithread_max_surface_penetration_m",
+                    torch.zeros(1, device=gym_env.unwrapped.device),
+                )[0].item()
+            ),
             "white_preview_surface_valid": thread_visual.IsValid(),
             "white_diffuse_color": (
                 list(thread_visual.GetAttribute("inputs:diffuseColor").Get())
@@ -255,6 +312,14 @@ def main() -> int:
                 thread_material.GetAttribute("omniphysics:dynamicFriction").Get()
                 if thread_material.IsValid()
                 else None
+            ),
+            "friction_combine_mode": (
+                thread_material.GetAttribute("physxMaterial:frictionCombineMode").Get()
+                if thread_material.IsValid()
+                else None
+            ),
+            "finite_nodal_state": bool(
+                torch.isfinite(thread_object.data.nodal_state_w).all().item()
             ),
         }
     video_writer = None
@@ -661,13 +726,10 @@ def main() -> int:
             "diagnostic_episode_length_s": args.episode_length_s,
             "needle_asset": str(needle_asset),
             "needle_asset_sha256": _sha256(needle_asset),
-            "thread_asset": str(thread_asset),
-            "thread_asset_sha256": _sha256(thread_asset),
-            "needle_representation": (
-                "validated_rigid_needle_plus_native_white_physx_suture_with_kinematic_swage"
-                if thread_asset.name == "Rope.usd"
-                else "other"
-            ),
+            "thread_product": "DrAnmar Mimithread",
+            "thread_source_asset": str(thread_asset),
+            "thread_source_asset_sha256": _sha256(thread_asset),
+            "needle_representation": "validated_rigid_needle_plus_dranmar_mimithread_v1",
             "needle_thread_binding": thread_binding_receipt,
             "entry_error_m_max": max(entry_errors, default=None),
             "entry_error_m_mean": (

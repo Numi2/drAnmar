@@ -316,7 +316,7 @@ def test_giver_reset_lifts_base_and_targets_the_left_tissue_span():
     assert "Enter the left tissue span 5 mm from the wound edge" in config
 
 
-def test_native_white_suture_preserves_needle_task_abi_and_table_clearance():
+def test_mimithread_preserves_needle_task_abi_and_enables_tissue_contact():
     config = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
     archived_surface_fem = (
         ROOT / "source/extensions/orbit.surgical.assets/data/Props/"
@@ -327,7 +327,7 @@ def test_native_white_suture_preserves_needle_task_abi_and_table_clearance():
         "SurgicalClosure/Needle/ExperimentalSurfaceFEM/"
         "dranmar_needle_v030_thread_adapter_rejected.usda"
     )
-    assert "_native_white_suture_asset()" in config
+    assert "_mimithread_source_asset()" in config
     assert "source/softmimicgen_assets/data/Props/Rope/Rope.usd" in config
     assert 'filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"]' in config
     assert "self.scene.needle_thread = DeformableObjectCfg(" in config
@@ -337,13 +337,30 @@ def test_native_white_suture_preserves_needle_task_abi_and_table_clearance():
     assert "anchor_native_suture_swage" in config
     assert "four-node kinematic boundary" in events
     assert "SUTURE_SWAGE_NODE_COUNT = 4" in events
-    assert "DrAnmarSutureWhite" in config
-    assert '("omniphysics:dynamicFriction", 0.01)' in config
+    assert "endpoint_cross_section" in events
+    assert "must never begin with the free strand already" in events
+    assert "_dranmar_mimithread_reset_inside_nodes_after" in events
+    assert "_dranmar_mimithread_reset_surface_drape_nodes" in events
+    assert "DrAnmarMimithreadWhite" in config
+    assert '"drAnmar:productName"' in config
+    assert 'Set("Mimithread")' in config
+    assert '"omniphysics:dynamicFriction"' in config
+    assert '"physxMaterial:frictionCombineMode"' in config
+    assert 'Sdf.ValueTypeNames.Token, "min"' in config
     assert '"OmniPhysicsVolumeDeformableSimAPI"' in config
-    assert "The original 549" in config
+    assert "549 simulation points" in config
     assert 'Sdf.Path(f"{environment_path}/TissueLeft")' in config
     assert 'Sdf.Path(f"{environment_path}/TissueRight")' in config
+    state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
+    assert "_couple_mimithread_tissue_contact" in state
+    assert "live FEM top surface" in state
+    assert "recorded" in state and "needle-tip path" in state
     assert 'pos=(0.0, 0.0, -0.457)' in config
+    assert 'pos=(-0.0574850000, -0.0452210000, 0.0534500000)' in config
+    assert 'rot=(0.0, 0.0, -0.927184, 0.374607)' in config
+    assert '("omniphysics:mass", 0.00001)' in config
+    assert "smooth hanging shoulder" in events
+    assert "swept_surface_crossing" in state
     assert archived_surface_fem.is_file()
     assert archived_v030_adapter.is_file()
     assert not (
@@ -355,11 +372,17 @@ def test_native_white_suture_preserves_needle_task_abi_and_table_clearance():
         encoding="utf-8"
     )
     assert '"needle_asset_sha256": _sha256(needle_asset)' in evaluator
-    assert '"thread_asset_sha256": _sha256(thread_asset)' in evaluator
-    assert (
-        '"validated_rigid_needle_plus_native_white_physx_suture_with_kinematic_swage"'
-        in evaluator
-    )
+    assert '"thread_source_asset_sha256": _sha256(thread_asset)' in evaluator
+    assert '"DrAnmar Mimithread"' in evaluator
+    assert '"validated_rigid_needle_plus_dranmar_mimithread_v1"' in evaluator
+    assert '"tract_aware_compliant_surface_and_interior_glide"' in evaluator
+    assert '"one_sided_swept_ccd"' in evaluator
+    assert '"max_swept_surface_correction_m"' in evaluator
+    assert '"max_surface_penetration_m"' not in evaluator
+    assert '"peak_surface_support_node_count"' in evaluator
+    assert '"peak_interior_glide_node_count"' in evaluator
+    assert '"reset_inside_tissue_node_count_after"' in evaluator
+    assert '"reset_left_surface_drape_node_count"' in evaluator
     assert 'GetPrimAtPath("/World/envs/env_0/NeedleThread")' in evaluator
     assert '"kinematic_target_node_count"' in evaluator
     assert '"collision_filter_targets"' in evaluator
