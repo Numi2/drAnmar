@@ -642,13 +642,16 @@ def test_fem_tract_load_stretches_and_recoils_through_free_nodes():
         assert "float physxDeformableMaterial:elasticityDamping = 0.08" in asset
 
 
-def test_receiver_follows_needle_tangent_through_final_clearance():
+def test_receiver_rotates_about_needle_curvature_center_through_final_clearance():
     state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
-    assert "exposed_grasp_target - root_pos" in state
-    assert "torch.linalg.cross(plane_normal, exposed_radial)" in state
-    assert "pull_tangent * tangent" in state
-    assert "pull_direction_w = pull_tangent" in state
-    assert "tract_clear.unsqueeze(-1), surface_normal" not in state
+    controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
+    assert "pull_rotation_axis_w = -torch.nn.functional.normalize" in state
+    assert "torch.linalg.cross(pull_rotation_axis_w, receiver_grasp_radial)" in state
+    assert "pull_chord_w = receiver_grasp_radius" in state
+    assert 'state["receiver_curve_center_w"] - root_pos' in state
+    assert "pull_rotation_r" in state
+    assert "late_exit_lift" not in controller
+    assert "surface_normal * 0.4" not in controller
     assert 'state["custody_owner"] == 0' in state
     assert 'receiver_held = state["custody_owner"] >= 1' in state
 
@@ -736,6 +739,8 @@ def test_pullout_requires_receiver_contact_transfer_and_complete_clearance():
         "receiver_bilateral_contact": False,
         "receiver_custody": False,
         "giver_released": False,
+        "receiver_curve_rotation_deg": 0.0,
+        "receiver_curve_center_error_m": 0.0,
         "target_region_valid": True,
         "tissue_contact": True,
         "backend_exit_count": 1,
@@ -774,7 +779,8 @@ def test_pullout_requires_receiver_contact_transfer_and_complete_clearance():
     values.update(
         embedded_arc_length_m=0.0001,
         exposed_arc_length_m=0.0218,
-        exposed_fraction=0.99,
+        exposed_fraction=0.995,
+        receiver_curve_rotation_deg=135.0,
     )
     measurement = module.PulloutMeasurement(**values)
     for _ in range(thresholds.receiver_pull_steps_min):
@@ -806,7 +812,7 @@ def test_pullout_task_has_dual_psm_controller_and_receipt_contract():
     assert "remains authoritative to presentation" in controller
     assert "self.drive_rotation_command = 1.0" in controller
     assert "torch.linalg.cross(current_tangent, start_tangent)" in controller
-    assert ") & (phase <= 5)" in controller
+    assert ") & (phase <= 6)" in controller
     assert "receiver retracting through CLEAR" in controller
     assert "(phase >= 11).unsqueeze(-1)" not in controller
     assert fields["custody_model"].default == (
@@ -873,7 +879,9 @@ def test_pullout_benchmark_requires_receiver_only_complete_clearance():
     )
     acceptance = benchmark["engineering_acceptance"]
     assert acceptance["receiver_bilateral_contact_steps_min"] == 3
-    assert acceptance["receiver_pull_steps_min"] == 64
-    assert acceptance["embedded_arc_length_m_max"] == 0.0002
-    assert acceptance["exposed_fraction_min"] == 0.95
+    assert acceptance["receiver_pull_steps_min"] == 270
+    assert acceptance["receiver_curve_rotation_deg_min"] == 135.0
+    assert acceptance["receiver_curve_center_error_m_max"] == 0.0015
+    assert acceptance["embedded_arc_length_m_max"] == 0.0001
+    assert acceptance["exposed_fraction_min"] == 0.995
     assert acceptance["giver_released"] is True

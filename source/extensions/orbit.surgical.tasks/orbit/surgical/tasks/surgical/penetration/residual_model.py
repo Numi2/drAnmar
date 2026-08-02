@@ -320,6 +320,7 @@ class ThroughPunctureAnalyticController(nn.Module):
         surface_normal = torch.nn.functional.normalize(raw[..., 43:46], dim=-1)
         indentation = raw[..., 46].clamp_min(0.0)
         exposed_fraction = raw[..., 72].clamp_min(0.0)
+        drive_rotation = raw[..., 77].clamp_min(0.0) * (2.0 * math.pi)
 
         reference_x = torch.tensor(
             (1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype
@@ -369,7 +370,12 @@ class ThroughPunctureAnalyticController(nn.Module):
         geometric_angle = torch.asin(
             (indentation / self.curvature_radius_m).clamp(0.0, 1.0)
         )
-        trajectory_angle = torch.maximum(orientation_angle, geometric_angle)
+        # Use the environment's unwrapped drive angle once the bite starts.
+        # Quaternion-derived atan2 wraps at 180 degrees and previously forced
+        # the controller to replace the final arc with a surface-normal lift.
+        trajectory_angle = torch.maximum(
+            torch.maximum(orientation_angle, geometric_angle), drive_rotation
+        )
         drive_direction = torch.linalg.cross(start_tangent, wound_tangent)
         desired_tip_position = (
             entry_position
@@ -391,23 +397,18 @@ class ThroughPunctureAnalyticController(nn.Module):
             dtype=raw.dtype,
         )
         target_angle = exit_angle + self.target_exposed_fraction * torch.pi
-        late_exit_lift = (
-            (phase >= 4)
-            & (orientation_angle >= math.radians(145.0))
-            & (exposed_fraction < self.target_exposed_fraction)
-        )
         rotate_active = (orientation_angle < target_angle) & (
             exposed_fraction < self.target_exposed_fraction
-        ) & (phase <= 5) & ~late_exit_lift
+        ) & (phase <= 6)
+        rotate_active = rotate_active | (
+            (drive_rotation < target_angle)
+            & (exposed_fraction < self.target_exposed_fraction)
+            & (phase <= 6)
+        )
         rotation = (
             -wound_tangent
             * rotate_active.unsqueeze(-1).to(raw.dtype)
             * self.drive_rotation_command
-        )
-        translation = torch.where(
-            late_exit_lift.unsqueeze(-1),
-            surface_normal * 0.4,
-            translation,
         )
         presentation_hold = (phase >= 5) & (
             exposed_fraction >= self.target_exposed_fraction
@@ -506,9 +507,9 @@ class PulloutAnalyticController(nn.Module):
 
     def forward(self, raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Pullout expands the previous-action term from 6D to 14D. Rebuild the
-        # exact 77D through-puncture view consumed by the qualified controller.
+        # exact 78D through-puncture view consumed by the curvature controller.
         through_raw = torch.cat(
-            (raw[..., :65], raw[..., 65:71], raw[..., 79:85]), dim=-1
+            (raw[..., :65], raw[..., 65:71], raw[..., 79:86]), dim=-1
         )
         # Keep the giver at stand-off until lateral error is inside the entry
         # tolerance; otherwise the curved shaft can reach tissue before the tip
@@ -541,9 +542,9 @@ class PulloutAnalyticController(nn.Module):
             through_raw[..., 36:39],
         )
         giver_body, _, unsafe = self.through_controller(through_raw)
-        phase = torch.argmax(raw[..., 116:128], dim=-1)
-        giver_regrasp_guidance = raw[..., 131:137].clamp(-1.0, 1.0)
-        giver_regrasp_stage = torch.argmax(raw[..., 137:143], dim=-1)
+        phase = torch.argmax(raw[..., 117:129], dim=-1)
+        giver_regrasp_guidance = raw[..., 132:138].clamp(-1.0, 1.0)
+        giver_regrasp_stage = torch.argmax(raw[..., 138:144], dim=-1)
         tract_regrasp_active = (
             (giver_regrasp_stage >= 1) & (giver_regrasp_stage <= 4)
         )
@@ -551,7 +552,7 @@ class PulloutAnalyticController(nn.Module):
         # receiver custody. The environment separately hard-fails any receiver
         # custody loss during pull/clear.
         unsafe = unsafe & (phase < 9) & ~tract_regrasp_active
-        receiver_guidance = raw[..., 110:116].clamp(-1.0, 1.0)
+        receiver_guidance = raw[..., 111:117].clamp(-1.0, 1.0)
         receiver_active = phase >= 7
         receiver_body = torch.where(
             receiver_active.unsqueeze(-1),

@@ -114,6 +114,14 @@ def through_exit_delta(env: ManagerBasedRLEnv) -> torch.Tensor:
     return quat_apply_inverse(robot_quat, delta_w)
 
 
+def through_drive_rotation(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Return unwrapped needle-drive rotation, normalized by one revolution."""
+
+    return (
+        penetration_state(env)["drive_rotation_deg"].unsqueeze(-1) / 360.0
+    ).clamp(0.0, 1.0)
+
+
 def privileged_puncture_state(env: ManagerBasedRLEnv) -> torch.Tensor:
     state = penetration_state(env)
     scalar_state = torch.stack(

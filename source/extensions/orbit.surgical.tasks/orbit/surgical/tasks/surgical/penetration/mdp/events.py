@@ -240,8 +240,24 @@ def reset_penetration_evidence(
                 (env.num_envs, 3), device=env.device
             ),
             "drive_start_tangent_w": torch.zeros((env.num_envs, 3), device=env.device),
+            "drive_previous_tangent_w": torch.zeros(
+                (env.num_envs, 3), device=env.device
+            ),
+            "drive_rotation_rad": torch.zeros(env.num_envs, device=env.device),
             "drive_start_tool_quat_w": torch.zeros((env.num_envs, 4), device=env.device),
             "drive_start_tangent_valid": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "receiver_curve_previous_tangent_w": torch.zeros(
+                (env.num_envs, 3), device=env.device
+            ),
+            "receiver_curve_rotation_rad": torch.zeros(
+                env.num_envs, device=env.device
+            ),
+            "receiver_curve_center_w": torch.zeros(
+                (env.num_envs, 3), device=env.device
+            ),
+            "receiver_curve_tracking_active": torch.zeros(
                 env.num_envs, dtype=torch.bool, device=env.device
             ),
         }
@@ -273,8 +289,14 @@ def reset_penetration_evidence(
     state["tract_support_pose"][env_ids] = 0.0
     state["giver_regrasp_retreat_target_w"][env_ids] = 0.0
     state["drive_start_tangent_w"][env_ids] = 0.0
+    state["drive_previous_tangent_w"][env_ids] = 0.0
+    state["drive_rotation_rad"][env_ids] = 0.0
     state["drive_start_tool_quat_w"][env_ids] = 0.0
     state["drive_start_tangent_valid"][env_ids] = False
+    state["receiver_curve_previous_tangent_w"][env_ids] = 0.0
+    state["receiver_curve_rotation_rad"][env_ids] = 0.0
+    state["receiver_curve_center_w"][env_ids] = 0.0
+    state["receiver_curve_tracking_active"][env_ids] = False
     state["grasp_local_position_m"][env_ids] = torch.tensor(
         NEEDLE_MID_GRASP_POSITION_M, device=env.device
     )

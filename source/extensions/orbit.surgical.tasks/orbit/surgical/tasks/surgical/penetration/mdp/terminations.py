@@ -165,6 +165,12 @@ def successful_pullout(env: ManagerBasedRLEnv) -> torch.Tensor:
                 ),
                 receiver_contact_steps=gate.receiver_contact_steps,
                 receiver_pull_steps=gate.receiver_pull_steps,
+                receiver_curve_rotation_deg=float(
+                    state["receiver_curve_rotation_deg"][index]
+                ),
+                receiver_curve_center_error_m=float(
+                    state["receiver_curve_center_error"][index]
+                ),
                 receiver_only_clearance_steps=gate.cleared_steps,
                 phase_sequence=tuple(gate.phase_sequence),
                 backend_revision=state["backend_metadata"].revision,

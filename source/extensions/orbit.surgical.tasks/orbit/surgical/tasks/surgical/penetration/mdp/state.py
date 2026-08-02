@@ -346,6 +346,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     tool_quat = mdp_common.as_torch(robot.data.body_quat_w)[:, tool_body_ids[0], :]
     pullout = bool(state.get("pullout", False))
     receiver_robot = env.scene["robot_receiver"] if pullout else None
+    current_phase = torch.tensor(
+        [int(gate.phase) for gate in state["gates"]], device=env.device
+    )
     if pullout:
         receiver_tool_body_ids, _ = receiver_robot.find_bodies("psm_tool_tip_link")
         receiver_tool_pos = mdp_common.as_torch(receiver_robot.data.body_pos_w)[
@@ -466,6 +469,44 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         root_quat,
         torch.tensor(NEEDLE_PLANE_NORMAL_LOCAL, device=env.device).repeat(env.num_envs, 1),
     )
+    # Continue measuring the same bite through first top re-emergence. A
+    # start/current acos wraps at 180 degrees, so accumulate bounded per-step
+    # tangent rotation and expose that unwrapped angle to the controller.
+    drive_active = (current_phase >= 4) & (current_phase <= 6)
+    initialize_drive = drive_active & ~state["drive_start_tangent_valid"]
+    if torch.any(initialize_drive):
+        state["drive_start_tangent_w"][initialize_drive] = tangent[initialize_drive]
+        state["drive_start_tool_quat_w"][initialize_drive] = tool_quat[
+            initialize_drive
+        ]
+        state["drive_previous_tangent_w"][initialize_drive] = tangent[
+            initialize_drive
+        ]
+        state["drive_rotation_rad"][initialize_drive] = 0.0
+        state["drive_start_tangent_valid"][initialize_drive] = True
+    advance_drive_rotation = (
+        drive_active & state["drive_start_tangent_valid"] & ~initialize_drive
+    )
+    previous_drive_tangent = torch.nn.functional.normalize(
+        state["drive_previous_tangent_w"], dim=-1
+    )
+    drive_step_rotation = torch.acos(
+        torch.sum(previous_drive_tangent * tangent, dim=-1).clamp(-1.0, 1.0)
+    ).clamp(max=math.radians(2.0))
+    drive_step_rotation = torch.where(
+        drive_step_rotation >= math.radians(0.1),
+        drive_step_rotation,
+        torch.zeros_like(drive_step_rotation),
+    )
+    state["drive_rotation_rad"] = torch.where(
+        advance_drive_rotation,
+        state["drive_rotation_rad"] + drive_step_rotation,
+        state["drive_rotation_rad"],
+    )
+    state["drive_previous_tangent_w"] = torch.where(
+        drive_active.unsqueeze(-1), tangent, state["drive_previous_tangent_w"]
+    )
+    drive_rotation_deg = torch.rad2deg(state["drive_rotation_rad"])
     tissue_center = env.scene.env_origins + torch.tensor(TISSUE_CENTER_LOCAL_M, device=env.device)
     tissue_top_z = env.scene.env_origins[:, 2] + TISSUE_TOP_LOCAL_Z_M
     target = _entry_target_w(env)
@@ -659,7 +700,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         # the right collision-enabled slab.  The backend freezes this event
         # coordinate so later presentation and pullout cannot rewrite accuracy.
         exit_offset_w = torch.tensor(
-            (0.01955, -0.00318, 0.0),
+            # Calibrated to the no-lift 203 degree circular trajectory. The
+            # previous coordinate encoded the removed surface-normal shortcut.
+            (0.02063458, -0.00333510, 0.0),
             device=env.device,
             dtype=root_pos.dtype,
         ).expand_as(target)
@@ -731,28 +774,6 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             receiver_tissue_forces.amax(dim=-1), receiver_all_links_tissue_force
         )
         receiver_force_contact = torch.all(receiver_jaw_forces > 0.01, dim=-1)
-        current_phase = torch.tensor(
-            [int(gate.phase) for gate in state["gates"]], device=env.device
-        )
-        drive_active = current_phase == 4
-        initialize_drive = drive_active & ~state["drive_start_tangent_valid"]
-        if torch.any(initialize_drive):
-            state["drive_start_tangent_w"][initialize_drive] = tangent[
-                initialize_drive
-            ]
-            state["drive_start_tool_quat_w"][initialize_drive] = tool_quat[
-                initialize_drive
-            ]
-            state["drive_start_tangent_valid"][initialize_drive] = True
-        start_tangent = torch.nn.functional.normalize(
-            state["drive_start_tangent_w"], dim=-1
-        )
-        drive_rotation_deg = torch.rad2deg(
-            torch.acos(
-                torch.sum(start_tangent * tangent, dim=-1).clamp(-1.0, 1.0)
-            )
-        )
-
         regrasp_stage = state["giver_regrasp_stage"]
         completed_regrasps = torch.tensor(
             [item.tract_support_event_count for item in tissue_state],
@@ -968,32 +989,99 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             dim=-1,
         ).clamp(-1.0, 1.0)
         pull_active = current_phase >= 10
-        # Continue the curved bite through the right flap along the
-        # instantaneous tangent at the receiver's grasp point. A straight
-        # surface-normal lift drags the remaining embedded arc across the top
-        # surface and visually tears the FEM. Choose the tangent sign that
-        # agrees with sharp-tip advance and retain it through final clearance.
-        exposed_radial = torch.nn.functional.normalize(
-            exposed_grasp_target - root_pos, dim=-1
+        initialize_receiver_curve = (
+            pull_active
+            & (state["custody_owner"] >= 1)
+            & ~state["receiver_curve_tracking_active"]
         )
-        pull_tangent = torch.nn.functional.normalize(
-            torch.linalg.cross(plane_normal, exposed_radial), dim=-1
+        if torch.any(initialize_receiver_curve):
+            state["receiver_curve_previous_tangent_w"][initialize_receiver_curve] = (
+                tangent[initialize_receiver_curve]
+            )
+            state["receiver_curve_center_w"][initialize_receiver_curve] = root_pos[
+                initialize_receiver_curve
+            ]
+            state["receiver_curve_rotation_rad"][initialize_receiver_curve] = 0.0
+            state["receiver_curve_tracking_active"][initialize_receiver_curve] = True
+        advance_receiver_curve = (
+            pull_active
+            & state["receiver_curve_tracking_active"]
+            & ~initialize_receiver_curve
         )
-        tangent_sign = torch.where(
-            torch.sum(pull_tangent * tangent, dim=-1, keepdim=True) >= 0.0,
-            torch.ones_like(pull_tangent[..., :1]),
-            -torch.ones_like(pull_tangent[..., :1]),
+        previous_receiver_tangent = torch.nn.functional.normalize(
+            state["receiver_curve_previous_tangent_w"], dim=-1
         )
-        pull_tangent = pull_tangent * tangent_sign
-        pull_direction_w = pull_tangent
-        pull_delta_r = quat_apply_inverse(receiver_root_quat, pull_direction_w)
-        pull_guidance = torch.cat(
-            (
-                torch.nn.functional.normalize(pull_delta_r, dim=-1),
-                torch.zeros_like(pull_delta_r),
+        receiver_curve_step = torch.acos(
+            torch.sum(previous_receiver_tangent * tangent, dim=-1).clamp(-1.0, 1.0)
+        ).clamp(max=math.radians(2.0))
+        receiver_curve_step = torch.where(
+            receiver_curve_step >= math.radians(0.1),
+            receiver_curve_step,
+            torch.zeros_like(receiver_curve_step),
+        )
+        state["receiver_curve_rotation_rad"] = torch.where(
+            advance_receiver_curve,
+            state["receiver_curve_rotation_rad"] + receiver_curve_step,
+            state["receiver_curve_rotation_rad"],
+        )
+        state["receiver_curve_previous_tangent_w"] = torch.where(
+            pull_active.unsqueeze(-1),
+            tangent,
+            state["receiver_curve_previous_tangent_w"],
+        )
+        receiver_curve_rotation_deg = torch.rad2deg(
+            state["receiver_curve_rotation_rad"]
+        )
+        receiver_curve_center_error = torch.where(
+            state["receiver_curve_tracking_active"],
+            torch.linalg.vector_norm(
+                root_pos - state["receiver_curve_center_w"], dim=-1
             ),
-            dim=-1,
+            torch.zeros_like(receiver_distance),
         )
+        # Rotate around the needle's curvature centre. The receiver grasp
+        # point advances by r*dtheta while the tool rotates by the same
+        # dtheta, so the needle centre stays fixed instead of being lifted
+        # through the flap.
+        receiver_grasp_position = root_pos + quat_apply(
+            root_quat,
+            state["receiver_grasp_local_position_m"].to(dtype=root_pos.dtype),
+        )
+        receiver_grasp_radial = receiver_grasp_position - root_pos
+        receiver_grasp_radius = torch.linalg.vector_norm(
+            receiver_grasp_radial, dim=-1, keepdim=True
+        ).clamp_min(1.0e-6)
+        receiver_grasp_radial = receiver_grasp_radial / receiver_grasp_radius
+        pull_rotation_axis_w = -torch.nn.functional.normalize(plane_normal, dim=-1)
+        pull_tangent = torch.nn.functional.normalize(
+            torch.linalg.cross(pull_rotation_axis_w, receiver_grasp_radial), dim=-1
+        )
+        pull_step_rad = 0.00872664626
+        pull_chord_w = receiver_grasp_radius * (
+            receiver_grasp_radial * (math.cos(pull_step_rad) - 1.0)
+            + pull_tangent * math.sin(pull_step_rad)
+        )
+        curve_center_correction_w = 0.5 * (
+            state["receiver_curve_center_w"] - root_pos
+        )
+        pull_translation_delta_w = pull_chord_w + curve_center_correction_w
+        pull_translation_norm = torch.linalg.vector_norm(
+            pull_translation_delta_w, dim=-1, keepdim=True
+        )
+        pull_translation_delta_w = pull_translation_delta_w * torch.clamp(
+            0.00025 / pull_translation_norm.clamp_min(1.0e-9), max=1.0
+        )
+        pull_translation_w = pull_translation_delta_w / 0.00025
+        pull_translation_r = quat_apply_inverse(
+            receiver_root_quat, pull_translation_w
+        )
+        pull_rotation_r = quat_apply_inverse(
+            receiver_root_quat, pull_rotation_axis_w
+        )
+        pull_guidance = torch.cat(
+            (pull_translation_r, pull_rotation_r),
+            dim=-1,
+        ).clamp(-1.0, 1.0)
         receiver_guidance = torch.where(
             pull_active.unsqueeze(-1), pull_guidance, receiver_guidance
         )
@@ -1035,7 +1123,8 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         giver_released = torch.zeros(
             env.num_envs, dtype=torch.bool, device=env.device
         )
-        drive_rotation_deg = torch.zeros(env.num_envs, device=env.device)
+        receiver_curve_rotation_deg = torch.zeros(env.num_envs, device=env.device)
+        receiver_curve_center_error = torch.zeros(env.num_envs, device=env.device)
         giver_regrasp_guidance = torch.zeros((env.num_envs, 6), device=env.device)
 
     successes: list[bool] = []
@@ -1097,6 +1186,12 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 receiver_bilateral_contact=bool(receiver_bilateral[index]),
                 receiver_custody=bool(receiver_custody[index]),
                 giver_released=bool(giver_released[index]),
+                receiver_curve_rotation_deg=float(
+                    receiver_curve_rotation_deg[index]
+                ),
+                receiver_curve_center_error_m=float(
+                    receiver_curve_center_error[index]
+                ),
             )
         elif through_puncture:
             measurement = ThroughPunctureMeasurement(
@@ -1260,6 +1355,8 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "giver_regrasp_stage": state["giver_regrasp_stage"].clone(),
             "giver_regrasp_complete": state["giver_regrasp_stage"] == 5,
             "drive_rotation_deg": drive_rotation_deg,
+            "receiver_curve_rotation_deg": receiver_curve_rotation_deg,
+            "receiver_curve_center_error": receiver_curve_center_error,
             "tract_support_active": torch.tensor(
                 [
                     getattr(item, "tract_support_active", False)

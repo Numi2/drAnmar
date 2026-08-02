@@ -267,6 +267,8 @@ def main() -> int:
     exit_event_counts: list[int] = []
     right_underside_event_counts: list[int] = []
     receiver_pull_steps: list[int] = []
+    receiver_curve_rotations: list[float] = []
+    receiver_curve_center_errors: list[float] = []
     exit_errors: list[float] = []
     exposed_fractions: list[float] = []
     exposed_arc_lengths: list[float] = []
@@ -367,13 +369,13 @@ def main() -> int:
                                 float(value) for value in policy_observation[16:19]
                             ],
                             "receiver_joint_positions": [
-                                float(value) for value in policy_observation[85:93]
+                                float(value) for value in policy_observation[86:94]
                             ],
                             "receiver_ee_pose_robot": [
-                                float(value) for value in policy_observation[101:108]
+                                float(value) for value in policy_observation[102:109]
                             ],
                             "receiver_guidance": [
-                                float(value) for value in policy_observation[110:116]
+                                float(value) for value in policy_observation[111:117]
                             ],
                             "exit_target": [
                                 float(value)
@@ -446,6 +448,18 @@ def main() -> int:
                                     torch.tensor([float("nan")]),
                                 )[0]
                             ),
+                            "receiver_curve_rotation_deg": float(
+                                state.get(
+                                    "receiver_curve_rotation_deg",
+                                    torch.tensor([0.0]),
+                                )[0]
+                            ),
+                            "receiver_curve_center_error_m": float(
+                                state.get(
+                                    "receiver_curve_center_error",
+                                    torch.tensor([0.0]),
+                                )[0]
+                            ),
                             "action": [float(value) for value in actions[0]],
                         },
                         sort_keys=True,
@@ -512,6 +526,12 @@ def main() -> int:
                         if pullout:
                             receiver_pull_steps.append(
                                 int(receipt["receiver_pull_steps"])
+                            )
+                            receiver_curve_rotations.append(
+                                float(receipt["receiver_curve_rotation_deg"])
+                            )
+                            receiver_curve_center_errors.append(
+                                float(receipt["receiver_curve_center_error_m"])
                             )
                     else:
                         event_counts.append(int(receipt["event_count"]))
@@ -618,10 +638,16 @@ def main() -> int:
                         "bilateral_force_or_calibrated_geometry_then_receiver_pose_coupling"
                     ),
                     "complete_clearance_per_success": bool(exposed_fractions)
-                    and all(value >= 0.95 for value in exposed_fractions)
-                    and all(value <= 0.0002 for value in embedded_depths),
+                    and all(value >= 0.995 for value in exposed_fractions)
+                    and all(value <= 0.0001 for value in embedded_depths),
                     "receiver_pull_steps_min": min(
                         receiver_pull_steps, default=None
+                    ),
+                    "receiver_curve_rotation_deg_min": min(
+                        receiver_curve_rotations, default=None
+                    ),
+                    "receiver_curve_center_error_m_max": max(
+                        receiver_curve_center_errors, default=None
                     ),
                 }
             )

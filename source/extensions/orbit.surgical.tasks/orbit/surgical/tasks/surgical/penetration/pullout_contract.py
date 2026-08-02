@@ -51,11 +51,13 @@ class PulloutThresholds:
     # Receiver custody must remain stable while the giver retreats 5 mm at the
     # bounded 0.25 mm command limit; only then may the binary jaw open.
     transfer_release_steps: int = 20
-    # At the 0.25 mm command bound this proves a visible 16 mm receiver-owned
-    # pull after handover instead of accepting an already-clear geometry bit.
-    receiver_pull_steps_min: int = 64
-    embedded_arc_clearance_m: float = 0.0002
-    exposed_fraction_clearance: float = 0.95
+    # A 0.5 degree circular step needs roughly 280 steps to rotate the
+    # remaining 78% of a semicircular needle through the right flap.
+    receiver_pull_steps_min: int = 270
+    receiver_curve_rotation_min_deg: float = 135.0
+    receiver_curve_center_error_max_m: float = 0.0015
+    embedded_arc_clearance_m: float = 0.0001
+    exposed_fraction_clearance: float = 0.995
     clearance_steps: int = 10
     force_overshoot_fraction: float = 0.25
 
@@ -78,6 +80,8 @@ class PulloutMeasurement:
     receiver_bilateral_contact: bool
     receiver_custody: bool
     giver_released: bool
+    receiver_curve_rotation_deg: float
+    receiver_curve_center_error_m: float
     target_region_valid: bool
     tissue_contact: bool
     backend_exit_count: int
@@ -189,6 +193,12 @@ def advance_pullout_gate(
         state.hard_failures.add("invalid_giver_regrasp_stage")
     if state.phase >= PulloutPhase.PULL and not measurement.receiver_custody:
         state.hard_failures.add("receiver_custody_loss")
+    if (
+        state.phase >= PulloutPhase.PULL
+        and measurement.receiver_curve_center_error_m
+        > thresholds.receiver_curve_center_error_max_m
+    ):
+        state.hard_failures.add("receiver_cross_surface_extraction")
     if state.failed:
         return state
 
@@ -276,6 +286,8 @@ def advance_pullout_gate(
             measurement.receiver_custody
             and measurement.giver_released
             and state.receiver_pull_steps >= thresholds.receiver_pull_steps_min
+            and measurement.receiver_curve_rotation_deg
+            >= thresholds.receiver_curve_rotation_min_deg
             and measurement.embedded_arc_length_m <= thresholds.embedded_arc_clearance_m
             and measurement.exposed_fraction >= thresholds.exposed_fraction_clearance
         )
@@ -319,6 +331,10 @@ def pullout_success(
         and state.cleared_steps >= thresholds.clearance_steps
         and measurement.receiver_custody
         and measurement.giver_released
+        and measurement.receiver_curve_rotation_deg
+        >= thresholds.receiver_curve_rotation_min_deg
+        and measurement.receiver_curve_center_error_m
+        <= thresholds.receiver_curve_center_error_max_m
         and measurement.embedded_arc_length_m <= thresholds.embedded_arc_clearance_m
         and measurement.exposed_fraction >= thresholds.exposed_fraction_clearance
     )
@@ -344,6 +360,8 @@ class PulloutReceipt:
     exposed_arc_length_m: float
     receiver_contact_steps: int
     receiver_pull_steps: int
+    receiver_curve_rotation_deg: float
+    receiver_curve_center_error_m: float
     receiver_only_clearance_steps: int
     phase_sequence: tuple[str, ...]
     backend_revision: str

@@ -344,6 +344,7 @@ class ThroughPunctureObservationsCfg:
         phase = ObsTerm(func=mdp.through_puncture_phase)
         through_progress = ObsTerm(func=mdp.through_puncture_progress)
         exit_delta = ObsTerm(func=mdp.through_exit_delta)
+        drive_rotation = ObsTerm(func=mdp.through_drive_rotation)
 
     @configclass
     class CriticCfg(PolicyCfg):
