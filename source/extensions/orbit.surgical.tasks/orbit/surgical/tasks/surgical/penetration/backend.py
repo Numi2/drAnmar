@@ -52,6 +52,7 @@ class TissueEntrySceneState:
     surface_displacement_m: float
     local_strain: float
     lateral_displacement_m: tuple[float, float]
+    contact_position_m: tuple[float, float, float]
     finite: bool
 
 
@@ -62,6 +63,7 @@ class _SceneState:
     surface_displacement_m: float = 0.0
     anchor_xy: tuple[float, float] | None = None
     lateral_displacement_m: tuple[float, float] = (0.0, 0.0)
+    contact_position_m: tuple[float, float, float] = (0.0, 0.0, 0.012)
     finite: bool = True
 
 
@@ -148,6 +150,7 @@ class DrAnmarNativeTissueEntryBackend:
                 surface_displacement_m=scene.surface_displacement_m,
                 local_strain=scene.surface_displacement_m / self.tissue_thickness_m,
                 lateral_displacement_m=scene.lateral_displacement_m,
+                contact_position_m=scene.contact_position_m,
                 finite=scene.finite,
             )
             for scene in self._scenes
@@ -263,6 +266,7 @@ class DrAnmarNativeTissueEntryBackend:
                 scene.surface_displacement_m = 0.0
                 scene.anchor_xy = None
                 scene.lateral_displacement_m = (0.0, 0.0)
+                scene.contact_position_m = (0.0, 0.0, 0.012)
 
             if scene.punctured:
                 contact_position, contact_velocity, lever_arm = self._deepest_arc_contact(arc)
@@ -271,6 +275,7 @@ class DrAnmarNativeTissueEntryBackend:
                 contact_velocity = tip.linear_velocity
                 lever_arm = (0.0, 0.0, 0.0)
             indentation = max(0.0, self.surface_z_m - contact_position[2])
+            scene.contact_position_m = contact_position
             target_displacement = min(indentation, self.tissue_thickness_m)
             scene.surface_displacement_m += alpha * (
                 target_displacement - scene.surface_displacement_m

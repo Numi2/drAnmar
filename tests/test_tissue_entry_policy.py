@@ -589,6 +589,25 @@ def test_right_fem_flap_has_bounded_exit_tenting_patch():
     assert "positions[..., 2] + exit_lift.unsqueeze(-1) * falloff" in state
 
 
+def test_fem_tract_load_stretches_and_recoils_through_free_nodes():
+    backend = (TASK_ROOT / "backend.py").read_text(encoding="utf-8")
+    state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
+    left = (ROOT / "assets/dr_anmar/tissue/DrAnmarSuturableTissue.left.tet.usda").read_text(
+        encoding="utf-8"
+    )
+    right = (ROOT / "assets/dr_anmar/tissue/DrAnmarSuturableTissue.right.tet.usda").read_text(
+        encoding="utf-8"
+    )
+    assert "contact_position_m" in backend
+    assert "patch_radius_m = 0.008" in state
+    assert "tract_displacement_max_m = 0.0035" in state
+    assert "tract_lateral_displacement_max_m = 0.002" in state
+    assert "lateral_displacement.unsqueeze(1) * falloff.unsqueeze(-1)" in state
+    for asset in (left, right):
+        assert "float omniphysics:youngsModulus = 80000" in asset
+        assert "float physxDeformableMaterial:elasticityDamping = 0.08" in asset
+
+
 def test_whole_psm_link_tissue_contacts_are_authoritative():
     scene = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
     pullout = (TASK_ROOT / "pullout_env_cfg.py").read_text(encoding="utf-8")
@@ -771,7 +790,7 @@ def test_tissue_blocks_psms_but_filters_only_the_needle_pair():
     assert "reset_and_anchor_tissue_fem" in events
     assert "TISSUE_OUTER_ANCHOR_WIDTH_M = 0.004" in events
     assert "def _couple_fem_contact_patch(" in state
-    assert "patch_radius_m = 0.003" in state
+    assert "patch_radius_m = 0.008" in state
     assert "item.surface_displacement_m" in state
     assert "contact_patch" in state
     assert "giver_tip_tissue_contact" in penetration

@@ -70,21 +70,23 @@ def _couple_fem_contact_patch(
     env: ManagerBasedRLEnv,
     target: torch.Tensor,
     tip_position: torch.Tensor,
+    tissue_center: torch.Tensor,
     tissue_state: tuple[Any, ...],
     punctured: list[bool],
 ) -> None:
     """Drive a bounded FEM surface patch from authoritative tip indentation.
 
     PhysX 6 does not permit the collision-free tract needle to cut a volume
-    mesh. Before the puncture event, constrain only the local top-surface
-    contact patch to the backend's measured displacement. Surrounding nodes
-    remain dynamic and carry the deformation through FEM. At puncture the
-    patch is released while the permanent outer fixture stays constrained.
+    mesh. Constrain only a small moving surface patch at the backend-owned
+    tip/arc contact point. Surrounding nodes remain dynamic, stretching and
+    recoiling through FEM while the permanent outer fixture stays constrained.
     """
 
-    patch_radius_m = 0.003
+    patch_radius_m = 0.008
     exit_influence_depth_m = 0.004
     exit_lift_max_m = 0.0012
+    tract_displacement_max_m = 0.0035
+    tract_lateral_displacement_max_m = 0.002
     top_band_m = 0.0006
     outer_anchor_width_m = 0.004
     for asset_name, flap_side in (
@@ -113,6 +115,24 @@ def _couple_fem_contact_patch(
         top_z = positions[..., 2].amax(dim=1, keepdim=True)
         top_surface = positions[..., 2] >= top_z - top_band_m
         punctured_mask = torch.tensor(punctured, device=env.device)
+        contact_position = tissue_center + torch.tensor(
+            [item.contact_position_m for item in tissue_state],
+            device=env.device,
+            dtype=positions.dtype,
+        )
+        displacement = torch.tensor(
+            [item.surface_displacement_m for item in tissue_state],
+            device=env.device,
+            dtype=positions.dtype,
+        )
+        lateral_displacement = torch.tensor(
+            [item.lateral_displacement_m for item in tissue_state],
+            device=env.device,
+            dtype=positions.dtype,
+        ).clamp(
+            min=-tract_lateral_displacement_max_m,
+            max=tract_lateral_displacement_max_m,
+        )
         exit_event_count = torch.tensor(
             [getattr(item, "exit_event_count", 0) for item in tissue_state],
             device=env.device,
@@ -128,21 +148,22 @@ def _couple_fem_contact_patch(
             & (exit_vertical_distance < exit_influence_depth_m)
             & (exit_event_count <= 1)
         )
+        contact_over_flap = (contact_position[:, 0] >= x.amin(dim=1)) & (
+            contact_position[:, 0] <= x.amax(dim=1)
+        )
+        tract_contact_active = punctured_mask & contact_over_flap & (displacement > 0.0)
+        indentation_center = torch.where(
+            tract_contact_active.unsqueeze(-1), contact_position[:, :2], target[:, :2]
+        )
         patch_center = torch.where(
-            exit_contact_active.unsqueeze(-1), tip_position[:, :2], target[:, :2]
+            exit_contact_active.unsqueeze(-1), tip_position[:, :2], indentation_center
         )
         lateral_delta = positions[..., :2] - patch_center[:, None, :]
         radius = torch.linalg.vector_norm(lateral_delta, dim=-1)
         falloff = torch.clamp(1.0 - radius / patch_radius_m, min=0.0) ** 2
-        displacement = torch.tensor(
-            [item.surface_displacement_m for item in tissue_state],
-            device=env.device,
-            dtype=positions.dtype,
-        )
         contact_active = (
-            active_flap
-            & ~punctured_mask
-            & (displacement > 0.0)
+            (active_flap & ~punctured_mask & (displacement > 0.0))
+            | tract_contact_active
         )
         contact_patch = (
             top_surface
@@ -152,8 +173,16 @@ def _couple_fem_contact_patch(
         )
         targets[..., 2] = torch.where(
             contact_patch,
-            positions[..., 2] - displacement.unsqueeze(-1) * falloff,
+            positions[..., 2]
+            - torch.clamp(displacement, max=tract_displacement_max_m).unsqueeze(-1)
+            * falloff,
             targets[..., 2],
+        )
+        targets[..., :2] = torch.where(
+            contact_patch.unsqueeze(-1),
+            positions[..., :2]
+            + lateral_displacement.unsqueeze(1) * falloff.unsqueeze(-1),
+            targets[..., :2],
         )
         # The tract needle remains collision-free so it can pass a deformable
         # volume without PhysX interpreting the shaft as an uncut solid.  Make
@@ -413,7 +442,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     adapter = _adapter(env)
     coupling = adapter.step(tip_poses, arc_poses, punctured, dt_s=0.02)
     tissue_state = adapter.scene_state
-    _couple_fem_contact_patch(env, target, tip_pos, tissue_state, punctured)
+    _couple_fem_contact_patch(
+        env, target, tip_pos, tissue_center, tissue_state, punctured
+    )
     raw_wrench = torch.tensor(
         [(*item.force_n, *item.torque_nm) for item in coupling],
         device=env.device,

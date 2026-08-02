@@ -89,9 +89,9 @@ def Xform "DrAnmarSuturableTissueTet" (
         float omniphysics:density = 1050
         float omniphysics:dynamicFriction = 0.3
         float omniphysics:staticFriction = 0.42
-        float omniphysics:youngsModulus = 180000
+        float omniphysics:youngsModulus = 80000
         float omniphysics:poissonsRatio = 0.47
-        float physxDeformableMaterial:elasticityDamping = 0.2
+        float physxDeformableMaterial:elasticityDamping = 0.08
     }
 
     float omniphysics:mass = 0.0091985508072

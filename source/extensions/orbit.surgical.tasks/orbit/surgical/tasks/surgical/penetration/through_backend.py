@@ -36,6 +36,8 @@ class ThroughTissueSceneState:
     exit_event_count: int
     surface_displacement_m: float
     local_strain: float
+    contact_position_m: tuple[float, float, float]
+    lateral_displacement_m: tuple[float, float]
     embedded_arc_length_m: float
     exposed_arc_length_m: float
     exposed_fraction: float
@@ -100,6 +102,8 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
                 exit_event_count=through.exit_event_count,
                 surface_displacement_m=entry.surface_displacement_m,
                 local_strain=entry.local_strain,
+                contact_position_m=entry.contact_position_m,
+                lateral_displacement_m=entry.lateral_displacement_m,
                 embedded_arc_length_m=through.embedded_arc_length_m,
                 exposed_arc_length_m=through.exposed_arc_length_m,
                 exposed_fraction=through.exposed_arc_length_m / total_length,
