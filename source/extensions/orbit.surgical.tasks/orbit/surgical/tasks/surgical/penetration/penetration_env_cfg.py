@@ -52,11 +52,24 @@ class PenetrationSceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Robot/.*",
         history_length=2,
     )
+    giver_tip_tissue_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/psm_tool_tip_link",
+        history_length=2,
+    )
+    giver_jaw_1_tissue_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper1_link",
+        history_length=2,
+    )
+    giver_jaw_2_tissue_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper2_link",
+        history_length=2,
+    )
     tissue_left = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/TissueLeft",
         init_state=AssetBaseCfg.InitialStateCfg(pos=(-0.0185, 0.0, 0.05)),
         spawn=sim_utils.CuboidCfg(
             size=(0.033, 0.045, 0.006),
+            collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
             visual_material=sim_utils.PreviewSurfaceCfg(
                 diffuse_color=(0.58, 0.18, 0.16), roughness=0.58
             ),
@@ -67,6 +80,7 @@ class PenetrationSceneCfg(InteractiveSceneCfg):
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0185, 0.0, 0.05)),
         spawn=sim_utils.CuboidCfg(
             size=(0.033, 0.045, 0.006),
+            collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
             visual_material=sim_utils.PreviewSurfaceCfg(
                 diffuse_color=(0.58, 0.18, 0.16), roughness=0.58
             ),
@@ -99,8 +113,10 @@ class CommandsCfg:
         resampling_time_range=(30.0, 30.0),
         debug_vis=False,
         ranges=mdp.UniformPoseCommandCfg.Ranges(
-            pos_x=(-0.00608844038348, -0.00608844038348),
-            pos_y=(-0.01046408122182, -0.01046408122182),
+            # Compensate the giver's +20 mm world-Z safety lift in its fixed
+            # root frame so the physical entry target remains unchanged.
+            pos_x=(-0.01572351386552, -0.01572351386552),
+            pos_y=(0.00706205237818, 0.00706205237818),
             pos_z=(-0.0730, -0.0730),
             roll=(0.0, 0.0),
             pitch=(0.0, 0.0),
@@ -187,7 +203,7 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
             prim_path="{ENV_REGEX_NS}/Robot",
             spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
-                pos=(-0.01037645055381, -0.0730, 0.04676338424909),
+                pos=(-0.01037645055381, -0.0730, 0.06676338424909),
                 rot=(0.175850305627, -0.684891721377, 0.684891721377, 0.175850305627),
             ),
         )

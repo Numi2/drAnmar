@@ -53,6 +53,7 @@ class ThroughPunctureMeasurement:
     tissue_contact: bool
     solver_finite: bool = True
     unintended_jaw_contact: bool = False
+    unintended_robot_contact: bool = False
     unintended_surface_crossing: bool = False
     backend_exit_count: int = 0
 
@@ -108,6 +109,8 @@ def advance_through_puncture_gate(
         state.hard_failures.add("grasp_loss")
     if measurement.unintended_jaw_contact:
         state.hard_failures.add("unintended_jaw_tissue_contact")
+    if measurement.unintended_robot_contact:
+        state.hard_failures.add("unintended_robot_tissue_contact")
     if measurement.unintended_surface_crossing:
         state.hard_failures.add("unintended_surface_crossing")
     if (

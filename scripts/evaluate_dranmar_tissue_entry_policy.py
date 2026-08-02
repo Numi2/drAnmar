@@ -189,6 +189,7 @@ def main() -> int:
             ):
                 state = getattr(env.unwrapped, "_dr_anmar_penetration_state", {})
                 measurement = state.get("measurement", {})
+                policy_observation = observation["policy"][0]
                 print(
                     "[DR_ANMAR_TISSUE_TRACE] "
                     + json.dumps(
@@ -213,6 +214,15 @@ def main() -> int:
                                     "tip_pos", torch.zeros((1, 3))
                                 )[0]
                             ],
+                            "needle_pos_robot": [
+                                float(value) for value in policy_observation[23:26]
+                            ],
+                            "entry_pos_robot": [
+                                float(value) for value in policy_observation[36:39]
+                            ],
+                            "surface_normal_robot": [
+                                float(value) for value in policy_observation[43:46]
+                            ],
                             "exit_target": [
                                 float(value)
                                 for value in measurement.get(
@@ -236,6 +246,18 @@ def main() -> int:
                                     "receiver_jaw_forces", torch.zeros((1, 2))
                                 )[0]
                             ],
+                            "giver_tissue_force_n": float(
+                                measurement.get(
+                                    "giver_tissue_force",
+                                    torch.tensor([float("nan")]),
+                                )[0]
+                            ),
+                            "receiver_tissue_force_n": float(
+                                measurement.get(
+                                    "receiver_tissue_force",
+                                    torch.tensor([float("nan")]),
+                                )[0]
+                            ),
                             "custody_owner": int(
                                 state.get("custody_owner", torch.tensor([-1]))[0]
                             ),
@@ -261,6 +283,9 @@ def main() -> int:
             success_receipts = getattr(env.unwrapped, receipt_attribute, None)
             hard_receipts = getattr(
                 env.unwrapped, "_dr_anmar_last_hard_failures", None
+            )
+            hard_evidence = getattr(
+                env.unwrapped, "_dr_anmar_last_hard_failure_evidence", None
             )
             for env_index in torch.nonzero(dones, as_tuple=False).squeeze(-1).tolist():
                 if completed >= args.episodes:
@@ -300,6 +325,17 @@ def main() -> int:
                 elif bool(hard_mask[env_index]):
                     hard_failures += 1
                     flags = hard_receipts[env_index] if hard_receipts else ("unknown",)
+                    if hard_evidence:
+                        print(
+                            "[DR_ANMAR_TISSUE_HARD_FAILURE] "
+                            + json.dumps(
+                                {
+                                    "flags": list(flags),
+                                    **hard_evidence[env_index],
+                                },
+                                sort_keys=True,
+                            )
+                        )
                     for flag in flags:
                         failure_flags[flag] = failure_flags.get(flag, 0) + 1
                 elif bool(timeout_mask[env_index]):

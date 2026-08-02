@@ -74,6 +74,7 @@ class PulloutMeasurement:
     backend_exit_count: int
     solver_finite: bool = True
     unintended_jaw_contact: bool = False
+    unintended_robot_contact: bool = False
     unintended_surface_crossing: bool = False
 
 
@@ -139,6 +140,8 @@ def advance_pullout_gate(
         state.hard_failures.add("off_target_contact")
     if measurement.unintended_jaw_contact:
         state.hard_failures.add("unintended_jaw_tissue_contact")
+    if measurement.unintended_robot_contact:
+        state.hard_failures.add("unintended_robot_tissue_contact")
     if measurement.unintended_surface_crossing:
         state.hard_failures.add("unintended_surface_crossing")
     if (

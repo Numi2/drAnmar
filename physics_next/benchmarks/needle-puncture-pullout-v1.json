@@ -2,6 +2,8 @@
   "schema": "dr.anmar.needle-puncture-pullout-benchmark.v1",
   "task": "DrAnmar-Puncture-Pullout-Tissue-Needle-PSM-IK-Rel-v0",
   "scope": "curved_needle_entry_exit_receiver_transfer_and_complete_clearance",
+  "status": "blocked_pending_collision_enabled_success",
+  "promotion_eligible": false,
   "engineering_acceptance": {
     "entry_event_count": 1,
     "exit_event_count": 1,

@@ -33,6 +33,53 @@ NEEDLE_POLICY_GRASP_QUAT_XYZW = (0.50904141575, 0.860742027004, 0.0, 0.0)
 PSM_TOOL_TIP_TO_JAW_COLLISION_M = (0.0, 0.0, 0.0)
 PENETRATION_GRIPPER_CLOSE_RAD = float(PSM_GRIPPER_PROFILE["close_rad"])
 PENETRATION_GRIPPER_OPEN_RAD = float(PSM_GRIPPER_PROFILE["open_rad"])
+
+
+def configure_tissue_collision_filter(env: ManagerBasedRLEnv) -> None:
+    """Filter needle/tissue rigid contact while preserving PSM/tissue contact."""
+
+    if getattr(env, "_dr_anmar_tissue_collision_filter_configured", False):
+        return
+    import omni.usd
+    from pxr import Sdf, Usd, UsdPhysics
+
+    stage = omni.usd.get_context().get_stage()
+    for env_index in range(env.num_envs):
+        env_path = f"/World/envs/env_{env_index}"
+        tissue_group_path = f"{env_path}/TissueCollisionGroup"
+        needle_group_path = f"{env_path}/NeedleCollisionGroup"
+        tissue_group = UsdPhysics.CollisionGroup.Define(
+            stage, Sdf.Path(tissue_group_path)
+        )
+        tissue_colliders = Usd.CollectionAPI.Apply(
+            tissue_group.GetPrim(), "colliders"
+        )
+        tissue_colliders.CreateExpansionRuleAttr().Set(Usd.Tokens.expandPrims)
+        tissue_colliders.CreateIncludesRel().AddTarget(
+            Sdf.Path(f"{env_path}/TissueLeft")
+        )
+        tissue_colliders.CreateIncludesRel().AddTarget(
+            Sdf.Path(f"{env_path}/TissueRight")
+        )
+        needle_group = UsdPhysics.CollisionGroup.Define(
+            stage, Sdf.Path(needle_group_path)
+        )
+        needle_colliders = Usd.CollectionAPI.Apply(
+            needle_group.GetPrim(), "colliders"
+        )
+        needle_colliders.CreateExpansionRuleAttr().Set(Usd.Tokens.expandPrims)
+        needle_colliders.CreateIncludesRel().AddTarget(
+            Sdf.Path(f"{env_path}/Needle")
+        )
+        tissue_group.CreateFilteredGroupsRel().AddTarget(
+            Sdf.Path(needle_group_path)
+        )
+        needle_group.CreateFilteredGroupsRel().AddTarget(
+            Sdf.Path(tissue_group_path)
+        )
+    env._dr_anmar_tissue_collision_filter_configured = True
+
+
 def seat_pregrasped_needle(env: ManagerBasedRLEnv, env_ids: torch.Tensor) -> None:
     """Place the needle from current link kinematics."""
 
@@ -100,6 +147,8 @@ def reset_penetration_evidence(
     fixed_domain: bool = False,
 ) -> None:
     """Clear monotonic evidence and sample the documented tissue ranges."""
+
+    configure_tissue_collision_filter(env)
 
     if env_ids is None:
         env_ids = torch.arange(env.num_envs, device=env.device)

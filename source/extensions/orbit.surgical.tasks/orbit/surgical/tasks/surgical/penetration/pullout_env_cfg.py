@@ -7,9 +7,6 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 
-from orbit.surgical.assets import ORBITSURGICAL_ASSETS_DATA_DIR
-
-import isaaclab.sim as sim_utils
 from isaaclab.assets import ArticulationCfg
 from isaaclab.controllers.differential_ik_cfg import DifferentialIKControllerCfg
 from isaaclab.envs.mdp.actions.actions_cfg import (
@@ -53,6 +50,18 @@ class PulloutSceneCfg(PenetrationSceneCfg):
     receiver_jaw_2_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_gripper2_link",
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
+        history_length=2,
+    )
+    receiver_tip_tissue_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_tip_link",
+        history_length=2,
+    )
+    receiver_jaw_1_tissue_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_gripper1_link",
+        history_length=2,
+    )
+    receiver_jaw_2_tissue_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_gripper2_link",
         history_length=2,
     )
 
@@ -123,7 +132,10 @@ class PulloutEnvCfg(ThroughPunctureEnvCfg):
             prim_path="{ENV_REGEX_NS}/RobotReceiver",
             spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
-                pos=(0.050, -0.0730, 0.04676338424909),
+                # Park fully lateral to the 70 mm-wide tissue span. The old
+                # 50 mm root placed receiver jaw 2 inside the right slab at
+                # reset and generated a measured 161.9 N contact.
+                pos=(0.080, -0.0730, 0.04676338424909),
                 rot=(0.175850305627, -0.684891721377, 0.684891721377, 0.175850305627),
             ),
         )
@@ -142,20 +154,10 @@ class PulloutEnvCfg(ThroughPunctureEnvCfg):
             }
         )
         self.scene.robot_receiver = receiver
-        self.scene.needle.spawn.usd_path = (
-            f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/SurgicalClosure/Needle/"
-            "dranmar_needle.usda"
-        )
-        # Tissue interaction is owned by the native force/event backend. The
-        # visible cuboids must not add a second rigid contact law that blocks
-        # the curved needle, while needle collisions remain enabled for both
-        # PSM jaw contact sensors.
-        self.scene.tissue_left.spawn.collision_props = sim_utils.CollisionPropertiesCfg(
-            collision_enabled=False
-        )
-        self.scene.tissue_right.spawn.collision_props = sim_utils.CollisionPropertiesCfg(
-            collision_enabled=False
-        )
+        # Retain the collision-free authored needle proxy inherited from the
+        # entry task. The native backend owns needle/tissue resistance and the
+        # receiver uses the disclosed sustained geometry custody fallback.
+        # Tissue itself stays collision-enabled, so both PSMs remain blocked.
         self.actions.giver_gripper_action = BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["psm_tool_gripper.*_joint"],
@@ -205,7 +207,7 @@ class PulloutEnvCfg(ThroughPunctureEnvCfg):
                 )
             ],
         )
-        self.episode_length_s = 45.0
+        self.episode_length_s = 60.0
 
 
 @configclass

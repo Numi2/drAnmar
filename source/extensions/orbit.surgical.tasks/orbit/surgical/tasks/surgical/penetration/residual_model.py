@@ -107,6 +107,18 @@ class PenetrationAnalyticController(nn.Module):
             translation_delta_m * surface_normal, dim=-1, keepdim=True
         )
         tangential_component = translation_delta_m - surface_normal * normal_component
+        tangential_error = torch.linalg.vector_norm(
+            tangential_component, dim=-1, keepdim=True
+        )
+        tangential_component = torch.where(
+            ((phase >= 2).unsqueeze(-1) & (tangential_error <= 0.0009)),
+            torch.zeros_like(tangential_component),
+            tangential_component,
+        )
+        tangential_limit_m = 0.00005
+        tangential_component = tangential_component * torch.clamp(
+            tangential_limit_m / tangential_error.clamp_min(1.0e-9), max=1.0
+        )
         normal_limit_m = self.normal_advance_limit * self.translation_scale_m
         bounded_delta_m = tangential_component + surface_normal * normal_component.clamp(
             -normal_limit_m, normal_limit_m
@@ -415,10 +427,6 @@ class PulloutAnalyticController(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.through_controller = ThroughPunctureAnalyticController()
-        # The collision-enabled receiver needle has a tighter closed-loop
-        # response than the entry proxy. A 25 um normal increment prevents
-        # alternating across the 1.5 mm puncture indentation target.
-        self.through_controller.entry_controller.normal_advance_limit = 0.10
 
     def forward(self, raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Pullout expands the previous-action term from 6D to 14D. Rebuild the
@@ -426,12 +434,19 @@ class PulloutAnalyticController(nn.Module):
         through_raw = torch.cat(
             (raw[..., :65], raw[..., 65:71], raw[..., 79:85]), dim=-1
         )
-        # The pullout task uses the collision-enabled authored needle so the
-        # receiver can establish real bilateral jaw contact. Keep the giver at
-        # the 1 mm stand-off until lateral error is inside the entry tolerance;
-        # otherwise the curved shaft can touch tissue before the tip is valid.
+        # Keep the giver at stand-off until lateral error is inside the entry
+        # tolerance; otherwise the curved shaft can reach tissue before the tip
+        # is valid. The distal PSM must also lift clear before alignment
+        # rotation, rather than sweeping its jaws through the rigid surface.
+        entry_delta = raw[..., 23:26] - raw[..., 36:39]
+        entry_surface_normal = torch.nn.functional.normalize(
+            raw[..., 43:46], dim=-1
+        )
+        entry_lateral_delta = entry_delta - entry_surface_normal * torch.sum(
+            entry_delta * entry_surface_normal, dim=-1, keepdim=True
+        )
         entry_lateral_error = torch.linalg.vector_norm(
-            (raw[..., 23:26] - raw[..., 36:39])[..., :2], dim=-1
+            entry_lateral_delta, dim=-1
         )
         reported_phase = torch.argmax(through_raw[..., 58:65], dim=-1)
         hold_standoff = (reported_phase <= 2) & (entry_lateral_error > 0.0009)

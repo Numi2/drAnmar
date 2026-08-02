@@ -23,6 +23,21 @@ def hard_safety_failure(env: ManagerBasedRLEnv) -> torch.Tensor:
         env._dr_anmar_last_hard_failures = [
             tuple(sorted(gate.hard_failures)) for gate in state["gates"]
         ]
+        env._dr_anmar_last_hard_failure_evidence = [
+            {
+                "giver_distal_forces_n": [
+                    float(value) for value in state["giver_tissue_forces"][index]
+                ],
+                "receiver_distal_forces_n": [
+                    float(value) for value in state["receiver_tissue_forces"][index]
+                ],
+                "tip_position_m": [
+                    float(value) for value in state["measurement"]["tip_pos"][index]
+                ],
+                "phase": int(state["phase"][index]),
+            }
+            for index in range(env.num_envs)
+        ]
     return result
 
 

@@ -339,6 +339,18 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     jaw_forces = mdp_common.paired_contact_forces(
         env, "jaw_1_needle_contact", "jaw_2_needle_contact"
     )
+    giver_tissue_forces = torch.stack(
+        [
+            mdp_common.contact_force_magnitude(env, sensor_name)
+            for sensor_name in (
+                "giver_tip_tissue_contact",
+                "giver_jaw_1_tissue_contact",
+                "giver_jaw_2_tissue_contact",
+            )
+        ],
+        dim=-1,
+    )
+    giver_tissue_force = giver_tissue_forces.amax(dim=-1)
     grasp_quat = state["grasp_local_quaternion_xyzw"].to(dtype=root_quat.dtype)
     expected_quat = quat_mul(tool_quat, quat_conjugate(grasp_quat))
     grasp_position = state["grasp_local_position_m"].to(dtype=root_pos.dtype)
@@ -429,6 +441,18 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "receiver_jaw_1_needle_contact",
             "receiver_jaw_2_needle_contact",
         )
+        receiver_tissue_forces = torch.stack(
+            [
+                mdp_common.contact_force_magnitude(env, sensor_name)
+                for sensor_name in (
+                    "receiver_tip_tissue_contact",
+                    "receiver_jaw_1_tissue_contact",
+                    "receiver_jaw_2_tissue_contact",
+                )
+            ],
+            dim=-1,
+        )
+        receiver_tissue_force = receiver_tissue_forces.amax(dim=-1)
         receiver_force_contact = torch.all(receiver_jaw_forces > 0.01, dim=-1)
         current_phase = torch.tensor(
             [int(gate.phase) for gate in state["gates"]], device=env.device
@@ -537,6 +561,8 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         giver_released = state["custody_owner"] == 2
     else:
         receiver_jaw_forces = torch.zeros((env.num_envs, 2), device=env.device)
+        receiver_tissue_forces = torch.zeros((env.num_envs, 3), device=env.device)
+        receiver_tissue_force = torch.zeros(env.num_envs, device=env.device)
         receiver_bilateral = torch.zeros(
             env.num_envs, dtype=torch.bool, device=env.device
         )
@@ -550,6 +576,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         )
 
     successes: list[bool] = []
+    unintended_robot_contact = settled & (
+        torch.maximum(giver_tissue_force, receiver_tissue_force) > 0.02
+    )
     for index, gate in enumerate(state["gates"]):
         common = {
             "entry_error_m": float(entry_error[index]),
@@ -563,6 +592,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "tissue_contact": bool(tissue_contact[index]),
             "solver_finite": bool(torch.isfinite(wrench[index]).all()),
             "unintended_jaw_contact": bool(unintended_jaw[index]),
+            "unintended_robot_contact": bool(
+                unintended_robot_contact[index]
+            ),
             "unintended_surface_crossing": bool(
                 not punctured[index]
                 and gated_indentation[index] > thresholds.depth_max_m
@@ -659,6 +691,8 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 "exit_position": exit_position,
                 "receiver_distance": receiver_distance,
                 "receiver_jaw_forces": receiver_jaw_forces,
+                "giver_tissue_force": giver_tissue_force,
+                "receiver_tissue_force": receiver_tissue_force,
                 "target": target,
                 "surface_normal": surface_normal,
                 "tip_pos": tip_pos,
@@ -695,6 +729,10 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "event_count": event_count,
             "exit_event_count": exit_event_count,
             "receiver_jaw_forces": receiver_jaw_forces,
+            "giver_tissue_force": giver_tissue_force,
+            "receiver_tissue_force": receiver_tissue_force,
+            "giver_tissue_forces": giver_tissue_forces,
+            "receiver_tissue_forces": receiver_tissue_forces,
             "receiver_distance": receiver_distance,
             "receiver_bilateral": receiver_bilateral,
             "receiver_guidance": receiver_guidance,

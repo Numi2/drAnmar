@@ -186,6 +186,17 @@ def test_off_target_contact_still_fails_closed():
     assert state.hard_failures == {"off_target_contact"}
 
 
+def test_unintended_robot_tissue_contact_fails_closed():
+    module = _contract()
+    state = module.PunctureGateState(phase=module.PenetrationPhase.INDENT)
+    module.advance_puncture_gate(
+        state,
+        _measurement(module, unintended_robot_contact=True),
+        puncture_force_n=2.0,
+    )
+    assert state.hard_failures == {"unintended_robot_tissue_contact"}
+
+
 def test_force_model_preserves_compression_cutting_sweep_and_shaft_terms():
     module = _contract()
     before = module.needle_tissue_force_components(
@@ -293,6 +304,12 @@ def test_play_task_uses_canonical_fixed_domain_materials():
     events = (TASK_ROOT / "mdp/events.py").read_text(encoding="utf-8")
     assert 'self.events.reset_evidence.params = {"fixed_domain": True}' in config
     assert "state[\"puncture_force_n\"][env_ids] = 2.0" in events
+
+
+def test_giver_reset_lifts_base_and_preserves_world_entry_goal():
+    config = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
+    assert "pos=(-0.01037645055381, -0.0730, 0.06676338424909)" in config
+    assert "pos_x=(-0.01572351386552, -0.01572351386552)" in config
 
 
 def test_entry_proxy_is_static_and_table_keeps_handover_clearance():
@@ -564,10 +581,32 @@ def test_pullout_task_has_dual_psm_controller_and_receipt_contract():
     assert "DrAnmar-Puncture-Pullout-Tissue-Needle-PSM-IK-Rel-v0" in registration
     assert 'asset_name="robot_receiver"' in scene
     assert "receiver_jaw_1_needle_contact" in scene
+    assert "receiver_tip_tissue_contact" in scene
+    assert "pos=(0.080, -0.0730, 0.04676338424909)" in scene
     assert "class PulloutAnalyticController" in controller
+    assert "normal_advance_limit = 0.10" not in controller
+    assert "entry_lateral_delta" in controller
+    assert "tangential_error <= 0.0009" in controller
+    assert "tangential_limit_m = 0.00005" in controller
     assert fields["custody_model"].default == (
         "bilateral_force_or_calibrated_geometry_then_receiver_pose_coupling"
     )
+
+
+def test_tissue_blocks_psms_but_filters_only_the_needle_pair():
+    penetration = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
+    pullout = (TASK_ROOT / "pullout_env_cfg.py").read_text(encoding="utf-8")
+    events = (TASK_ROOT / "mdp/events.py").read_text(encoding="utf-8")
+    state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
+    assert penetration.count("collision_enabled=True") >= 2
+    assert "giver_tip_tissue_contact" in penetration
+    assert "collision_enabled=False" not in pullout
+    assert "dranmar_needle.usda" not in pullout
+    assert "configure_tissue_collision_filter(env)" in events
+    assert 'Sdf.Path(f"{env_path}/Needle")' in events
+    assert 'Sdf.Path(f"{env_path}/TissueLeft")' in events
+    assert 'Sdf.Path(f"{env_path}/TissueRight")' in events
+    assert "unintended_robot_contact" in state
 
 
 def test_pullout_benchmark_requires_receiver_only_complete_clearance():
