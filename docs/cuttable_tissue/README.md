@@ -247,6 +247,13 @@ from intact vector traction to irreversible, unilateral wound compression and
 two-sided collision. A bounded local wedge traction represents blade thickness
 without pulling the entire wound open.
 
+The incision intersects both side faces through 2.5 mm half-width anchor
+exclusion corridors. Cohesive nodes inside those corridors are mechanically
+free; surrounding side-face nodes remain anchored and continue carrying the
+coupon support. Qualification requires every interface pair at both side faces
+to release and a measured positive normal gap at each intersection. This is a
+mechanics gate, not a render-only opening.
+
 The retained run advances 64 blade segments and 2,992 quasi-static relaxation
 steps. It releases all 85 interface pairs through 1,248 blade-owned fracture
 events, with zero release ahead of the blade. Repeating the path
@@ -254,9 +261,12 @@ creates zero additional events. A crossing path creates 672 additional
 persistent events in 48 intersection cells. Subcritical and stationary sweeps
 create none.
 
-The live FEM remains finite with zero inversions, a 0.822 minimum Jacobian,
-0.065 mm mean relaxed wound opening, complete two-sided collision, and zero
-probe crossing. Cutting resistance from the separately audited fracture,
+The live FEM remains finite with zero inversions, a 0.848 minimum Jacobian,
+0.724 mm mean relaxed wound opening, complete two-sided collision, and zero
+probe crossing. All five entry and five exit boundary pairs release. Their
+relaxed normal openings are 0.316 mm and 0.136 mm respectively, while 30
+surrounding anchor nodes remain fixed. Cutting resistance from the separately
+audited fracture,
 adhesion, wear, viscous, and friction work channels peaks at approximately
 0.092 N.
 
@@ -273,10 +283,11 @@ edge rather than tolerated at a cell-width offset.
 
 The identical incremental release and wedge mechanics also qualified under
 Warp on Gilgamesh's RTX 4090. CUDA reproduced the CPU event trace exactly:
-1,248 fracture events, all 85 interface-pair releases, zero inversions, a 0.820
-minimum Jacobian, and 0.063 mm mean relaxed opening. CPU/GPU mean-gap difference
-was 1.28 micrometres. Five fresh CUDA replays all qualified with identical
-event traces; their minimum-Jacobian envelope was 1.27e-5 wide. The raw receipt,
+1,248 fracture events, all 85 interface-pair releases, zero inversions, a 0.848
+minimum Jacobian, and 0.724 mm mean relaxed opening. CPU/GPU mean-gap difference
+was 1.14 nanometres. Five fresh CUDA replays all qualified with identical
+event traces; entry opening remained between 0.316370 and 0.316392 mm and exit
+opening between 0.135802 and 0.135822 mm. The raw receipt,
 source/profile hashes, hardware/runtime, 30-test result, replay receipts and
 metric envelopes are frozen in
 `moving-scalpel-cut-cuda-promotion-lock.json`.
@@ -290,7 +301,9 @@ Warp CUDA trajectory. The blade pose is the same pose used by the fracture
 authority. Ahead of the edge, latent interface pairs remain mechanically tied
 and tissue-coloured. Behind it, energy-qualified pairs release, deform, and
 become the dark collidable wound sheets. The final relaxation frames remove the
-blade and retain the persistent incision.
+blade and retain the persistent incision. The visible side-face split is
+driven by measured endpoint separation; the renderer refuses to emit the
+artifact if either boundary-opening mechanics gate fails.
 
 The animation uses physical node positions with no displacement exaggeration.
 Its receipt binds the GIF hash, renderer revision, CPU-matching event trace,
