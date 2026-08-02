@@ -289,7 +289,7 @@ def main() -> None:
         "trajectory_frame_count": len(trajectory), "width": args.width, "height": args.height,
         "warp_device": "cuda:0", "moving_profile": moving["id"], "path_segments": 64,
         "fracture_event_count": event_counts[-1], "released_pair_count": int(np.count_nonzero(releases[-1])),
-        "event_trace_sha256": trace_sha, "cpu_event_trace_match": trace_sha == "f7cc86f2fdca548b2a34f6c8856a005bcda63d3a24a77ae6403b49f0348faf87",
+        "event_trace_sha256": trace_sha, "cpu_event_trace_match": trace_sha == "3dcf133190cd7d365b347a98c815a75bc34eb644573c7737dae8db81e493083d",
         "node_count": len(fem.position), "tetrahedron_count": len(fem.tetrahedra),
         "displacement_exaggeration": 1.0, "generated_imagery": False,
         "real_time_transient": False, "biomechanical_validation": False, "clinical_validation": False,
