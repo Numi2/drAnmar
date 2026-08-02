@@ -19,11 +19,11 @@ from pathlib import Path
 from isaaclab.app import AppLauncher
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_ASSET = (
     REPOSITORY_ROOT
     / "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle"
-    / "dranmar_needle_thread_fem.usda"
+    / "ExperimentalSurfaceFEM/dranmar_needle_thread_fem.usda"
 )
 
 parser = argparse.ArgumentParser()

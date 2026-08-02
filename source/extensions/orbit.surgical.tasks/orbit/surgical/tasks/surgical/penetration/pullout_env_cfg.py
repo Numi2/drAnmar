@@ -44,12 +44,12 @@ class PulloutSceneCfg(PenetrationSceneCfg):
 
     receiver_jaw_1_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_gripper1_link",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"],
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
         history_length=2,
     )
     receiver_jaw_2_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_gripper2_link",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"],
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
         history_length=2,
     )
     receiver_all_links_tissue_contact = ContactSensorCfg(

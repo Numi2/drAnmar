@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
+import os
 from pathlib import Path
 
 from orbit.surgical.assets import ORBITSURGICAL_ASSETS_DATA_DIR
@@ -43,6 +44,35 @@ def _suturable_tissue_asset(filename: str) -> str:
     raise FileNotFoundError(f"DrAnmar suturable tissue asset is missing: {filename}")
 
 
+def _needle_asset(filename: str) -> str:
+    """Resolve the checked-in DrAnmar needle asset."""
+
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "source/extensions/orbit.surgical.assets/data/Props/"
+        candidate = candidate / "SurgicalClosure/Needle" / filename
+        if candidate.is_file():
+            return str(candidate)
+    raise FileNotFoundError(f"DrAnmar needle asset is missing: {filename}")
+
+
+def _native_white_suture_asset() -> str:
+    """Resolve the pinned white SoftMimicGen strand used by Operation Bench."""
+
+    configured = os.environ.get("DR_ANMAR_SOFTMIMICGEN_ROOT")
+    roots = [
+        Path(configured).expanduser() if configured else None,
+        Path.home() / "dr_anmar/native-suture-runtime/SoftMimicGen",
+        Path.home() / ".local/share/dr-anmar/native-suture-runtime/SoftMimicGen",
+    ]
+    relative = Path("source/softmimicgen_assets/data/Props/Rope/Rope.usd")
+    for root in roots:
+        if root is not None and (root / relative).is_file():
+            return str((root / relative).resolve())
+    raise FileNotFoundError(
+        "Pinned SoftMimicGen Rope.usd is missing; set DR_ANMAR_SOFTMIMICGEN_ROOT"
+    )
+
+
 def _make_volume_tissue_flap_cfg(*, side: str) -> DeformableObjectCfg:
     """Create one connected, surface-rendered PhysX FEM wound flap."""
 
@@ -62,18 +92,18 @@ def _make_volume_tissue_flap_cfg(*, side: str) -> DeformableObjectCfg:
 @configclass
 class PenetrationSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = MISSING
-    needle: RigidObjectCfg = MISSING
     needle_thread: DeformableObjectCfg = MISSING
+    needle: RigidObjectCfg = MISSING
     ee_frame: FrameTransformerCfg = MISSING
 
     jaw_1_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper1_link",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"],
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
         history_length=2,
     )
     jaw_2_needle_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper2_link",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"],
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
         history_length=2,
     )
     giver_all_links_tissue_contact = ContactSensorCfg(
@@ -184,7 +214,17 @@ class EventCfg:
     reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
     reset_tissue_fem = EventTerm(func=mdp.reset_and_anchor_tissue_fem, mode="reset")
     reset_pregrasp = EventTerm(func=mdp.reset_pregrasped_needle, mode="reset")
+    reset_suture_swage = EventTerm(
+        func=mdp.anchor_native_suture_swage,
+        mode="reset",
+        params={"initialize": True},
+    )
     reset_evidence = EventTerm(func=mdp.reset_penetration_evidence, mode="reset")
+    track_suture_swage = EventTerm(
+        func=mdp.anchor_native_suture_swage,
+        mode="interval",
+        interval_range_s=(0.02, 0.02),
+    )
 
 
 @configclass
@@ -262,39 +302,214 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
             }
         )
         self.scene.robot = robot
+        # Reuse the white native PhysX deformable strand already integrated by
+        # the Operation Bench.  Its initial endpoint is aligned to the scaled
+        # needle swage; the reset event rigidly carries every strand node with
+        # the needle when the authored pregrasp is seated.
+        thread_spawn = UsdFileCfg(
+            usd_path=_native_white_suture_asset(),
+        )
+        source_thread_spawn = thread_spawn.func
+
+        def spawn_white_low_friction_suture(
+            prim_path: str,
+            cfg: UsdFileCfg,
+            translation=None,
+            orientation=None,
+            **kwargs,
+        ):
+            root_prim = source_thread_spawn(
+                prim_path,
+                cfg,
+                translation=translation,
+                orientation=orientation,
+                **kwargs,
+            )
+            import omni.usd
+            from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
+
+            stage = omni.usd.get_context().get_stage()
+            root_path = str(root_prim.GetPath())
+            material_prim = stage.GetPrimAtPath(f"{root_path}/PhysicsMaterial")
+            for schema in (
+                "OmniPhysicsBaseMaterialAPI",
+                "OmniPhysicsDeformableMaterialAPI",
+                "PhysxDeformableMaterialAPI",
+            ):
+                if not material_prim.ApplyAPI(schema):
+                    raise RuntimeError(f"Cannot apply {schema} to native suture")
+            for name, value in (
+                ("omniphysics:density", 1000.0),
+                ("omniphysics:staticFriction", 0.02),
+                ("omniphysics:dynamicFriction", 0.01),
+                ("omniphysics:youngsModulus", 50_000_000.0),
+                ("omniphysics:poissonsRatio", 0.45),
+                ("physxDeformableMaterial:elasticityDamping", 0.01),
+            ):
+                attribute = material_prim.GetAttribute(name)
+                if attribute and attribute.IsValid():
+                    attribute.Set(value)
+
+            # Avoid the external bronze MDL carried by the generic Rope asset.
+            # The Operation Bench strand is presented as matte surgical white.
+            visual_material_path = f"{root_path}/Looks/DrAnmarSutureWhite"
+            visual_material = UsdShade.Material.Define(stage, visual_material_path)
+            shader = UsdShade.Shader.Define(
+                stage, f"{visual_material_path}/PreviewSurface"
+            )
+            shader.CreateIdAttr("UsdPreviewSurface")
+            shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(
+                Gf.Vec3f(0.92, 0.92, 0.90)
+            )
+            shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.62)
+            shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+            visual_material.CreateSurfaceOutput().ConnectToSource(
+                shader.ConnectableAPI(), "surface"
+            )
+            mesh_prim = stage.GetPrimAtPath(f"{root_path}/Xform")
+            UsdShade.MaterialBindingAPI.Apply(mesh_prim).Bind(visual_material)
+
+            # Upgrade SoftMimicGen's released legacy arrays into the explicit
+            # volume hierarchy required by Physics Next. The original 549
+            # simulation points and 1,200 tetrahedra remain authoritative.
+            simulation_points = mesh_prim.GetAttribute(
+                "physxDeformable:simulationRestPoints"
+            ).Get()
+            flat_indices = list(
+                mesh_prim.GetAttribute("physxDeformable:simulationIndices").Get()
+                or []
+            )
+            if not simulation_points or len(flat_indices) % 4:
+                raise RuntimeError("Native suture lacks a valid legacy tet mesh")
+            mesh_xform = UsdGeom.Xformable(mesh_prim)
+            mesh_local = mesh_xform.GetLocalTransformation()
+            visual_scale = Gf.Matrix4d().SetScale(Gf.Vec3d(0.2, 0.04, 0.04))
+            simulation_scale = Gf.Matrix4d().SetScale(
+                Gf.Vec3d(0.2, 0.08, 0.08)
+            )
+            baked_transform = mesh_local * visual_scale
+            simulation_transform = mesh_local * simulation_scale
+            mesh_xform.ClearXformOpOrder()
+            mesh_xform.AddTransformOp().Set(baked_transform)
+            baked_points = Vt.Vec3fArray(
+                [
+                    Gf.Vec3f(simulation_transform.Transform(Gf.Vec3d(point)))
+                    for point in simulation_points
+                ]
+            )
+            tet_indices = Vt.Vec4iArray(
+                [
+                    Gf.Vec4i(*flat_indices[index : index + 4])
+                    for index in range(0, len(flat_indices), 4)
+                ]
+            )
+            simulation_mesh = UsdGeom.TetMesh.Define(
+                stage, f"{root_path}/SimulationMesh"
+            )
+            simulation_mesh.GetPointsAttr().Set(baked_points)
+            simulation_mesh.GetTetVertexIndicesAttr().Set(tet_indices)
+            simulation_prim = simulation_mesh.GetPrim()
+            if not root_prim.ApplyAPI("OmniPhysicsDeformableBodyAPI"):
+                raise RuntimeError("Physics Next deformable body API is unavailable")
+            if not root_prim.ApplyAPI("PhysxBaseDeformableBodyAPI"):
+                raise RuntimeError("Physics Next PhysX deformable API is unavailable")
+            if not simulation_prim.ApplyAPI("OmniPhysicsVolumeDeformableSimAPI"):
+                raise RuntimeError("Physics Next volume simulation API is unavailable")
+            simulation_prim.GetAttribute("omniphysics:restShapePoints").Set(
+                baked_points
+            )
+            simulation_prim.GetAttribute("omniphysics:restTetVtxIndices").Set(
+                tet_indices
+            )
+            UsdPhysics.CollisionAPI.Apply(simulation_prim)
+            PhysxSchema.PhysxCollisionAPI.Apply(simulation_prim)
+            environment_path = root_path.rsplit("/", 1)[0]
+            filtered_pairs = UsdPhysics.FilteredPairsAPI.Apply(simulation_prim)
+            filtered_pairs.CreateFilteredPairsRel().SetTargets(
+                [
+                    Sdf.Path(f"{environment_path}/Needle"),
+                    Sdf.Path(f"{environment_path}/Robot"),
+                    Sdf.Path(f"{environment_path}/RobotReceiver"),
+                    Sdf.Path(f"{environment_path}/TissueLeft"),
+                    Sdf.Path(f"{environment_path}/TissueRight"),
+                ]
+            )
+            simulation_mesh.GetSurfaceFaceVertexIndicesAttr().Set(
+                UsdGeom.TetMesh.ComputeSurfaceFaces(
+                    simulation_mesh, Usd.TimeCode.Default()
+                )
+            )
+            if not mesh_prim.ApplyAPI("OmniPhysicsDeformablePoseAPI", "default"):
+                raise RuntimeError("Cannot bind native suture render mesh")
+            mesh_prim.CreateAttribute(
+                "deformablePose:default:omniphysics:purposes",
+                Sdf.ValueTypeNames.TokenArray,
+            ).Set(["bindPose"])
+            mesh_prim.CreateAttribute(
+                "deformablePose:default:omniphysics:points",
+                Sdf.ValueTypeNames.Point3fArray,
+            ).Set(UsdGeom.Mesh(mesh_prim).GetPointsAttr().Get())
+            sim_utils.bind_physics_material(root_path, str(material_prim.GetPath()))
+            for name, value in (
+                ("omniphysics:mass", 0.0001),
+                ("physxDeformableBody:disableGravity", False),
+                ("physxDeformableBody:selfCollision", True),
+                ("physxDeformableBody:solverPositionIterationCount", 24),
+                ("physxDeformableBody:vertexVelocityDamping", 0.01),
+            ):
+                attribute = root_prim.GetAttribute(name)
+                if attribute and attribute.IsValid():
+                    attribute.Set(value)
+            return root_prim
+
+        thread_spawn.func = spawn_white_low_friction_suture
+        self.scene.needle_thread = DeformableObjectCfg(
+            prim_path="{ENV_REGEX_NS}/NeedleThread",
+            init_state=DeformableObjectCfg.InitialStateCfg(
+                # Put the lower endpoint at the initial needle swage and trail
+                # the 160 mm rest shape upward, entirely clear of both flaps.
+                pos=(0.0, 0.0105042262, 0.1501600000),
+                rot=(0.7071067812, 0.0, -0.7071067812, 0.0),
+            ),
+            spawn=thread_spawn,
+            debug_vis=False,
+        )
+
+        needle_spawn = UsdFileCfg(
+            usd_path=_needle_asset("dranmar_needle_entry_proxy.usda"),
+            scale=(1.5, 1.5, 1.5),
+            activate_contact_sensors=True,
+            rigid_props=RigidBodyPropertiesCfg(
+                solver_position_iteration_count=16,
+                solver_velocity_iteration_count=8,
+                max_depenetration_velocity=1.0,
+                disable_gravity=True,
+                enable_gyroscopic_forces=True,
+            ),
+        )
+        source_needle_spawn = needle_spawn.func
+
+        def spawn_needle_with_native_swage(
+            prim_path: str,
+            cfg: UsdFileCfg,
+            translation=None,
+            orientation=None,
+            **kwargs,
+        ):
+            needle_prim = source_needle_spawn(
+                prim_path,
+                cfg,
+                translation=translation,
+                orientation=orientation,
+                **kwargs,
+            )
+            return needle_prim
+
+        needle_spawn.func = spawn_needle_with_native_swage
         self.scene.needle = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Needle",
             init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.07)),
-            spawn=UsdFileCfg(
-                usd_path=(
-                    f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/SurgicalClosure/Needle/"
-                    "dranmar_needle_thread_fem.usda"
-                ),
-                # Use the 21 mm-diameter variant of the authored semicircular
-                # needle so the PSM distal jaw can remain above tissue while
-                # the tip completes a top-to-top bite.
-                scale=(1.5, 1.5, 1.5),
-                rigid_props=RigidBodyPropertiesCfg(
-                    solver_position_iteration_count=16,
-                    solver_velocity_iteration_count=8,
-                    max_depenetration_velocity=1.0,
-                    disable_gravity=True,
-                    enable_gyroscopic_forces=True,
-                ),
-                # The compound asset scopes these unchanged grip-friction
-                # values to NeedleRigid. A spawn-wide override would replace
-                # the sibling FEM thread's deformable material after cloning.
-            ),
-        )
-        # Register the already-authored sibling FEM actor for nodal reset and
-        # tensor lifecycle management.  It is spawned by the compound needle
-        # asset above; no tissue, robot, or controller setting changes here.
-        self.scene.needle_thread = DeformableObjectCfg(
-            # Resolve from the compound root so cloned material relationships
-            # remain inside Isaac Lab's walk root. Exactly one deformable body
-            # is discovered beneath this path.
-            prim_path="{ENV_REGEX_NS}/Needle",
-            spawn=None,
+            spawn=needle_spawn,
         )
         marker_cfg = FRAME_MARKER_CFG.copy()
         marker_cfg.prim_path = "/Visuals/PenetrationFrame"

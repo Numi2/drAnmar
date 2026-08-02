@@ -316,41 +316,53 @@ def test_giver_reset_lifts_base_and_targets_the_left_tissue_span():
     assert "Enter the left tissue span 5 mm from the wound edge" in config
 
 
-def test_native_threaded_needle_keeps_single_rigid_task_abi_and_table_clearance():
+def test_native_white_suture_preserves_needle_task_abi_and_table_clearance():
     config = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
-    threaded_asset = (
+    archived_surface_fem = (
         ROOT / "source/extensions/orbit.surgical.assets/data/Props/"
-        "SurgicalClosure/Needle/dranmar_needle_thread_fem.usda"
-    ).read_text(encoding="utf-8")
-    rigid_proxy = (
+        "SurgicalClosure/Needle/ExperimentalSurfaceFEM/dranmar_needle_thread_fem.usda"
+    )
+    archived_v030_adapter = (
         ROOT / "source/extensions/orbit.surgical.assets/data/Props/"
-        "SurgicalClosure/Needle/dranmar_needle_entry_proxy.usda"
-    ).read_text(encoding="utf-8")
-    assert "dranmar_needle_thread_fem.usda" in config
-    assert 'filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle/NeedleRigid"]' in config
+        "SurgicalClosure/Needle/ExperimentalSurfaceFEM/"
+        "dranmar_needle_v030_thread_adapter_rejected.usda"
+    )
+    assert "_native_white_suture_asset()" in config
+    assert "source/softmimicgen_assets/data/Props/Rope/Rope.usd" in config
+    assert 'filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"]' in config
     assert "self.scene.needle_thread = DeformableObjectCfg(" in config
     assert 'prim_path="{ENV_REGEX_NS}/Needle"' in config
-    assert "spawn=None" in config
+    assert "dranmar_needle_entry_proxy.usda" in config
+    events = (TASK_ROOT / "mdp/events.py").read_text(encoding="utf-8")
+    assert "anchor_native_suture_swage" in config
+    assert "four-node kinematic boundary" in events
+    assert "SUTURE_SWAGE_NODE_COUNT = 4" in events
+    assert "DrAnmarSutureWhite" in config
+    assert '("omniphysics:dynamicFriction", 0.01)' in config
+    assert '"OmniPhysicsVolumeDeformableSimAPI"' in config
+    assert "The original 549" in config
+    assert 'Sdf.Path(f"{environment_path}/TissueLeft")' in config
+    assert 'Sdf.Path(f"{environment_path}/TissueRight")' in config
     assert 'pos=(0.0, 0.0, -0.457)' in config
-    assert "dranmar_needle_entry_proxy.usda" in threaded_asset
-    assert threaded_asset.count("OmniPhysicsDeformableBodyAPI") == 1
-    assert threaded_asset.count("OmniPhysicsVtxXformAttachment") == 1
-    assert 'def Material "NeedleGripPhysics"' in threaded_asset
-    assert "physics:staticFriction = 2" in threaded_asset
-    assert "physics:dynamicFriction = 1.5" in threaded_asset
-    assert (
-        "rel material:binding:physics = </DrAnmarNeedle/ThreadMaterial>"
-        in threaded_asset
-    )
-    assert "physics_material=sim_utils.RigidBodyMaterialCfg" not in config
-    assert rigid_proxy.count("physics:collisionEnabled = false") == 48
-    assert "physics:collisionEnabled = true" not in rigid_proxy
+    assert archived_surface_fem.is_file()
+    assert archived_v030_adapter.is_file()
+    assert not (
+        ROOT / "source/extensions/orbit.surgical.assets/data/Props/"
+        "SurgicalClosure/Needle/dranmar_needle_thread_fem.usda"
+    ).exists()
 
     evaluator = (ROOT / "scripts/evaluate_dranmar_tissue_entry_policy.py").read_text(
         encoding="utf-8"
     )
     assert '"needle_asset_sha256": _sha256(needle_asset)' in evaluator
-    assert '"single_rigid_needle_plus_surface_fem_suture"' in evaluator
+    assert '"thread_asset_sha256": _sha256(thread_asset)' in evaluator
+    assert (
+        '"validated_rigid_needle_plus_native_white_physx_suture_with_kinematic_swage"'
+        in evaluator
+    )
+    assert 'GetPrimAtPath("/World/envs/env_0/NeedleThread")' in evaluator
+    assert '"kinematic_target_node_count"' in evaluator
+    assert '"collision_filter_targets"' in evaluator
 
 
 def test_receipt_discloses_pregrasp_coupling_and_simulator_evidence():

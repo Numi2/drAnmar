@@ -43,6 +43,9 @@ PSM_TOOL_TIP_TO_JAW_COLLISION_M = (0.0, 0.0, 0.0)
 PENETRATION_GRIPPER_CLOSE_RAD = float(PSM_GRIPPER_PROFILE["close_rad"])
 PENETRATION_GRIPPER_OPEN_RAD = float(PSM_GRIPPER_PROFILE["open_rad"])
 TISSUE_OUTER_ANCHOR_WIDTH_M = 0.004
+SUTURE_SWAGE_NODE_COUNT = 4
+# The task uses the qualified needle at 1.5x its authored size.
+SUTURE_SWAGE_LOCAL_POSITION_M = (0.0, 0.00700281749604 * 1.5, 0.0)
 
 
 def reset_and_anchor_tissue_fem(
@@ -105,7 +108,7 @@ def configure_tissue_collision_filter(env: ManagerBasedRLEnv) -> None:
 
 
 def seat_pregrasped_needle(env: ManagerBasedRLEnv, env_ids: torch.Tensor) -> None:
-    """Place the needle from current link kinematics."""
+    """Place the needle and carry its attached native strand without preload."""
 
     robot: Articulation = env.scene["robot"]
     needle: RigidObject = env.scene["needle"]
@@ -126,12 +129,136 @@ def seat_pregrasped_needle(env: ManagerBasedRLEnv, env_ids: torch.Tensor) -> Non
         NEEDLE_MID_GRASP_POSITION_M, device=env.device, dtype=ee_pos.dtype
     ).repeat(len(env_ids), 1)
     needle_pos = grasp_target - quat_apply(needle_quat, local_position)
+
+    # The white Operation Bench strand is a separately managed deformable. Its
+    # long straight rest shape trails upward from the swage. Translate that
+    # stress-free shape with the swage during seating, but do not rotate the
+    # whole 160 mm strand through the tissue field with the needle.
+    try:
+        needle_thread: DeformableObject = env.scene["needle_thread"]
+    except KeyError:
+        needle_thread = None
+    if needle_thread is not None:
+        old_pos = mdp_common.as_torch(needle.data.root_pos_w)[env_ids]
+        old_quat = mdp_common.as_torch(needle.data.root_quat_w)[env_ids]
+        nodal_state = mdp_common.as_torch(needle_thread.data.nodal_state_w)[
+            env_ids
+        ].clone()
+        swage_local = torch.tensor(
+            SUTURE_SWAGE_LOCAL_POSITION_M,
+            device=env.device,
+            dtype=old_pos.dtype,
+        ).repeat(len(env_ids), 1)
+        old_swage = old_pos + quat_apply(old_quat, swage_local)
+        new_swage = needle_pos + quat_apply(needle_quat, swage_local)
+        nodal_state[..., :3] += (new_swage - old_swage)[:, None, :]
+        nodal_state[..., 3:] = 0.0
+        needle_thread.write_nodal_state_to_sim(nodal_state, env_ids=env_ids)
+        needle_thread.write_data_to_sim()
+
     needle.write_root_pose_to_sim_index(
         root_pose=torch.cat((needle_pos, needle_quat), dim=-1), env_ids=env_ids
     )
     needle.write_root_velocity_to_sim_index(
         root_velocity=torch.zeros((len(env_ids), 6), device=env.device), env_ids=env_ids
     )
+
+
+def anchor_native_suture_swage(
+    env: ManagerBasedRLEnv,
+    env_ids: torch.Tensor | None,
+    *,
+    initialize: bool = False,
+) -> None:
+    """Constrain only the native strand endpoint to the moving needle swage.
+
+    Physics Next exposes the released SoftMimicGen strand as a legacy PhysX
+    deformable but exposes rigid/deformable attachments only through the newer
+    OmniPhysics schema. Those actor families cannot be joined directly. A
+    four-node kinematic boundary is the equivalent fixed swage condition while
+    leaving every other strand node under native deformable simulation.
+    """
+
+    if env_ids is None:
+        env_ids = torch.arange(env.num_envs, device=env.device)
+    if len(env_ids) == 0:
+        return
+
+    thread: DeformableObject = env.scene["needle_thread"]
+    needle: RigidObject = env.scene["needle"]
+    positions = mdp_common.as_torch(thread.data.nodal_pos_w)[env_ids]
+    needle_pos = mdp_common.as_torch(needle.data.root_pos_w)[env_ids]
+    needle_quat = mdp_common.as_torch(needle.data.root_quat_w)[env_ids]
+    swage_local = torch.tensor(
+        SUTURE_SWAGE_LOCAL_POSITION_M,
+        device=env.device,
+        dtype=needle_pos.dtype,
+    ).repeat(len(env_ids), 1)
+    swage_world = needle_pos + quat_apply(needle_quat, swage_local)
+
+    node_ids = getattr(env, "_dranmar_suture_swage_node_ids", None)
+    local_offsets = getattr(env, "_dranmar_suture_swage_local_offsets", None)
+    if node_ids is None or local_offsets is None:
+        node_ids = torch.full(
+            (env.num_envs, SUTURE_SWAGE_NODE_COUNT),
+            -1,
+            device=env.device,
+            dtype=torch.long,
+        )
+        local_offsets = torch.zeros(
+            (env.num_envs, SUTURE_SWAGE_NODE_COUNT, 3),
+            device=env.device,
+            dtype=needle_pos.dtype,
+        )
+        env._dranmar_suture_swage_node_ids = node_ids
+        env._dranmar_suture_swage_local_offsets = local_offsets
+
+    selected_ids = node_ids[env_ids]
+    if initialize or bool(torch.any(selected_ids < 0)):
+        distances = torch.linalg.vector_norm(
+            positions - swage_world[:, None, :], dim=-1
+        )
+        selected_ids = torch.topk(
+            distances,
+            k=SUTURE_SWAGE_NODE_COUNT,
+            dim=1,
+            largest=False,
+        ).indices
+        batch_ids = torch.arange(len(env_ids), device=env.device)[:, None]
+        selected_positions = positions[batch_ids, selected_ids]
+        inverse_quat = quat_conjugate(needle_quat)[:, None, :].expand(
+            -1, SUTURE_SWAGE_NODE_COUNT, -1
+        )
+        selected_offsets = quat_apply(
+            inverse_quat.reshape(-1, 4),
+            (selected_positions - needle_pos[:, None, :]).reshape(-1, 3),
+        ).reshape(len(env_ids), SUTURE_SWAGE_NODE_COUNT, 3)
+        node_ids[env_ids] = selected_ids
+        local_offsets[env_ids] = selected_offsets
+
+    selected_offsets = local_offsets[env_ids]
+    expanded_quat = needle_quat[:, None, :].expand(
+        -1, SUTURE_SWAGE_NODE_COUNT, -1
+    )
+    target_positions = needle_pos[:, None, :] + quat_apply(
+        expanded_quat.reshape(-1, 4), selected_offsets.reshape(-1, 3)
+    ).reshape(len(env_ids), SUTURE_SWAGE_NODE_COUNT, 3)
+
+    targets = mdp_common.as_torch(thread.data.nodal_kinematic_target)[
+        env_ids
+    ].clone()
+    targets[..., 3] = 1.0
+    batch_ids = torch.arange(len(env_ids), device=env.device)
+    for index in range(SUTURE_SWAGE_NODE_COUNT):
+        target_node = selected_ids[:, index]
+        targets[batch_ids, target_node, :3] = target_positions[:, index]
+        targets[batch_ids, target_node, 3] = 0.0
+    writer = getattr(thread, "write_nodal_kinematic_target_to_sim_index", None)
+    if writer is not None:
+        writer(targets, env_ids=env_ids)
+    else:
+        thread.write_nodal_kinematic_target_to_sim(targets, env_ids=env_ids)
+    thread.write_data_to_sim()
 
 
 def attach_pregrasped_needle(env: ManagerBasedRLEnv, env_ids: torch.Tensor) -> None:

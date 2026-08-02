@@ -235,18 +235,38 @@ motion. The GIF uses only frames from this successful RTX rollout, keeps the
 first-entry and final curved-clearance intervals near real-time, compresses the
 long middle handover, and omits the post-success reset frame.
 
-The same seed-17 sequence also succeeds after replacing only the rigid needle
-asset with the DrAnmar native threaded variant. The compound asset contains one
-rigid needle and one 722-node triangular surface-FEM 4-0 strand, hard-attached
-at six swage vertices; it has no segmented rigid chain or legacy D6 joints.
-On the RTX 4090, the strand remained finite for 2,000 steps at 2 ms with a
-maximum swage error of 30 nm. The unchanged puncture/pullout controller then
-completed one left entry, one right-underside puncture, one right-top exit,
-handover, and full receiver-owned curved clearance with zero hard failures.
-The exact receipts are
-[`threaded_fem_asset_qualification.json`](docs/tissue_puncture_pullout/threaded_fem_asset_qualification.json)
-and
-[`seed17_threaded_fem_success.json`](docs/tissue_puncture_pullout/seed17_threaded_fem_success.json).
+The same seed-17 sequence also succeeds when only the needle payload is paired
+with the white native DrAnmar 4-0 suture. The active strand is a volume-filling
+549-node PhysX deformable driven by an explicit tetrahedral simulation mesh;
+four endpoint nodes form the moving swage boundary while every other node
+remains deformable. Its rendered diameter stays fine while a slightly larger
+simulation envelope prevents inverted microscopic tetrahedra. Dynamic friction
+is 0.01, and the strand follows the environment-owned puncture tract without
+adding artificial drag to the two tissue bodies.
+
+<p align="center">
+  <img src="docs/media/dranmar-native-white-suture-puncture-pullout.gif"
+       width="600"
+       alt="Real RTX rollout of the white DrAnmar suture following a curved needle through the left and right tissue spans before opposite-arm handover and pullout">
+</p>
+
+<p align="center">
+  <em>Real seed-17 RTX render using the white native deformable suture: curved
+  two-span puncture, opposite-arm acquisition, and receiver-owned clearance
+  with the trailing strand retained through the stitch path.</em>
+</p>
+
+The unchanged controller completed the sequence in 4,172 control steps with
+exactly one left entry, one right-underside puncture, one right-top exit, full
+receiver-owned clearance, and zero hard failures. Final evidence records four
+active swage nodes, 549 finite deformable nodes, 0.877 mm entry error, 0.067 mm
+exit error, 4.6% peak-force overshoot, 146.70 degrees of receiver curvature
+rotation, and 0.70 mm maximum curvature-centre drift. The exact rendered
+receipt is
+[`seed17_native_white_suture_rendered_success.json`](docs/tissue_puncture_pullout/seed17_native_white_suture_rendered_success.json).
+The rejected ribbon-like surface-FEM and violet v0.3 adapter experiments are
+retained outside the selectable catalog under
+`Props/SurgicalClosure/Needle/ExperimentalSurfaceFEM/` for reproducibility.
 
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.

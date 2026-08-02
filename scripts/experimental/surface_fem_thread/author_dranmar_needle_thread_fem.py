@@ -2,7 +2,7 @@
 # Copyright (c) 2026, Dr.Anmar Project Developers.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Author the puncture-task needle with one native PhysX surface-FEM suture.
+"""Author the retired surface-FEM needle/thread experiment.
 
 The task deliberately manages exactly one rigid needle body.  This asset keeps
 that ABI and replaces the older maximal-coordinate chain with a single
@@ -26,9 +26,9 @@ parser.add_argument(
     "--output",
     type=Path,
     default=(
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle"
-        / "dranmar_needle_thread_fem.usda"
+        / "ExperimentalSurfaceFEM/dranmar_needle_thread_fem.usda"
     ),
 )
 AppLauncher.add_app_launcher_args(parser)
@@ -130,8 +130,11 @@ def _make_material(stage: Usd.Stage, path: Sdf.Path) -> UsdShade.Material:
         stage,
         path,
         density=1300.0,
-        static_friction=0.42,
-        dynamic_friction=0.32,
+        # The strand must slide through the environment-owned puncture tract
+        # instead of gripping and lifting the FEM surface.  Keep only a small
+        # non-zero contact floor for stable tangential resolution.
+        static_friction=0.02,
+        dynamic_friction=0.01,
         youngs_modulus=7.6639e9,
         poissons_ratio=0.36,
         surface_thickness=THREAD_DIAMETER_M,
