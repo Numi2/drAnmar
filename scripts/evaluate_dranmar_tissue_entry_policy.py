@@ -266,6 +266,7 @@ def main() -> int:
     event_counts: list[int] = []
     exit_event_counts: list[int] = []
     right_underside_event_counts: list[int] = []
+    receiver_pull_steps: list[int] = []
     exit_errors: list[float] = []
     exposed_fractions: list[float] = []
     exposed_arc_lengths: list[float] = []
@@ -508,6 +509,10 @@ def main() -> int:
                         exposed_arc_lengths.append(
                             float(receipt["exposed_arc_length_m"])
                         )
+                        if pullout:
+                            receiver_pull_steps.append(
+                                int(receipt["receiver_pull_steps"])
+                            )
                     else:
                         event_counts.append(int(receipt["event_count"]))
                 elif bool(hard_mask[env_index]):
@@ -615,6 +620,9 @@ def main() -> int:
                     "complete_clearance_per_success": bool(exposed_fractions)
                     and all(value >= 0.95 for value in exposed_fractions)
                     and all(value <= 0.0002 for value in embedded_depths),
+                    "receiver_pull_steps_min": min(
+                        receiver_pull_steps, default=None
+                    ),
                 }
             )
         args.report.parent.mkdir(parents=True, exist_ok=True)

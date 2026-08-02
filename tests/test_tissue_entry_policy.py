@@ -412,6 +412,7 @@ def test_isolated_entry_evaluator_resets_recurrent_state_and_reports_physics():
     assert '"hard_safety_failures": hard_failures' in evaluation
     assert '"exactly_one_event_per_success"' in evaluation
     assert '"normalized_peak_force_mean"' in evaluation
+    assert '"receiver_pull_steps_min"' in evaluation
 
 
 def test_through_puncture_requires_one_entry_one_exit_and_twenty_percent_exposure():
