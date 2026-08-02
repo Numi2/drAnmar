@@ -1,0 +1,60 @@
+{
+  "schema": "dr.anmar.moving-scalpel-cut-profile.v1",
+  "id": "dr-anmar-moving-scalpel-cut-v1",
+  "version": "0.1.0",
+  "base_profile": "physics_next/tissues/dr-anmar-cuttable-tissue-v1.json",
+  "base_profile_sha256": "1ea9d4a54cc8d81619825b097d8687dbe0e383a583d1de0e02117a437de6f9d1",
+  "embedded_profile": "physics_next/tissues/dr-anmar-dynamic-curved-cut-v1.json",
+  "path": {
+    "start_x_m": -0.0175,
+    "end_x_m": 0.0175,
+    "segments": 64,
+    "blade_tangent": [0.0, 0.0, 1.0],
+    "command_speed_m_s": 0.008,
+    "fracture_work_ratio": 1.02,
+    "adhesion_energy_j_m2": 0.7,
+    "wear_energy_j_m2": 0.4,
+    "viscous_energy_j_m2": 0.2,
+    "friction_energy_j_m2": 0.3
+  },
+  "quasi_static_solver": {
+    "pseudo_time_step_s": 0.000005,
+    "relaxation_steps_per_segment": 28,
+    "post_cut_relaxation_steps": 1200,
+    "velocity_damping_per_s": 48.0,
+    "blade_wedge_half_width_m": 0.0012,
+    "blade_wedge_target_gap_m": 0.00035,
+    "blade_wedge_stiffness_pa_m": 120000000.0,
+    "blade_wedge_peak_traction_pa": 24000.0
+  },
+  "qualification": {
+    "minimum_dynamic_released_pair_fraction": 0.9,
+    "maximum_release_ahead_of_blade_m": 0.0015,
+    "minimum_fracture_events": 1,
+    "maximum_repeated_path_additional_events": 0,
+    "minimum_crossing_path_additional_events": 1,
+    "minimum_intersection_cells": 1,
+    "minimum_jacobian": 0.2,
+    "minimum_mean_wound_gap_m": 0.00002,
+    "maximum_mean_wound_gap_m": 0.0015,
+    "maximum_mass_relative_error": 1e-11,
+    "maximum_opposed_area_relative_error": 0.03,
+    "minimum_two_sided_collision_coverage_fraction": 1.0,
+    "maximum_probe_surface_crossing_m": 0.00001,
+    "require_monotonic_release": true,
+    "require_subcritical_block": true,
+    "require_stationary_block": true,
+    "require_zero_inversions": true,
+    "require_exact_event_replay": true
+  },
+  "evidence_boundary": {
+    "qualified_claim": "moving_scalpel_energy_gated_curved_fracture_front_with_live_fem_release",
+    "blocked_claims": [
+      "sequential_crossing_enrichment_in_one_live_fem_mesh",
+      "real_time_transient_cutting",
+      "specimen_calibrated_human_skin",
+      "biomechanical_validation",
+      "clinical_validation"
+    ]
+  }
+}

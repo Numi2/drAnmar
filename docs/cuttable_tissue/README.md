@@ -228,3 +228,40 @@ frame. Displacement is shown at physical scale with no visual exaggeration or
 generated intermediate imagery. The accompanying
 `dranmar-cuttable-tissue-curved-cuda.json` receipt binds the GIF hash, renderer
 revision, mesh sizes, CUDA device and evidence boundary.
+
+## Moving scalpel fracture authority
+
+The scalpel-driven reference closes the gap between a pre-authored open wound
+and an actual cutting tool:
+
+```bash
+python scripts/qualify_dranmar_moving_scalpel_cut.py \
+  --output physics_next/receipts/moving-scalpel-cut-reference.json
+```
+
+The curved embedded discontinuity begins latent and mechanically tied. A finite
+vertical blade edge advances along the commanded curve. Only cells reached by
+its swept geometry receive fracture work; cohesive release occurs only after
+the mixed-mode critical energy is met. Released node pairs immediately switch
+from intact vector traction to irreversible, unilateral wound compression and
+two-sided collision. A bounded local wedge traction represents blade thickness
+without pulling the entire wound open.
+
+The retained run advances 64 blade segments and 2,992 quasi-static relaxation
+steps. It releases all 85 interface pairs through 1,248 blade-owned fracture
+events, with no release more than 1.05 mm ahead of the blade. Repeating the path
+creates zero additional events. A crossing path creates 672 additional
+persistent events in 48 intersection cells. Subcritical and stationary sweeps
+create none.
+
+The live FEM remains finite with zero inversions, a 0.804 minimum Jacobian,
+0.063 mm mean relaxed wound opening, complete two-sided collision, and zero
+probe crossing. Cutting resistance from the separately audited fracture,
+adhesion, wear, viscous, and friction work channels peaks at approximately
+0.095 N.
+
+This is a slow-cut quasi-static qualification: its relaxation iterations are
+not physical elapsed time. The curved path is live in the deforming FEM;
+crossing and repeated paths are qualified in the persistent topology authority,
+but a second crossing discontinuity is not yet enriched into the same live FEM
+mesh. Specimen calibration and clinical claims remain blocked.
