@@ -126,6 +126,7 @@ def main() -> int:
     min_tangent_error_deg = float(state["measurement"]["tangent_error"][0])
     min_plane_error_deg = float(state["measurement"]["plane_error"][0])
     max_indentation_m = float(state["measurement"]["indentation"][0])
+    max_fem_displacement_m = {"tissue_left": 0.0, "tissue_right": 0.0}
     action = torch.zeros((1, 6), device=env.unwrapped.device)
     try:
         for completed_steps in range(1, args.steps + 1):
@@ -147,6 +148,22 @@ def main() -> int:
                 )
                 observation, _, terminated, truncated, _ = env.step(action)
             step_state = env.unwrapped._dr_anmar_penetration_state
+            for tissue_name in max_fem_displacement_m:
+                tissue = env.unwrapped.scene[tissue_name]
+                nodal_state = mdp_common.as_torch(tissue.data.nodal_state_w)
+                default_state = mdp_common.as_torch(
+                    tissue.data.default_nodal_state_w
+                )
+                displacement = float(
+                    torch.linalg.vector_norm(
+                        nodal_state[0, :, :3] - default_state[0, :, :3], dim=-1
+                    )
+                    .amax()
+                    .item()
+                )
+                max_fem_displacement_m[tissue_name] = max(
+                    max_fem_displacement_m[tissue_name], displacement
+                )
             terminated_now = bool(terminated[0] or truncated[0])
             live_receipt = getattr(env.unwrapped, "_dr_anmar_last_successful_entry", None)
             phase_index = (
@@ -192,6 +209,12 @@ def main() -> int:
                 break
 
         state = env.unwrapped._dr_anmar_penetration_state
+        last_hard_failures = getattr(
+            env.unwrapped, "_dr_anmar_last_hard_failures", None
+        )
+        last_hard_failure_evidence = getattr(
+            env.unwrapped, "_dr_anmar_last_hard_failure_evidence", None
+        )
         action_term = env.unwrapped.action_manager._terms["body_action"]
         ik_ee_pos, _ = action_term._compute_frame_pose()
         ik_jacobian = action_term._compute_frame_jacobian()
@@ -260,6 +283,14 @@ def main() -> int:
             ],
             "phase": evidence["phase"],
             "hard_failures": list(evidence["hard_failures"]),
+            "termination_hard_failures": (
+                list(last_hard_failures[0]) if last_hard_failures else []
+            ),
+            "termination_hard_failure_evidence": (
+                last_hard_failure_evidence[0]
+                if last_hard_failure_evidence
+                else None
+            ),
             "entry_error_m": evidence["entry_error_m"],
             "tangent_error_deg": evidence["tangent_error_deg"],
             "plane_error_deg": evidence["plane_error_deg"],
@@ -288,6 +319,7 @@ def main() -> int:
             "accumulated_work_j": evidence["accumulated_work_j"],
             "wrench_finite": bool(torch.isfinite(state["wrench"]).all()),
             "fem_tissue": fem_tissue,
+            "max_fem_displacement_m": max_fem_displacement_m,
             "max_rotation_action": max_rotation_action,
             "translation_saturation_steps": translation_saturation_steps,
             "rotation_saturation_steps": rotation_saturation_steps,

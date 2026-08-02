@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
-from isaaclab.assets import RigidObject
+from isaaclab.assets import DeformableObject, RigidObject
 from isaaclab.utils.math import (
     axis_angle_from_quat,
     combine_frame_transforms,
@@ -64,6 +64,88 @@ NEEDLE_PLANE_NORMAL_LOCAL = (0.0, 0.0, 1.0)
 TISSUE_CENTER_LOCAL_M = (0.0, 0.0, 0.05)
 TISSUE_TOP_LOCAL_Z_M = 0.053
 RECEIVER_TOOL_TIP_TO_CAPTURE_CENTER_M = 0.0014
+
+
+def _couple_fem_contact_patch(
+    env: ManagerBasedRLEnv,
+    target: torch.Tensor,
+    tissue_state: tuple[Any, ...],
+    punctured: list[bool],
+) -> None:
+    """Drive a bounded FEM surface patch from authoritative tip indentation.
+
+    PhysX 6 does not permit the collision-free tract needle to cut a volume
+    mesh. Before the puncture event, constrain only the local top-surface
+    contact patch to the backend's measured displacement. Surrounding nodes
+    remain dynamic and carry the deformation through FEM. At puncture the
+    patch is released while the permanent outer fixture stays constrained.
+    """
+
+    patch_radius_m = 0.003
+    top_band_m = 0.0006
+    outer_anchor_width_m = 0.004
+    for asset_name, flap_side in (
+        ("tissue_left", "left"),
+        ("tissue_right", "right"),
+    ):
+        tissue: DeformableObject = env.scene[asset_name]
+        default_state = mdp_common.as_torch(tissue.data.default_nodal_state_w)
+        positions = default_state[..., :3]
+        targets = mdp_common.as_torch(tissue.data.nodal_kinematic_target).clone()
+        x = positions[..., 0]
+        if flap_side == "left":
+            outer_boundary = x.amin(dim=1, keepdim=True) + outer_anchor_width_m
+            outer_anchor = x <= outer_boundary
+            active_flap = target[:, 0] < 0.0
+        else:
+            outer_boundary = x.amax(dim=1, keepdim=True) - outer_anchor_width_m
+            outer_anchor = x >= outer_boundary
+            active_flap = target[:, 0] > 0.0
+        targets[..., :3] = positions
+        targets[..., 3] = torch.where(
+            outer_anchor,
+            torch.zeros_like(targets[..., 3]),
+            torch.ones_like(targets[..., 3]),
+        )
+        top_z = positions[..., 2].amax(dim=1, keepdim=True)
+        top_surface = positions[..., 2] >= top_z - top_band_m
+        lateral_delta = positions[..., :2] - target[:, None, :2]
+        radius = torch.linalg.vector_norm(lateral_delta, dim=-1)
+        falloff = torch.clamp(1.0 - radius / patch_radius_m, min=0.0) ** 2
+        displacement = torch.tensor(
+            [item.surface_displacement_m for item in tissue_state],
+            device=env.device,
+            dtype=positions.dtype,
+        )
+        contact_active = (
+            active_flap
+            & ~torch.tensor(punctured, device=env.device)
+            & (displacement > 0.0)
+        )
+        contact_patch = (
+            top_surface
+            & (falloff > 0.0)
+            & contact_active.unsqueeze(-1)
+            & ~outer_anchor
+        )
+        targets[..., 2] = torch.where(
+            contact_patch,
+            positions[..., 2] - displacement.unsqueeze(-1) * falloff,
+            targets[..., 2],
+        )
+        targets[..., 3] = torch.where(
+            contact_patch,
+            torch.zeros_like(targets[..., 3]),
+            targets[..., 3],
+        )
+        writer = getattr(tissue, "write_nodal_kinematic_target_to_sim_index", None)
+        if writer is not None:
+            writer(targets)
+        else:
+            tissue.write_nodal_kinematic_target_to_sim(targets)
+        tissue.write_data_to_sim()
+
+
 def _step_number(env: ManagerBasedRLEnv) -> int:
     value = env.common_step_counter
     return int(value.item()) if isinstance(value, torch.Tensor) else int(value)
@@ -290,6 +372,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     adapter = _adapter(env)
     coupling = adapter.step(tip_poses, arc_poses, punctured, dt_s=0.02)
     tissue_state = adapter.scene_state
+    _couple_fem_contact_patch(env, target, tissue_state, punctured)
     raw_wrench = torch.tensor(
         [(*item.force_n, *item.torque_nm) for item in coupling],
         device=env.device,

@@ -22,6 +22,10 @@ indent, stretch, and rebound. The controller remains at 50 Hz while FEM
 physics advances at 1 ms. PSM and jaw collisions remain enabled against the
 tissue. Needle passage is still owned by the force-gated DrAnmar tract model
 because fixed-topology PhysX FEM does not create a persistent puncture hole.
+Before the puncture event, the measured needle indentation drives only a
+three-millimetre top-surface contact patch; surrounding nodes remain dynamic
+and transmit deformation through FEM. The patch releases at puncture so the
+tissue can rebound while the tract model carries cutting and shaft resistance.
 
 Deformation and contact support do not imply qualified arbitrary puncture,
 persistent tracts, thread passage, cutting, healing, or clinical validity.

@@ -756,6 +756,10 @@ def test_tissue_blocks_psms_but_filters_only_the_needle_pair():
     assert "float physxCollision:restOffset = 0.0001" in left_tet
     assert "reset_and_anchor_tissue_fem" in events
     assert "TISSUE_OUTER_ANCHOR_WIDTH_M = 0.004" in events
+    assert "def _couple_fem_contact_patch(" in state
+    assert "patch_radius_m = 0.003" in state
+    assert "item.surface_displacement_m" in state
+    assert "contact_patch" in state
     assert "giver_tip_tissue_contact" in penetration
     assert "collision_enabled=False" not in pullout
     assert "dranmar_needle.usda" not in pullout
@@ -763,6 +767,17 @@ def test_tissue_blocks_psms_but_filters_only_the_needle_pair():
     assert "Creating a second USD" in events
     assert "no needle/tissue filter is needed" in events
     assert "unintended_robot_contact" in state
+
+
+def test_analytical_controller_finishes_lateral_alignment_before_fem_contact():
+    controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
+    qualification = (
+        ROOT / "scripts/qualify_dranmar_tissue_entry_analytical.py"
+    ).read_text(encoding="utf-8")
+    assert "hold_entry_standoff" in controller
+    assert "tangential_error > 0.0009" in controller
+    assert "alignment_tangential_limit_m = self.translation_scale_m" in controller
+    assert '"max_fem_displacement_m": max_fem_displacement_m' in qualification
 
 
 def test_pullout_benchmark_requires_receiver_only_complete_clearance():

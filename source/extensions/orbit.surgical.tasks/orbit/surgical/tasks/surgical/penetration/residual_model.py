@@ -124,14 +124,40 @@ class PenetrationAnalyticController(nn.Module):
         tangential_error = torch.linalg.vector_norm(
             tangential_component, dim=-1, keepdim=True
         )
+        # ALIGN uses the broader phase gate, but physical contact is allowed
+        # only inside the 1 mm entry region. If INDENT begins near that outer
+        # boundary, remain above the FEM surface and finish the lateral move
+        # before commanding any normal penetration.
+        hold_entry_standoff = (
+            (phase >= 2).unsqueeze(-1)
+            & (indentation <= 0.0).unsqueeze(-1)
+            & (tangential_error > 0.0009)
+        )
+        standoff_delta = (
+            entry_position + surface_normal * 0.0010 - needle_position
+        )
+        standoff_normal_component = torch.sum(
+            standoff_delta * surface_normal, dim=-1, keepdim=True
+        )
+        normal_component = torch.where(
+            hold_entry_standoff,
+            standoff_normal_component,
+            normal_component,
+        )
         tangential_component = torch.where(
             ((phase >= 2).unsqueeze(-1) & (tangential_error <= 0.0009)),
             torch.zeros_like(tangential_component),
             tangential_component,
         )
         tangential_limit_m = 0.00005
+        alignment_tangential_limit_m = self.translation_scale_m
+        active_tangential_limit_m = torch.where(
+            hold_entry_standoff,
+            torch.full_like(tangential_error, alignment_tangential_limit_m),
+            torch.full_like(tangential_error, tangential_limit_m),
+        )
         tangential_component = tangential_component * torch.clamp(
-            tangential_limit_m / tangential_error.clamp_min(1.0e-9), max=1.0
+            active_tangential_limit_m / tangential_error.clamp_min(1.0e-9), max=1.0
         )
         normal_limit_m = self.normal_advance_limit * self.translation_scale_m
         bounded_delta_m = tangential_component + surface_normal * normal_component.clamp(
