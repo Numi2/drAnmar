@@ -51,7 +51,7 @@
     }
   },
   "remote_tests": {
-    "passed": 30,
+    "passed": 24,
     "failed": 0
   },
   "cuda_moving_scalpel_qualified": true,
