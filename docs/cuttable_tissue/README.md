@@ -157,3 +157,36 @@ The exact planar reference also replayed under Gilgamesh's Isaac Python runtime
 with the same deterministic trace and 26/26 tests passing. Its runtime lock
 explicitly records CPU execution and keeps CUDA dynamic cutting blocked; the
 earlier CUDA promotion applies only to the continuum/contact/cohesive kernels.
+
+## Curved embedded-discontinuity dynamics
+
+The next reference removes the planar face-conformity restriction:
+
+```bash
+python scripts/qualify_dranmar_dynamic_curved_cut.py \
+  --output physics_next/receipts/dynamic-curved-cut-reference.json
+```
+
+An implicit sinusoidal sheet cuts through tetrahedron interiors. Each crossed
+edge is root-solved against the nonlinear level set, duplicated on the two
+material sides, and shared across neighboring clipped faces. Deterministic
+face triangulation keeps the sub-tetrahedralization conforming. No element is
+deleted: the qualified remesh preserves volume and mass to machine precision.
+
+The connected pre-tensioned coupon settles before its position, velocity, and
+Prony stress history are interpolated into 1,760 cut-cell tetrahedra. The two
+wound sides then evolve independently under the same finite-strain
+Neo-Hookean/viscoelastic bulk law. Failed cohesive interfaces remain
+traction-free in separation while retaining unilateral compression and damping,
+so the wound cannot ghost through itself or numerically heal.
+
+The retained local reference cuts 96 original tetrahedra, reconstructs 256
+deforming wound triangles, and runs 4,000 explicit steps with zero inversions.
+Both wound sides reject an inward-moving collision probe. Formation is gated by
+the cohesive fracture-work ratio; a subcritical request fails closed.
+
+This qualifies one curved, non-face-snapped dynamic discontinuity. Repeated and
+intersecting cuts remain qualified in the persistent cut-cell topology layer,
+but sequentially enriching an already split live FEM mesh is still blocked.
+Likewise, this NumPy reference is not a CUDA dynamic solver, a calibrated model
+of human skin, biomechanical validation, or clinical validation.

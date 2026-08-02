@@ -1,0 +1,65 @@
+{
+  "schema": "dr.anmar.dynamic-embedded-curved-cut-profile.v1",
+  "id": "dr-anmar-dynamic-curved-cut-v1",
+  "version": "0.1.0",
+  "base_profile": "physics_next/tissues/dr-anmar-cuttable-tissue-v1.json",
+  "base_profile_sha256": "1ea9d4a54cc8d81619825b097d8687dbe0e383a583d1de0e02117a437de6f9d1",
+  "scope": "implicit_surface_cut_cell_remesh_with_live_curved_wound_dynamics",
+  "implicit_cut": {
+    "kind": "vertical_sinusoidal_sheet",
+    "center_y_m": 0.002,
+    "amplitude_y_m": 0.0004,
+    "wavelength_x_m": 0.036,
+    "level_set_tolerance_m": 1e-12,
+    "minimum_fracture_work_ratio": 1.0,
+    "applied_fracture_work_ratio": 1.05
+  },
+  "solver": {
+    "connected_settle_time_step_s": 0.00005,
+    "connected_settle_s": 0.02,
+    "cut_time_step_s": 0.000005,
+    "opening_load_s": 0.008,
+    "post_load_s": 0.012,
+    "opening_traction_pa": 38.0,
+    "velocity_damping_per_s": 32.0
+  },
+  "wound_collision": {
+    "probe_radius_m": 0.0002,
+    "probe_mass_kg": 0.002,
+    "probe_speed_m_s": 0.02,
+    "normal_stiffness_n_m": 8000.0,
+    "normal_damping_n_s_m": 1.2,
+    "probe_time_step_s": 0.000005,
+    "probe_steps": 1500
+  },
+  "qualification": {
+    "maximum_volume_relative_error": 1e-11,
+    "maximum_mass_relative_error": 1e-11,
+    "maximum_level_set_residual_m": 1e-12,
+    "maximum_opposed_area_relative_error": 0.02,
+    "maximum_unexpected_boundary_faces": 0,
+    "maximum_nonmanifold_faces": 0,
+    "minimum_cut_tetrahedra": 1,
+    "minimum_subcell_volume_fraction": 0.01,
+    "minimum_jacobian": 0.2,
+    "maximum_center_of_mass_drift_m": 0.00005,
+    "maximum_net_momentum_kg_m_s": 0.0001,
+    "minimum_mean_wound_gap_m": 0.00005,
+    "maximum_mean_wound_gap_m": 0.0025,
+    "minimum_two_sided_collision_coverage_fraction": 1.0,
+    "maximum_probe_surface_crossing_m": 0.00001,
+    "require_zero_inverted_tetrahedra": true,
+    "require_exact_replay": true
+  },
+  "promotion_boundary": {
+    "qualified_claim": "curved_implicit_surface_dynamic_cut_cell_reference",
+    "blocked_claims": [
+      "intersecting_dynamic_cut",
+      "scalpel_driven_dynamic_fracture_front",
+      "cuda_dynamic_cut",
+      "human_skin_calibration",
+      "biomechanical_validation",
+      "clinical_validation"
+    ]
+  }
+}
