@@ -39,6 +39,12 @@ def test_real_moving_scalpel_cuda_render_matches_receipt_and_event_trace():
     assert receipt["path_segments"] == 64
     assert receipt["fracture_event_count"] == 1248
     assert receipt["released_pair_count"] == 85
+    assert receipt["retained_anchor_node_count"] > 0
+    assert receipt["entry_boundary_pair_count"] > 0
+    assert receipt["exit_boundary_pair_count"] > 0
+    assert receipt["entry_boundary_mean_gap_m"] >= 1.0e-5
+    assert receipt["exit_boundary_mean_gap_m"] >= 1.0e-5
+    assert receipt["boundary_opening_gates_passed"] is True
     assert receipt["cpu_event_trace_match"] is True
     assert receipt["displacement_exaggeration"] == 1.0
     assert receipt["generated_imagery"] is False

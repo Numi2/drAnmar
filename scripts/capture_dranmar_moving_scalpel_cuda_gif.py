@@ -245,6 +245,37 @@ def _weld_unreleased_exterior(
 def main() -> None:
     solver, trajectory, releases, centers, directions, event_counts, segments, labels, trace_sha, moving = _cuda_moving_trajectory()
     fem = solver.mesh
+    final_points = trajectory[-1]
+    final_jump = (
+        final_points[fem.gap_plus_nodes] - final_points[fem.gap_minus_nodes]
+    )
+    final_opening = np.maximum(
+        np.sum(final_jump * fem.gap_normals, axis=1), 0.0
+    )
+    boundary_tolerance = float(
+        moving["boundary_entry_exit"]["boundary_pair_tolerance_m"]
+    )
+    gap_x = fem.gap_rest_points[:, 0]
+    entry_boundary = np.isclose(
+        gap_x, float(moving["path"]["start_x_m"]), rtol=0.0,
+        atol=boundary_tolerance,
+    )
+    exit_boundary = np.isclose(
+        gap_x, float(moving["path"]["end_x_m"]), rtol=0.0,
+        atol=boundary_tolerance,
+    )
+    entry_boundary_gap = float(np.mean(final_opening[entry_boundary]))
+    exit_boundary_gap = float(np.mean(final_opening[exit_boundary]))
+    boundary_opening_passed = (
+        bool(np.any(entry_boundary))
+        and bool(np.any(exit_boundary))
+        and entry_boundary_gap
+        >= float(moving["qualification"]["minimum_entry_boundary_mean_gap_m"])
+        and exit_boundary_gap
+        >= float(moving["qualification"]["minimum_exit_boundary_mean_gap_m"])
+    )
+    if not boundary_opening_passed:
+        raise RuntimeError("CUDA render trajectory failed boundary-opening gates")
     boundary = boundary_triangles(fem.tetrahedra)
     wound_all = np.concatenate(tuple(fem.wound_triangles_by_side.values()), axis=0)
     wound_keys = {tuple(sorted(map(int, triangle))) for triangle in wound_all}
@@ -321,6 +352,12 @@ def main() -> None:
         "trajectory_frame_count": len(trajectory), "width": args.width, "height": args.height,
         "warp_device": "cuda:0", "moving_profile": moving["id"], "path_segments": 64,
         "fracture_event_count": event_counts[-1], "released_pair_count": int(np.count_nonzero(releases[-1])),
+        "retained_anchor_node_count": int(np.count_nonzero(fem.fixed)),
+        "entry_boundary_pair_count": int(np.count_nonzero(entry_boundary)),
+        "exit_boundary_pair_count": int(np.count_nonzero(exit_boundary)),
+        "entry_boundary_mean_gap_m": entry_boundary_gap,
+        "exit_boundary_mean_gap_m": exit_boundary_gap,
+        "boundary_opening_gates_passed": boundary_opening_passed,
         "event_trace_sha256": trace_sha, "cpu_event_trace_match": trace_sha == "3dcf133190cd7d365b347a98c815a75bc34eb644573c7737dae8db81e493083d",
         "node_count": len(fem.position), "tetrahedron_count": len(fem.tetrahedra),
         "displacement_exaggeration": 1.0, "generated_imagery": False,
