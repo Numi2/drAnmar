@@ -473,7 +473,7 @@ def test_through_puncture_backend_and_task_are_distinct_from_qualified_entry():
     )
     controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
     assert (
-        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v11-fixed-exit-receipt"'
+        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v12-fem-flap-route"'
         in backend
     )
     assert "through_sample_count = 129" in backend
@@ -555,9 +555,8 @@ def test_through_backend_authorizes_four_bounded_embedded_tract_regrasps():
     before = backend.scene_state[0]
     assert before.embedded_arc_length_m >= 0.0015
     assert before.trailing_exposed_arc_length_m >= 0.002
-    assert before.trailing_grasp_over_wound_gap
-    assert module.LEFT_SLAB_X_BOUNDS_M[1] < before.trailing_grasp_position_m[0]
-    assert before.trailing_grasp_position_m[0] < module.RIGHT_SLAB_X_BOUNDS_M[0]
+    assert not before.trailing_grasp_over_wound_gap
+    assert before.trailing_grasp_position_m[2] >= backend.surface_z_m + 0.0015
     assert backend.request_tract_support([0]) == (True,)
     active = backend.scene_state[0]
     assert active.tract_support_active
@@ -573,6 +572,21 @@ def test_through_backend_authorizes_four_bounded_embedded_tract_regrasps():
     released = backend.scene_state[0]
     assert not released.tract_support_active
     assert released.tract_support_event_count == 4
+
+
+def test_through_backend_bounds_match_authored_fem_flaps():
+    module = _through_backend()
+    assert module.LEFT_SLAB_X_BOUNDS_M == (-0.035, -0.00155)
+    assert module.RIGHT_SLAB_X_BOUNDS_M == (0.00157713832065, 0.035)
+    assert module.DrAnmarNativeTissueThroughBackend._classify_slab(0.0) == "wound_gap"
+
+
+def test_right_fem_flap_has_bounded_exit_tenting_patch():
+    state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
+    assert "exit_influence_depth_m = 0.004" in state
+    assert "exit_lift_max_m = 0.0012" in state
+    assert 'getattr(item, "exit_event_count", 0)' in state
+    assert "positions[..., 2] + exit_lift.unsqueeze(-1) * falloff" in state
 
 
 def test_whole_psm_link_tissue_contacts_are_authoritative():

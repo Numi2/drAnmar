@@ -19,14 +19,14 @@ from .backend import (
 )
 
 
-DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v11-fixed-exit-receipt"
+DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v12-fem-flap-route"
 
 # Tissue coordinates are relative to the midpoint between the two authored
-# slabs.  Keep these bounds synchronized with PenetrationSceneCfg: the 10 mm
-# wound gap admits a PSM distal shaft but is deliberately not tissue and
-# therefore cannot own an entry or exit event.
-LEFT_SLAB_X_BOUNDS_M = (-0.035, -0.005)
-RIGHT_SLAB_X_BOUNDS_M = (0.005, 0.035)
+# FEM flaps.  These are the authored TetMesh extents, not a legacy collision
+# proxy.  The 3.127 mm open incision is not tissue and cannot own an entry or
+# exit event; it is also too narrow to be treated as instrument access.
+LEFT_SLAB_X_BOUNDS_M = (-0.035, -0.00155)
+RIGHT_SLAB_X_BOUNDS_M = (0.00157713832065, 0.035)
 
 
 @dataclass(frozen=True)
@@ -212,34 +212,16 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
                 break
             trailing_exposed += segment_length
             trailing_segments.append((first, second))
-        # A wound-gap segment is directly accessible from above even if it is
-        # not contiguous with the trailing free arc: the two slab colliders do
-        # not occupy the gap at any depth.  Searching the whole centerline is
-        # essential late in the drive, when both ends can be separated from
-        # the gap by portions of needle that remain embedded in the slabs.
-        all_segments = list(zip(points[:-1], points[1:], strict=True))
-        gap_segments = [
-            segment
-            for segment in all_segments
-            if LEFT_SLAB_X_BOUNDS_M[1]
-            < 0.5 * (segment[0][0] + segment[1][0])
-            < RIGHT_SLAB_X_BOUNDS_M[0]
-        ]
+        # Classify the incision for route accounting only.  The authored FEM
+        # gap is narrower than the distal jaws, so it must never be selected as
+        # a regrasp access path.  Regrasp only the contiguous trailing arc on
+        # the operative side, exactly as a needle driver would above tissue.
         final_drive_regrasp = state.tract_support_event_count >= 3
-        candidates = (
-            trailing_segments
-            if final_drive_regrasp and trailing_segments
-            else gap_segments or trailing_segments
-        )
+        candidates = trailing_segments
         if candidates:
             if final_drive_regrasp:
                 # The final giver grasp must stay above the tissue so the jaw
                 # can sweep the remaining arc without entering the right slab.
-                first, second = max(
-                    candidates,
-                    key=lambda segment: 0.5 * (segment[0][2] + segment[1][2]),
-                )
-            elif gap_segments:
                 first, second = max(
                     candidates,
                     key=lambda segment: 0.5 * (segment[0][2] + segment[1][2]),
@@ -250,9 +232,7 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
             state.trailing_grasp_position_m = tuple(
                 0.5 * (first[axis] + second[axis]) for axis in range(3)
             )
-            state.trailing_grasp_over_wound_gap = bool(
-                gap_segments and not final_drive_regrasp
-            )
+            state.trailing_grasp_over_wound_gap = False
         tip_z = points[0][2]
         if tip_z < self.surface_z_m - 1.0e-5:
             state.tip_has_entered = True
@@ -289,11 +269,8 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
                 # purchase on the 7 mm-radius needle.
                 and state.embedded_arc_length_m >= 0.0015
                 and state.trailing_exposed_arc_length_m >= 0.002
-                and (
-                    state.trailing_grasp_over_wound_gap
-                    or state.trailing_grasp_position_m[2]
-                    >= self.surface_z_m + 0.0015
-                )
+                and state.trailing_grasp_position_m[2]
+                >= self.surface_z_m + 0.0015
                 and state.tract_support_event_count < 4
             )
             if eligible:

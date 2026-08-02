@@ -69,6 +69,7 @@ RECEIVER_TOOL_TIP_TO_CAPTURE_CENTER_M = 0.0014
 def _couple_fem_contact_patch(
     env: ManagerBasedRLEnv,
     target: torch.Tensor,
+    tip_position: torch.Tensor,
     tissue_state: tuple[Any, ...],
     punctured: list[bool],
 ) -> None:
@@ -82,6 +83,8 @@ def _couple_fem_contact_patch(
     """
 
     patch_radius_m = 0.003
+    exit_influence_depth_m = 0.004
+    exit_lift_max_m = 0.0012
     top_band_m = 0.0006
     outer_anchor_width_m = 0.004
     for asset_name, flap_side in (
@@ -109,7 +112,26 @@ def _couple_fem_contact_patch(
         )
         top_z = positions[..., 2].amax(dim=1, keepdim=True)
         top_surface = positions[..., 2] >= top_z - top_band_m
-        lateral_delta = positions[..., :2] - target[:, None, :2]
+        punctured_mask = torch.tensor(punctured, device=env.device)
+        exit_event_count = torch.tensor(
+            [getattr(item, "exit_event_count", 0) for item in tissue_state],
+            device=env.device,
+        )
+        tip_over_flap = (tip_position[:, 0] >= x.amin(dim=1)) & (
+            tip_position[:, 0] <= x.amax(dim=1)
+        )
+        exit_vertical_distance = torch.abs(tip_position[:, 2] - top_z.squeeze(1))
+        exit_contact_active = (
+            (flap_side == "right")
+            & punctured_mask
+            & tip_over_flap
+            & (exit_vertical_distance < exit_influence_depth_m)
+            & (exit_event_count <= 1)
+        )
+        patch_center = torch.where(
+            exit_contact_active.unsqueeze(-1), tip_position[:, :2], target[:, :2]
+        )
+        lateral_delta = positions[..., :2] - patch_center[:, None, :]
         radius = torch.linalg.vector_norm(lateral_delta, dim=-1)
         falloff = torch.clamp(1.0 - radius / patch_radius_m, min=0.0) ** 2
         displacement = torch.tensor(
@@ -119,7 +141,7 @@ def _couple_fem_contact_patch(
         )
         contact_active = (
             active_flap
-            & ~torch.tensor(punctured, device=env.device)
+            & ~punctured_mask
             & (displacement > 0.0)
         )
         contact_patch = (
@@ -133,8 +155,27 @@ def _couple_fem_contact_patch(
             positions[..., 2] - displacement.unsqueeze(-1) * falloff,
             targets[..., 2],
         )
+        # The tract needle remains collision-free so it can pass a deformable
+        # volume without PhysX interpreting the shaft as an uncut solid.  Make
+        # the authoritative right-flap exit mechanically visible by lifting a
+        # bounded top-surface patch as the sharp tip approaches and crosses.
+        # The surrounding free nodes transmit this displacement through FEM.
+        exit_lift = exit_lift_max_m * torch.clamp(
+            1.0 - exit_vertical_distance / exit_influence_depth_m, min=0.0
+        )
+        exit_patch = (
+            top_surface
+            & (falloff > 0.0)
+            & exit_contact_active.unsqueeze(-1)
+            & ~outer_anchor
+        )
+        targets[..., 2] = torch.where(
+            exit_patch,
+            positions[..., 2] + exit_lift.unsqueeze(-1) * falloff,
+            targets[..., 2],
+        )
         targets[..., 3] = torch.where(
-            contact_patch,
+            contact_patch | exit_patch,
             torch.zeros_like(targets[..., 3]),
             targets[..., 3],
         )
@@ -372,7 +413,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     adapter = _adapter(env)
     coupling = adapter.step(tip_poses, arc_poses, punctured, dt_s=0.02)
     tissue_state = adapter.scene_state
-    _couple_fem_contact_patch(env, target, tissue_state, punctured)
+    _couple_fem_contact_patch(env, target, tip_pos, tissue_state, punctured)
     raw_wrench = torch.tensor(
         [(*item.force_n, *item.torque_nm) for item in coupling],
         device=env.device,
@@ -660,17 +701,12 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         regrasp_delta_w = desired_capture - jaw_capture_position
         giver_root_quat = mdp_common.as_torch(robot.data.root_quat_w)
         regrasp_delta_r = quat_apply_inverse(giver_root_quat, regrasp_delta_w)
-        # Reuse the pickup/handover policy's identity tool attitude in the PSM
-        # root frame for late gap access.  It keeps the shaft on the authored
-        # trocar axis and the jaw opening in the field plane instead of
-        # carrying the increasingly oblique needle-drive wrist attitude down
-        # between the tissue slabs.  Earlier regrips retain the drive-start
-        # attitude because they occur safely above the tissue surface.
-        late_gap_regrasp = completed_regrasps >= 3
-        desired_regrasp_quat_w = torch.where(
-            late_gap_regrasp.unsqueeze(-1),
-            giver_root_quat,
-            state["drive_start_tool_quat_w"].to(dtype=tool_quat.dtype),
+        # Reuse the qualified pickup/handover capture orientation, but retain
+        # it in the actual drive-start frame.  Regrips now occur only on the
+        # exposed trailing arc above the FEM surface; commanding an identity
+        # wrist attitude here drove the third regrasp into a joint limit.
+        desired_regrasp_quat_w = state["drive_start_tool_quat_w"].to(
+            dtype=tool_quat.dtype
         )
         regrasp_rotation_error_w = axis_angle_from_quat(
             quat_mul(desired_regrasp_quat_w, quat_conjugate(tool_quat))
