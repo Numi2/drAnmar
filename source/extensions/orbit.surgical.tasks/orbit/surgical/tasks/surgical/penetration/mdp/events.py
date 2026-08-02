@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from isaaclab.assets import Articulation, RigidObject
+from isaaclab.assets import Articulation, DeformableObject, RigidObject
 from isaaclab.utils.math import quat_apply, quat_conjugate, quat_mul
 
 from orbit.surgical.assets.psm import PSM_GRIPPER_PROFILE
@@ -42,50 +42,65 @@ NEEDLE_POLICY_GRASP_QUAT_XYZW = NEEDLE_MID_GRASP_QUAT_XYZW
 PSM_TOOL_TIP_TO_JAW_COLLISION_M = (0.0, 0.0, 0.0)
 PENETRATION_GRIPPER_CLOSE_RAD = float(PSM_GRIPPER_PROFILE["close_rad"])
 PENETRATION_GRIPPER_OPEN_RAD = float(PSM_GRIPPER_PROFILE["open_rad"])
+TISSUE_OUTER_ANCHOR_WIDTH_M = 0.004
+
+
+def reset_and_anchor_tissue_fem(
+    env: ManagerBasedRLEnv, env_ids: torch.Tensor | None
+) -> None:
+    """Reset both FEM flaps and pin only their remote outer boundary bands."""
+
+    if env_ids is None:
+        env_ids = torch.arange(env.num_envs, device=env.device)
+    for asset_name, outer_side in (
+        ("tissue_left", "minimum"),
+        ("tissue_right", "maximum"),
+    ):
+        tissue: DeformableObject = env.scene[asset_name]
+        default_state = mdp_common.as_torch(tissue.data.default_nodal_state_w)[
+            env_ids
+        ].clone()
+        default_state[..., 3:] = 0.0
+        tissue.write_nodal_state_to_sim(default_state, env_ids=env_ids)
+
+        targets = mdp_common.as_torch(tissue.data.nodal_kinematic_target)[
+            env_ids
+        ].clone()
+        positions = default_state[..., :3]
+        coordinates = positions[..., 0]
+        if outer_side == "minimum":
+            boundary = coordinates.amin(dim=1, keepdim=True) + TISSUE_OUTER_ANCHOR_WIDTH_M
+            anchor_mask = coordinates <= boundary
+        else:
+            boundary = coordinates.amax(dim=1, keepdim=True) - TISSUE_OUTER_ANCHOR_WIDTH_M
+            anchor_mask = coordinates >= boundary
+        targets[..., :3] = positions
+        # PhysX uses zero for constrained nodes and one for freely simulated
+        # nodes. Wound-edge nodes remain free to indent, stretch, and rebound.
+        targets[..., 3] = torch.where(
+            anchor_mask,
+            torch.zeros_like(targets[..., 3]),
+            torch.ones_like(targets[..., 3]),
+        )
+        writer = getattr(tissue, "write_nodal_kinematic_target_to_sim_index", None)
+        if writer is not None:
+            writer(targets, env_ids=env_ids)
+        else:
+            tissue.write_nodal_kinematic_target_to_sim(targets, env_ids=env_ids)
+        tissue.write_data_to_sim()
 
 
 def configure_tissue_collision_filter(env: ManagerBasedRLEnv) -> None:
-    """Filter needle/tissue rigid contact while preserving PSM/tissue contact."""
+    """Keep FEM tissue in its sole PhysX collision group.
+
+    The authored entry needle has no rigid collision shapes: the environment's
+    force-gated tract backend owns needle resistance. Creating a second USD
+    collision group for a volume deformable is unsupported in Isaac 6 and can
+    suppress its intended PSM contact, so no needle/tissue filter is needed.
+    """
 
     if getattr(env, "_dr_anmar_tissue_collision_filter_configured", False):
         return
-    import omni.usd
-    from pxr import Sdf, Usd, UsdPhysics
-
-    stage = omni.usd.get_context().get_stage()
-    for env_index in range(env.num_envs):
-        env_path = f"/World/envs/env_{env_index}"
-        tissue_group_path = f"{env_path}/TissueCollisionGroup"
-        needle_group_path = f"{env_path}/NeedleCollisionGroup"
-        tissue_group = UsdPhysics.CollisionGroup.Define(
-            stage, Sdf.Path(tissue_group_path)
-        )
-        tissue_colliders = Usd.CollectionAPI.Apply(
-            tissue_group.GetPrim(), "colliders"
-        )
-        tissue_colliders.CreateExpansionRuleAttr().Set(Usd.Tokens.expandPrims)
-        tissue_colliders.CreateIncludesRel().AddTarget(
-            Sdf.Path(f"{env_path}/TissueLeft")
-        )
-        tissue_colliders.CreateIncludesRel().AddTarget(
-            Sdf.Path(f"{env_path}/TissueRight")
-        )
-        needle_group = UsdPhysics.CollisionGroup.Define(
-            stage, Sdf.Path(needle_group_path)
-        )
-        needle_colliders = Usd.CollectionAPI.Apply(
-            needle_group.GetPrim(), "colliders"
-        )
-        needle_colliders.CreateExpansionRuleAttr().Set(Usd.Tokens.expandPrims)
-        needle_colliders.CreateIncludesRel().AddTarget(
-            Sdf.Path(f"{env_path}/Needle")
-        )
-        tissue_group.CreateFilteredGroupsRel().AddTarget(
-            Sdf.Path(needle_group_path)
-        )
-        needle_group.CreateFilteredGroupsRel().AddTarget(
-            Sdf.Path(tissue_group_path)
-        )
     env._dr_anmar_tissue_collision_filter_configured = True
 
 

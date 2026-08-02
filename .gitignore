@@ -66,6 +66,9 @@ _build
 /assets/*
 !/assets/dr_anmar/
 /assets/dr_anmar/*
+!/assets/dr_anmar/tissue/
+!/assets/dr_anmar/tissue/DrAnmarSuturableTissue.left.tet.usda
+!/assets/dr_anmar/tissue/DrAnmarSuturableTissue.right.tet.usda
 !/assets/dr_anmar/multimodal/
 /assets/dr_anmar/multimodal/*
 !/assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/

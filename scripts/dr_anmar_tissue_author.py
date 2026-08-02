@@ -28,6 +28,12 @@ DEFAULT_LEFT_FLAP_OUTPUT = DEFAULT_OUTPUT.with_name(
 DEFAULT_RIGHT_FLAP_OUTPUT = DEFAULT_OUTPUT.with_name(
     "DrAnmarSuturableTissue.right.usda"
 )
+DEFAULT_LEFT_FLAP_TET_OUTPUT = DEFAULT_OUTPUT.with_name(
+    "DrAnmarSuturableTissue.left.tet.usda"
+)
+DEFAULT_RIGHT_FLAP_TET_OUTPUT = DEFAULT_OUTPUT.with_name(
+    "DrAnmarSuturableTissue.right.tet.usda"
+)
 DEFAULT_REPORT = DEFAULT_OUTPUT.with_suffix(".report.json")
 ASSET_NAME = "DrAnmar Suturable Tissue"
 ASSET_ID = "dr-anmar-suturable-tissue"
@@ -290,6 +296,26 @@ def author_tetmesh(profile: dict[str, Any], mesh: TissueMesh) -> str:
         "(" + ", ".join(str(index) for index in face) + ")"
         for face in mesh.surface_triangles
     )
+    material = profile["intact_tissue"]
+    contact = profile["contact"]
+    solver = profile["solver"]
+    mass_kg = derive_tissue(profile, mesh).mass_kg
+    tet_attributes = f'''float3[] extent = [{usd_vec(mesh.extent_min)}, {usd_vec(mesh.extent_max)}]
+point3f[] points = [
+    {points}
+]
+int3[] surfaceFaceVertexIndices = [
+    {surface}
+]
+int4[] tetVertexIndices = [
+    {tetrahedra}
+]'''
+    simulation_rest_attributes = f'''point3f[] omniphysics:restShapePoints = [
+    {points}
+]
+int4[] omniphysics:restTetVtxIndices = [
+    {tetrahedra}
+]'''
     return f"""#usda 1.0
 (
     defaultPrim = "{root}"
@@ -300,29 +326,53 @@ def author_tetmesh(profile: dict[str, Any], mesh: TissueMesh) -> str:
 )
 
 def Xform "{root}" (
+    prepend apiSchemas = ["OmniPhysicsDeformableBodyAPI", "PhysxBaseDeformableBodyAPI", "MaterialBindingAPI"]
     {custom_data(profile, mesh, representation="explicit_openusd_tetmesh_with_surface_visualization")}
 )
 {{
 {materials_block(root, profile)}
 
-    def TetMesh "Simulation"
+    def Material "FEMPhysics" (
+        prepend apiSchemas = ["OmniPhysicsBaseMaterialAPI", "OmniPhysicsDeformableMaterialAPI", "PhysxDeformableMaterialAPI"]
+    )
     {{
-        float3[] extent = [{usd_vec(mesh.extent_min)}, {usd_vec(mesh.extent_max)}]
-        point3f[] points = [
-            {points}
-        ]
-        int3[] surfaceFaceVertexIndices = [
-            {surface}
-        ]
-        int4[] tetVertexIndices = [
-            {tetrahedra}
-        ]
+        float omniphysics:density = {usd_float(float(material["density_kg_m3_seed"]))}
+        float omniphysics:dynamicFriction = {usd_float(float(contact["dynamic_friction_seed"]))}
+        float omniphysics:staticFriction = {usd_float(float(contact["static_friction_seed"]))}
+        float omniphysics:youngsModulus = {usd_float(float(material["youngs_modulus_pa_seed"]))}
+        float omniphysics:poissonsRatio = {usd_float(float(material["poisson_ratio_seed"]))}
+        float physxDeformableMaterial:elasticityDamping = {usd_float(float(material["damping_ratio_seed"]))}
+    }}
+
+    float omniphysics:mass = {usd_float(mass_kg)}
+    bool physxDeformableBody:disableGravity = true
+    bool physxDeformableBody:selfCollision = {str(bool(solver["self_collision"])).lower()}
+    int physxDeformableBody:solverPositionIterationCount = {int(solver["position_iterations"])}
+    float physxDeformableBody:linearDamping = {usd_float(float(solver["vertex_velocity_damping"]))}
+    rel material:binding:physics = </{root}/FEMPhysics>
+
+    def TetMesh "SimulationMesh" (
+        prepend apiSchemas = ["OmniPhysicsVolumeDeformableSimAPI", "OmniPhysicsDeformablePoseAPI:bind"]
+    )
+    {{
+        {tet_attributes.replace(chr(10), chr(10) + "        ")}
+        {simulation_rest_attributes.replace(chr(10), chr(10) + "        ")}
         custom uniform token[] drAnmar:tetLayerNames = [{layer_names}]
         custom int[] drAnmar:tetLayerIds = [{layer_ids}]
     }}
 
+    def TetMesh "CollisionMesh" (
+        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "OmniPhysicsDeformablePoseAPI:bind"]
+    )
+    {{
+        {tet_attributes.replace(chr(10), chr(10) + "        ")}
+        float physxCollision:contactOffset = 0.0005
+        float physxCollision:restOffset = 0.0001
+        uniform token purpose = "guide"
+    }}
+
     def Mesh "Visual" (
-        prepend apiSchemas = ["MaterialBindingAPI"]
+        prepend apiSchemas = ["MaterialBindingAPI", "OmniPhysicsDeformablePoseAPI:bind"]
     )
     {{
         {mesh_attributes(mesh)}
@@ -410,6 +460,16 @@ def main() -> int:
         type=Path,
         default=DEFAULT_RIGHT_FLAP_OUTPUT,
     )
+    parser.add_argument(
+        "--left-flap-tet-output",
+        type=Path,
+        default=DEFAULT_LEFT_FLAP_TET_OUTPUT,
+    )
+    parser.add_argument(
+        "--right-flap-tet-output",
+        type=Path,
+        default=DEFAULT_RIGHT_FLAP_TET_OUTPUT,
+    )
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
     args = parser.parse_args()
     profile = load_tissue_profile(args.profile)
@@ -418,6 +478,8 @@ def main() -> int:
     args.tet_output.parent.mkdir(parents=True, exist_ok=True)
     args.left_flap_output.parent.mkdir(parents=True, exist_ok=True)
     args.right_flap_output.parent.mkdir(parents=True, exist_ok=True)
+    args.left_flap_tet_output.parent.mkdir(parents=True, exist_ok=True)
+    args.right_flap_tet_output.parent.mkdir(parents=True, exist_ok=True)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(author_surface(profile, mesh), encoding="utf-8")
     args.tet_output.write_text(
@@ -434,6 +496,14 @@ def main() -> int:
         author_surface(profile, right_flap_mesh),
         encoding="utf-8",
     )
+    args.left_flap_tet_output.write_text(
+        author_tetmesh(profile, left_flap_mesh),
+        encoding="utf-8",
+    )
+    args.right_flap_tet_output.write_text(
+        author_tetmesh(profile, right_flap_mesh),
+        encoding="utf-8",
+    )
     report = build_report(
         args.profile,
         profile,
@@ -446,8 +516,12 @@ def main() -> int:
         "left_sha256": sha256(args.left_flap_output),
         "right": portable_path(args.right_flap_output),
         "right_sha256": sha256(args.right_flap_output),
+        "left_tetmesh": portable_path(args.left_flap_tet_output),
+        "left_tetmesh_sha256": sha256(args.left_flap_tet_output),
+        "right_tetmesh": portable_path(args.right_flap_tet_output),
+        "right_tetmesh_sha256": sha256(args.right_flap_tet_output),
         "purpose": (
-            "one connected FEM body per wound flap for stable PhysX cooking"
+            "one connected explicit collision/simulation TetMesh hierarchy per wound flap"
         ),
     }
     args.report.write_text(

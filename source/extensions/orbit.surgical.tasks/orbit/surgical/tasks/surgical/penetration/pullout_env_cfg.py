@@ -128,7 +128,10 @@ class PulloutTerminationsCfg(TerminationsCfg):
 class PulloutEnvCfg(ThroughPunctureEnvCfg):
     pullout: bool = True
     scene: PulloutSceneCfg = PulloutSceneCfg(
-        num_envs=12, env_spacing=0.25, clone_in_fabric=True
+        num_envs=12,
+        env_spacing=0.25,
+        replicate_physics=False,
+        clone_in_fabric=False,
     )
     observations: PulloutObservationsCfg = PulloutObservationsCfg()
     actions: PulloutActionsCfg = PulloutActionsCfg()

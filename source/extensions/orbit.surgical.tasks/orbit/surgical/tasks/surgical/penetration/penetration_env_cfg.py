@@ -6,11 +6,12 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
+from pathlib import Path
 
 from orbit.surgical.assets import ORBITSURGICAL_ASSETS_DATA_DIR
 
 import isaaclab.sim as sim_utils
-from isaaclab.assets import ArticulationCfg, AssetBaseCfg, RigidObjectCfg
+from isaaclab.assets import ArticulationCfg, AssetBaseCfg, DeformableObjectCfg, RigidObjectCfg
 from isaaclab.controllers.differential_ik_cfg import DifferentialIKControllerCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.actions.actions_cfg import DifferentialInverseKinematicsActionCfg
@@ -30,6 +31,32 @@ from isaaclab.utils.configclass import configclass
 from orbit.surgical.assets.psm import PSM_HIGH_PD_CFG, psm_gripper_close_command_expr
 
 from . import mdp
+
+
+def _suturable_tissue_asset(filename: str) -> str:
+    """Resolve the checked-in DrAnmar tissue assets without an external backend."""
+
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "assets/dr_anmar/tissue" / filename
+        if candidate.is_file():
+            return str(candidate)
+    raise FileNotFoundError(f"DrAnmar suturable tissue asset is missing: {filename}")
+
+
+def _make_volume_tissue_flap_cfg(*, side: str) -> DeformableObjectCfg:
+    """Create one connected, surface-rendered PhysX FEM wound flap."""
+
+    if side not in {"left", "right"}:
+        raise ValueError(f"unsupported tissue flap side: {side}")
+    return DeformableObjectCfg(
+        prim_path=f"{{ENV_REGEX_NS}}/Tissue{side.title()}",
+        init_state=DeformableObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.05)),
+        spawn=UsdFileCfg(
+            usd_path=_suturable_tissue_asset(
+                f"DrAnmarSuturableTissue.{side}.tet.usda"
+            )
+        ),
+    )
 
 
 @configclass
@@ -72,30 +99,11 @@ class PenetrationSceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper2_link",
         history_length=2,
     )
-    tissue_left = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/TissueLeft",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(-0.020, 0.0, 0.05)),
-        spawn=sim_utils.CuboidCfg(
-            # A 10 mm open incision admits the 5 mm-class PSM distal shaft
-            # without disabling collision on either tissue edge.
-            size=(0.030, 0.045, 0.006),
-            collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
-            visual_material=sim_utils.PreviewSurfaceCfg(
-                diffuse_color=(0.58, 0.18, 0.16), roughness=0.58
-            ),
-        ),
-    )
-    tissue_right = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/TissueRight",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.020, 0.0, 0.05)),
-        spawn=sim_utils.CuboidCfg(
-            size=(0.030, 0.045, 0.006),
-            collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
-            visual_material=sim_utils.PreviewSurfaceCfg(
-                diffuse_color=(0.58, 0.18, 0.16), roughness=0.58
-            ),
-        ),
-    )
+    # Each connected flap is its own volume-filling GPU FEM object with
+    # separate regular simulation, surface-matching collision, and render
+    # meshes authored in the USD hierarchy.
+    tissue_left = _make_volume_tissue_flap_cfg(side="left")
+    tissue_right = _make_volume_tissue_flap_cfg(side="right")
     table = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Table",
         # Keep the qualified pickup/handover support transform. Raising the
@@ -173,6 +181,7 @@ class ObservationsCfg:
 @configclass
 class EventCfg:
     reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
+    reset_tissue_fem = EventTerm(func=mdp.reset_and_anchor_tissue_fem, mode="reset")
     reset_pregrasp = EventTerm(func=mdp.reset_pregrasped_needle, mode="reset")
     reset_evidence = EventTerm(func=mdp.reset_penetration_evidence, mode="reset")
 
@@ -198,7 +207,10 @@ class TerminationsCfg:
 @configclass
 class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
     scene: PenetrationSceneCfg = PenetrationSceneCfg(
-        num_envs=12, env_spacing=0.25, clone_in_fabric=True
+        num_envs=12,
+        env_spacing=0.25,
+        replicate_physics=False,
+        clone_in_fabric=False,
     )
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -307,8 +319,10 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
             scale=(0.00025, 0.00025, 0.00025, 0.00872664626, 0.00872664626, 0.00872664626),
             clip={".*": (-1.0, 1.0)},
         )
-        self.decimation = 10
-        self.sim.dt = 0.002
+        # The tissue profile recommends a 1 ms FEM step. Keep the 50 Hz policy
+        # rate by doubling decimation rather than weakening contact mechanics.
+        self.decimation = 20
+        self.sim.dt = 0.001
         self.sim.render_interval = self.decimation
         self.episode_length_s = 30.0
         self.viewer.eye = (0.0, 0.35, 0.18)

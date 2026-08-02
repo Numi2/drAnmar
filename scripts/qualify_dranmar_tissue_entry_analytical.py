@@ -222,6 +222,28 @@ def main() -> int:
                 state["backend_metadata"].implementation_sha256
             ),
         }
+        fem_tissue = {}
+        for tissue_name in ("tissue_left", "tissue_right"):
+            tissue = env.unwrapped.scene[tissue_name]
+            nodal_state = mdp_common.as_torch(tissue.data.nodal_state_w)
+            default_state = mdp_common.as_torch(tissue.data.default_nodal_state_w)
+            kinematic_target = mdp_common.as_torch(
+                tissue.data.nodal_kinematic_target
+            )
+            fem_tissue[tissue_name] = {
+                "node_count": int(nodal_state.shape[1]),
+                "anchored_node_count": int(
+                    torch.count_nonzero(kinematic_target[0, :, 3] == 0).item()
+                ),
+                "state_finite": bool(torch.isfinite(nodal_state).all()),
+                "max_displacement_m": float(
+                    torch.linalg.vector_norm(
+                        nodal_state[0, :, :3] - default_state[0, :, :3], dim=-1
+                    )
+                    .amax()
+                    .item()
+                ),
+            }
         report = {
             "schema": "dr.anmar.tissue-entry-analytical-gate.v1",
             "task": args.task,
@@ -265,6 +287,7 @@ def main() -> int:
             "sampled_puncture_force_n": evidence["sampled_puncture_force_n"],
             "accumulated_work_j": evidence["accumulated_work_j"],
             "wrench_finite": bool(torch.isfinite(state["wrench"]).all()),
+            "fem_tissue": fem_tissue,
             "max_rotation_action": max_rotation_action,
             "translation_saturation_steps": translation_saturation_steps,
             "rotation_saturation_steps": rotation_saturation_steps,
@@ -313,13 +336,22 @@ def main() -> int:
             ],
             "robot_contact_bodies": list(
                 env.unwrapped.scene.sensors["robot_contacts"].body_names
+            )
+            if "robot_contacts" in env.unwrapped.scene.sensors
+            else [],
+            "robot_net_contact_forces_n": (
+                torch.linalg.vector_norm(
+                    mdp_common.as_torch(
+                        env.unwrapped.scene.sensors["robot_contacts"].data.net_forces_w
+                    )[0],
+                    dim=-1,
+                )
+                .detach()
+                .cpu()
+                .tolist()
+                if "robot_contacts" in env.unwrapped.scene.sensors
+                else []
             ),
-            "robot_net_contact_forces_n": torch.linalg.vector_norm(
-                mdp_common.as_torch(
-                    env.unwrapped.scene.sensors["robot_contacts"].data.net_forces_w
-                )[0],
-                dim=-1,
-            ).detach().cpu().tolist(),
             "qualified_for_ppo": bool(
                 successful
                 and evidence["event_count"] == 1

@@ -1006,12 +1006,18 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "giver_regrasp_complete": state["giver_regrasp_stage"] == 5,
             "drive_rotation_deg": drive_rotation_deg,
             "tract_support_active": torch.tensor(
-                [item.tract_support_active for item in tissue_state],
+                [
+                    getattr(item, "tract_support_active", False)
+                    for item in tissue_state
+                ],
                 device=env.device,
                 dtype=torch.bool,
             ),
             "tract_support_event_count": torch.tensor(
-                [item.tract_support_event_count for item in tissue_state],
+                [
+                    getattr(item, "tract_support_event_count", 0)
+                    for item in tissue_state
+                ],
                 device=env.device,
                 dtype=torch.long,
             ),

@@ -8,7 +8,7 @@
   "surface_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
   "surface_asset_sha256": "771bb4557a516ea2e879a6de83ae2ecd8bd273ef4567eed150998dd9af334f04",
   "tetmesh_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
-  "tetmesh_asset_sha256": "89d5c54a7e8670e25150cc1f51be8192d72b37c17cc38b2d0b5109105288dbb2",
+  "tetmesh_asset_sha256": "3ec77b36b567cab85a13209b322480ce4d7f24d76fea745e27b5bc6ee67d3ce7",
   "point_count": 2470,
   "tetrahedron_count": 10368,
   "surface_triangle_count": 2688,
@@ -68,6 +68,10 @@
     "left_sha256": "9a0bfe5c780698de0cf3bdc3631ccc75d22a75fdb022b639f9e9be5619d6bfad",
     "right": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.right.usda",
     "right_sha256": "52a73e0a41b20e4e51552751dea051f1a3ed24a8eb204bc6c506d79ed8df5d35",
-    "purpose": "one connected FEM body per wound flap for stable PhysX cooking"
+    "left_tetmesh": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.left.tet.usda",
+    "left_tetmesh_sha256": "becde23a1b843220ffec6ad5a0098ea68e10c2443a219b938bb825e0de6bbbc6",
+    "right_tetmesh": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.right.tet.usda",
+    "right_tetmesh_sha256": "7d88df40022cc909faada06920504c1946d23f06d07a2b082dea4f56582535bb",
+    "purpose": "one connected explicit collision/simulation TetMesh hierarchy per wound flap"
   }
 }

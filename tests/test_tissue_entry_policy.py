@@ -739,14 +739,29 @@ def test_tissue_blocks_psms_but_filters_only_the_needle_pair():
     pullout = (TASK_ROOT / "pullout_env_cfg.py").read_text(encoding="utf-8")
     events = (TASK_ROOT / "mdp/events.py").read_text(encoding="utf-8")
     state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
-    assert penetration.count("collision_enabled=True") >= 2
+    left_tet = (
+        ROOT / "assets/dr_anmar/tissue/DrAnmarSuturableTissue.left.tet.usda"
+    ).read_text(encoding="utf-8")
+    assert 'tissue_left = _make_volume_tissue_flap_cfg(side="left")' in penetration
+    assert 'tissue_right = _make_volume_tissue_flap_cfg(side="right")' in penetration
+    assert "DeformableObjectCfg(" in penetration
+    assert "DrAnmarSuturableTissue.{side}.tet.usda" in penetration
+    assert 'def TetMesh "SimulationMesh"' in left_tet
+    assert 'def TetMesh "CollisionMesh"' in left_tet
+    assert "OmniPhysicsVolumeDeformableSimAPI" in left_tet
+    assert "PhysicsCollisionAPI" in left_tet
+    assert "physxDeformableBody:solverPositionIterationCount = 24" in left_tet
+    assert "physxDeformableBody:selfCollision = true" in left_tet
+    assert "float physxCollision:contactOffset = 0.0005" in left_tet
+    assert "float physxCollision:restOffset = 0.0001" in left_tet
+    assert "reset_and_anchor_tissue_fem" in events
+    assert "TISSUE_OUTER_ANCHOR_WIDTH_M = 0.004" in events
     assert "giver_tip_tissue_contact" in penetration
     assert "collision_enabled=False" not in pullout
     assert "dranmar_needle.usda" not in pullout
     assert "configure_tissue_collision_filter(env)" in events
-    assert 'Sdf.Path(f"{env_path}/Needle")' in events
-    assert 'Sdf.Path(f"{env_path}/TissueLeft")' in events
-    assert 'Sdf.Path(f"{env_path}/TissueRight")' in events
+    assert "Creating a second USD" in events
+    assert "no needle/tissue filter is needed" in events
     assert "unintended_robot_contact" in state
 
 
