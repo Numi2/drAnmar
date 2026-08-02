@@ -189,10 +189,11 @@ and recovery gates.
 
 The simulation champion now completes the full entry-and-pullout sequence with
 both PSMs in opposing, above-tissue operative geometry. The giver enters the
-left collision-enabled span, follows the 21 mm curved needle below the surface,
-re-emerges through the top of the right span, presents more than one fifth of
-the arc, and stops. The opposite PSM then acquires the exposed arc, the giver
-releases, and the receiver pulls the needle completely clear on the right.
+top of the left collision-enabled span, follows the 21 mm curved needle below
+the surface, punctures the underside of the separate right span, re-emerges
+through its top, presents more than one fifth of the arc, and stops. The
+opposite PSM then acquires the exposed arc, the giver releases, and the receiver
+pulls the needle completely clear on the right.
 
 <p align="center">
   <img src="docs/media/dranmar-champion-tissue-puncture-pullout.gif"
@@ -202,29 +203,32 @@ releases, and the receiver pulls the needle completely clear on the right.
 
 <p align="center">
   <em>Real seed-17 RTX render: left-span entry, curved subsurface drive,
-  right-span top exit, opposite-arm handover, and receiver-only clearance.</em>
+  right-span underside puncture and top exit, opposite-arm handover, and
+  receiver-only clearance.</em>
 </p>
 
-The native backend owns explicit slab identities and emits exactly one exit
-event only for a `left -> right` top-surface route; same-slab, wound-gap,
-outside-span, and underside routes fail closed. PhysX remains authoritative
-for both complete PSM chains. Any jaw, distal-link, shaft, or wrist tissue
-contact is a hard failure; puncture permission applies only to the needle.
+The native backend owns explicit slab identities and requires three ordered,
+one-time events: left-top entry, right-underside puncture, then right-top exit.
+The top exit cannot occur unless the underside puncture has already occurred;
+same-slab, wound-gap, outside-span, and skipped-surface routes fail closed.
+PhysX remains authoritative for both complete PSM chains. Any jaw, distal-link,
+shaft, or wrist tissue contact is a hard failure; puncture permission applies
+only to the needle.
 
-The rendered seed-17 receipt records one entry and one exit, 0.884 mm entry
-error, 0.094 mm immutable exit-event error, 7.11 degree tangent error,
-7.59 degree plane error, zero hard failures, zero embedded arc after pullout,
-and 100% final exposure. The analytical policy runs at 50 Hz with 0.25 mm and
-0.5 degree command bounds, four tissue-supported giver regrips, a fixed giver
-hold during receiver approach, sustained receiver custody, and continued pull
-through the clearance-confirmation phase. The machine-readable rendered
-evidence is in
+The rendered seed-17 receipt records one left entry, one right-underside
+puncture, and one right-top exit; 0.884 mm entry error; 0.094 mm immutable
+exit-event error; 7.11 degree tangent error; 7.59 degree plane error; zero hard
+failures; zero embedded arc after pullout; and 100% final exposure. The
+analytical policy runs at 50 Hz with 0.25 mm and 0.5 degree command bounds,
+four tissue-supported giver regrips, a fixed giver hold during receiver
+approach, sustained receiver custody, and 64 receiver-owned pull steps before
+success may be declared. The machine-readable rendered evidence is in
 [`docs/tissue_puncture_pullout/seed17_fem_rendered_success.json`](docs/tissue_puncture_pullout/seed17_fem_rendered_success.json).
-The receiver follows the instantaneous curved-needle tangent while any arc
-remains embedded; it separates upward only after backend-confirmed clearance,
-avoiding a cross-surface pull through the right FEM flap.
-The GIF preserves the real entry frames at near-real-time speed and uses a
-closer operative crop so the initial left-flap tip crossing remains visible.
+The receiver follows the instantaneous curved-needle tangent throughout its
+pull, avoiding the previous late upward cross-surface motion. The GIF uses only
+frames from this successful RTX rollout, keeps the first-entry interval near
+real-time so the left-flap tip crossing remains visible, and omits the
+post-success reset frame.
 
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.
