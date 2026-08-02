@@ -19,7 +19,7 @@ from .backend import (
 )
 
 
-DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v1"
+DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v2-top-exit"
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,8 @@ class ThroughTissueSceneState:
 @dataclass
 class _ThroughState:
     exit_event_count: int = 0
-    tip_was_outside: bool = False
+    tip_has_entered: bool = False
+    previous_tip_z_m: float | None = None
     embedded_arc_length_m: float = 0.0
     exposed_arc_length_m: float = 0.0
     exit_position_m: tuple[float, float, float] = (0.0, 0.0, -0.003)
@@ -88,11 +89,9 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
     def _arc_points(cls, pose: NeedlePose) -> list[tuple[float, float, float]]:
         points: list[tuple[float, float, float]] = []
         for index in range(cls.through_sample_count):
-            # The authored sharp tip is at -pi/2 and advances along local +X.
-            # Traverse from that tip toward the needle body in the decreasing
-            # angular direction so the centerline trails, rather than leads,
-            # the sharp point through the tissue.
-            angle = -0.5 * math.pi - math.pi * index / (cls.through_sample_count - 1)
+            # The authored sharp tip is at -pi/2 and points along local -X.
+            # Traverse the rendered semicircle from the tip toward the swage.
+            angle = -0.5 * math.pi + math.pi * index / (cls.through_sample_count - 1)
             local = (
                 cls.curvature_radius_m * math.cos(angle),
                 cls.curvature_radius_m * math.sin(angle),
@@ -108,7 +107,8 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
         state = self._through[index]
         if not punctured:
             state.exit_event_count = 0
-            state.tip_was_outside = False
+            state.tip_has_entered = False
+            state.previous_tip_z_m = None
             state.embedded_arc_length_m = 0.0
             state.exposed_arc_length_m = 0.0
             state.exit_position_m = (0.0, 0.0, -0.003)
@@ -118,29 +118,39 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
         segment_length = math.pi * self.curvature_radius_m / (len(points) - 1)
         embedded = 0.0
         exposed = 0.0
-        leading_outside = True
+        leading_exposed = True
         exit_position = state.exit_position_m
         crossing_found = False
         for first, second in zip(points[:-1], points[1:], strict=True):
             midpoint_z = 0.5 * (first[2] + second[2])
             if bottom_z <= midpoint_z <= self.surface_z_m:
                 embedded += segment_length
-            if leading_outside and midpoint_z < bottom_z:
+            # Exposure is the contiguous leading arc above the operative top
+            # after re-emergence.  Arc elsewhere above the slab is not a free
+            # graspable leading section.
+            if leading_exposed and midpoint_z > self.surface_z_m:
                 exposed += segment_length
             else:
-                leading_outside = False
-            if not crossing_found and first[2] < bottom_z <= second[2]:
+                leading_exposed = False
+            if not crossing_found and first[2] >= self.surface_z_m > second[2]:
                 span = second[2] - first[2]
-                ratio = (bottom_z - first[2]) / span if abs(span) > 1.0e-12 else 0.0
+                ratio = (
+                    (self.surface_z_m - first[2]) / span
+                    if abs(span) > 1.0e-12
+                    else 0.0
+                )
                 exit_position = tuple(
                     first[axis] + ratio * (second[axis] - first[axis])
                     for axis in range(3)
                 )
                 crossing_found = True
-        tip_outside = points[0][2] < bottom_z
-        if tip_outside and not state.tip_was_outside:
+        tip_z = points[0][2]
+        if tip_z < self.surface_z_m - 1.0e-5:
+            state.tip_has_entered = True
+        tip_reemerged = state.tip_has_entered and tip_z >= self.surface_z_m
+        if tip_reemerged and state.exit_event_count == 0:
             state.exit_event_count += 1
-        state.tip_was_outside = tip_outside
+        state.previous_tip_z_m = tip_z
         state.embedded_arc_length_m = embedded
         state.exposed_arc_length_m = exposed
         state.exit_position_m = exit_position

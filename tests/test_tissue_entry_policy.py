@@ -286,6 +286,8 @@ def test_policy_is_gru_128_with_zero_initialized_bounded_residual():
     assert 'std_type="log"' in learning
     assert "desired_tip_position - needle_position" in model
     assert "contact_phase = indent_phase & (indentation > 0.0)" in model
+    assert "indent_phase = phase >= 2" in model
+    assert "contact_phase = indent_phase & (indentation > 0.0)" in model
     assert "rotation = torch.where(indent_phase.unsqueeze(-1)" in model
     assert 'kwargs.pop(deprecated_key, None)' in model
     assert "raw = unpad_trajectories(raw, masks)" in model
@@ -306,10 +308,11 @@ def test_play_task_uses_canonical_fixed_domain_materials():
     assert "state[\"puncture_force_n\"][env_ids] = 2.0" in events
 
 
-def test_giver_reset_lifts_base_and_preserves_world_entry_goal():
+def test_giver_reset_lifts_base_and_targets_the_left_tissue_span():
     config = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
     assert "pos=(-0.01037645055381, -0.0730, 0.06676338424909)" in config
-    assert "pos_x=(-0.01572351386552, -0.01572351386552)" in config
+    assert "pos_x=(-0.00958936386552, -0.00958936386552)" in config
+    assert "Enter the left tissue span 5 mm from the wound edge" in config
 
 
 def test_entry_proxy_is_static_and_table_keeps_handover_clearance():
@@ -465,7 +468,10 @@ def test_through_puncture_backend_and_task_are_distinct_from_qualified_entry():
         encoding="utf-8"
     )
     controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
-    assert 'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v1"' in backend
+    assert (
+        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v2-top-exit"'
+        in backend
+    )
     assert "through_sample_count = 129" in backend
     assert "exit_event_count" in backend
     assert "DrAnmar-Through-Puncture-Tissue-Needle-PSM-IK-Rel-v0" in registration
@@ -473,22 +479,65 @@ def test_through_puncture_backend_and_task_are_distinct_from_qualified_entry():
     assert "target_exposed_fraction = 0.22" in controller
 
 
-def test_through_backend_emits_one_exit_and_measures_trailing_arc_exposure():
+def test_through_backend_emits_one_top_exit_after_the_tip_first_enters():
     module = _through_backend()
     backend = module.DrAnmarNativeTissueThroughBackend(1)
-    root = module.NeedlePose(
+    entered = module.NeedlePose(
         (0.0, 0.0, 0.002),
         (2**-0.5, 0.0, 0.0, 2**-0.5),
     )
-    backend.step([root], [root], [True])
+    reemerged = module.NeedlePose(
+        (0.0, 0.0, 0.002),
+        (-(2**-0.5), 0.0, 0.0, 2**-0.5),
+    )
+    backend.step([entered], [entered], [True])
+    before_exit = backend.scene_state[0]
+    backend.step([reemerged], [reemerged], [True])
     first = backend.scene_state[0]
-    backend.step([root], [root], [True])
+    backend.step([reemerged], [reemerged], [True])
     second = backend.scene_state[0]
+    backend._through[0].tip_has_entered = True
+    backend.step([reemerged], [reemerged], [True])
+    replay_crossing = backend.scene_state[0]
+    assert before_exit.exit_event_count == 0
     assert first.exit_event_count == 1
     assert second.exit_event_count == 1
+    assert replay_crossing.exit_event_count == 1
     assert first.exposed_arc_length_m > 0.0
     assert first.embedded_arc_length_m > 0.0
     assert 0.0 < first.exposed_fraction < 1.0
+
+
+def test_whole_psm_link_tissue_contacts_are_authoritative():
+    scene = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
+    pullout = (TASK_ROOT / "pullout_env_cfg.py").read_text(encoding="utf-8")
+    state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
+    assert "giver_all_links_tissue_contact = ContactSensorCfg" in scene
+    assert "receiver_all_links_tissue_contact = ContactSensorCfg" in pullout
+    assert 'env, "giver_all_links_tissue_contact"' in state
+    assert 'env, "receiver_all_links_tissue_contact"' in state
+    assert "torch.maximum(giver_tissue_force, receiver_tissue_force) > 0.02" in state
+    assert "solver_position_iteration_count=16" in scene
+    assert "solver_position_iteration_count=16" in pullout
+    assert "filter_prim_paths_expr" not in scene.split(
+        "giver_all_links_tissue_contact = ContactSensorCfg", 1
+    )[1].split("giver_tip_tissue_contact", 1)[0]
+
+
+def test_through_backend_samples_the_rendered_positive_x_semicircle():
+    module = _through_backend()
+    pose = module.NeedlePose((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+    points = module.DrAnmarNativeTissueThroughBackend._arc_points(pose)
+    assert min(point[0] for point in points) >= -1.0e-12
+    assert points[0][1] < 0.0
+    assert points[-1][1] > 0.0
+
+
+def test_policy_uses_authored_grasp_and_negative_x_sharp_tangent():
+    events = (TASK_ROOT / "mdp/events.py").read_text(encoding="utf-8")
+    state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
+    assert "NEEDLE_MID_GRASP_POSITION_M = (0.00613661575091" in events
+    assert "NEEDLE_TANGENT_LOCAL = (-1.0, 0.0, 0.0)" in state
 
 
 def test_through_puncture_receipt_reports_grippable_exposure_and_exit_error():
@@ -588,6 +637,10 @@ def test_pullout_task_has_dual_psm_controller_and_receipt_contract():
     assert "entry_lateral_delta" in controller
     assert "tangential_error <= 0.0009" in controller
     assert "tangential_limit_m = 0.00005" in controller
+    assert "remains authoritative to presentation" in controller
+    assert "self.drive_rotation_command = 0.5" in controller
+    assert "torch.linalg.cross(current_tangent, start_tangent)" in controller
+    assert ") & (phase <= 5)" in controller
     assert fields["custody_model"].default == (
         "bilateral_force_or_calibrated_geometry_then_receiver_pose_coupling"
     )

@@ -30,6 +30,35 @@ parser.add_argument("--video_folder", type=Path)
 parser.add_argument("--video_length", type=int, default=1800)
 parser.add_argument("--video_width", type=int, default=960)
 parser.add_argument("--video_height", type=int, default=720)
+parser.add_argument(
+    "--giver_base_lift_m",
+    type=float,
+    help="Diagnostic-only giver base lift above the legacy reset pose.",
+)
+parser.add_argument(
+    "--episode_length_s",
+    type=float,
+    help="Diagnostic-only episode horizon override.",
+)
+parser.add_argument(
+    "--giver_joint_positions",
+    help="Diagnostic-only comma-separated six-DOF giver reset posture.",
+)
+parser.add_argument(
+    "--rcm_follow_gain",
+    type=float,
+    help="Diagnostic-only pre-contact RCM rotation coupling gain.",
+)
+parser.add_argument(
+    "--ik_orientation_weight",
+    type=float,
+    help="Diagnostic-only giver IK orientation-row weight.",
+)
+parser.add_argument(
+    "--receiver_ik_orientation_weight",
+    type=float,
+    help="Diagnostic-only receiver IK orientation-row weight.",
+)
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 if args.video:
@@ -92,6 +121,55 @@ def main() -> int:
         use_fabric=True,
     )
     env_cfg.seed = args.seed
+    if args.giver_base_lift_m is not None:
+        if not 0.0 <= args.giver_base_lift_m <= 0.040:
+            raise ValueError("giver_base_lift_m must be in [0.0, 0.040]")
+        lift_m = args.giver_base_lift_m
+        root_x, root_y, _ = env_cfg.scene.robot.init_state.pos
+        env_cfg.scene.robot.init_state.pos = (
+            root_x,
+            root_y,
+            0.04676338424909 + lift_m,
+        )
+        ranges = env_cfg.commands.entry_pose.ranges
+        command_x = -0.00608844038348 - 0.4817536473274231 * lift_m
+        command_y = -0.01046408122182 + 0.8763065934181213 * lift_m
+        ranges.pos_x = (command_x, command_x)
+        ranges.pos_y = (command_y, command_y)
+    diagnostic_joint_positions = None
+    if args.giver_joint_positions is not None:
+        diagnostic_joint_positions = tuple(
+            float(value) for value in args.giver_joint_positions.split(",")
+        )
+        if len(diagnostic_joint_positions) != 6:
+            raise ValueError("giver_joint_positions must contain six values")
+        joint_names = (
+            "psm_yaw_joint",
+            "psm_pitch_end_joint",
+            "psm_main_insertion_joint",
+            "psm_tool_roll_joint",
+            "psm_tool_pitch_joint",
+            "psm_tool_yaw_joint",
+        )
+        env_cfg.scene.robot.init_state.joint_pos.update(
+            dict(zip(joint_names, diagnostic_joint_positions, strict=True))
+        )
+    if args.episode_length_s is not None:
+        if args.episode_length_s <= 0.0:
+            raise ValueError("episode_length_s must be positive")
+        env_cfg.episode_length_s = args.episode_length_s
+    if args.ik_orientation_weight is not None:
+        if not 0.0 <= args.ik_orientation_weight <= 1.0:
+            raise ValueError("ik_orientation_weight must be in [0.0, 1.0]")
+        env_cfg.actions.body_action.controller.orientation_weight = (
+            args.ik_orientation_weight
+        )
+    if args.receiver_ik_orientation_weight is not None:
+        if not 0.0 <= args.receiver_ik_orientation_weight <= 1.0:
+            raise ValueError("receiver_ik_orientation_weight must be in [0.0, 1.0]")
+        env_cfg.actions.receiver_body_action.controller.orientation_weight = (
+            args.receiver_ik_orientation_weight
+        )
     render_mode = "rgb_array" if args.video else None
     if args.video:
         if args.num_envs != 1:
@@ -129,6 +207,16 @@ def main() -> int:
         else:
             controller_type = PenetrationAnalyticController
         controller = controller_type().to(env.unwrapped.device)
+        if args.rcm_follow_gain is not None:
+            if not 0.0 <= args.rcm_follow_gain <= 1.5:
+                raise ValueError("rcm_follow_gain must be in [0.0, 1.5]")
+            if isinstance(controller, PulloutAnalyticController):
+                entry_controller = controller.through_controller.entry_controller
+            elif isinstance(controller, ThroughPunctureAnalyticController):
+                entry_controller = controller.entry_controller
+            else:
+                entry_controller = controller
+            entry_controller.rcm_follow_gain = args.rcm_follow_gain
 
         def policy(observation):
             return controller(observation["policy"])[0]
@@ -202,6 +290,16 @@ def main() -> int:
                             "indentation_m": float(
                                 measurement.get("indentation", torch.tensor([float("nan")]))[0]
                             ),
+                            "tangent_error_deg": float(
+                                measurement.get(
+                                    "tangent_error", torch.tensor([float("nan")])
+                                )[0]
+                            ),
+                            "plane_error_deg": float(
+                                measurement.get(
+                                    "plane_error", torch.tensor([float("nan")])
+                                )[0]
+                            ),
                             "exposed_fraction": float(
                                 measurement.get("exposed_fraction", torch.tensor([0.0]))[0]
                             ),
@@ -222,6 +320,21 @@ def main() -> int:
                             ],
                             "surface_normal_robot": [
                                 float(value) for value in policy_observation[43:46]
+                            ],
+                            "giver_joint_positions": [
+                                float(value) for value in policy_observation[:8]
+                            ],
+                            "giver_ee_position_robot": [
+                                float(value) for value in policy_observation[16:19]
+                            ],
+                            "receiver_joint_positions": [
+                                float(value) for value in policy_observation[85:93]
+                            ],
+                            "receiver_ee_pose_robot": [
+                                float(value) for value in policy_observation[101:108]
+                            ],
+                            "receiver_guidance": [
+                                float(value) for value in policy_observation[110:116]
                             ],
                             "exit_target": [
                                 float(value)
@@ -252,9 +365,21 @@ def main() -> int:
                                     torch.tensor([float("nan")]),
                                 )[0]
                             ),
+                            "giver_shaft_wrist_force_n": float(
+                                measurement.get(
+                                    "giver_all_links_tissue_force",
+                                    torch.tensor([float("nan")]),
+                                )[0]
+                            ),
                             "receiver_tissue_force_n": float(
                                 measurement.get(
                                     "receiver_tissue_force",
+                                    torch.tensor([float("nan")]),
+                                )[0]
+                            ),
+                            "receiver_shaft_wrist_force_n": float(
+                                measurement.get(
+                                    "receiver_all_links_tissue_force",
                                     torch.tensor([float("nan")]),
                                 )[0]
                             ),
@@ -362,6 +487,14 @@ def main() -> int:
             "timeouts": timeouts,
             "failure_flags": failure_flags,
             "control_steps": control_steps,
+            "diagnostic_giver_base_lift_m": args.giver_base_lift_m,
+            "diagnostic_giver_joint_positions": diagnostic_joint_positions,
+            "diagnostic_rcm_follow_gain": args.rcm_follow_gain,
+            "diagnostic_ik_orientation_weight": args.ik_orientation_weight,
+            "diagnostic_receiver_ik_orientation_weight": (
+                args.receiver_ik_orientation_weight
+            ),
+            "diagnostic_episode_length_s": args.episode_length_s,
             "entry_error_m_max": max(entry_errors, default=None),
             "entry_error_m_mean": (
                 sum(entry_errors) / len(entry_errors) if entry_errors else None

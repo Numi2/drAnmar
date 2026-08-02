@@ -23,6 +23,10 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
+# Use the authored preferred driver grasp on the needle body. The needle's
+# sharp direction is local -X (toward the endpoint at -pi/2); treating +X as
+# sharp put this valid grasp ahead of the tip and led to an artificial mirrored
+# grasp outside the rendered semicircle.
 NEEDLE_MID_GRASP_POSITION_M = (0.00613661575091, 0.00337363305778, 0.0)
 # This Isaac Lab build exposes tensors in XYZW, while OpenUSD authors quatf in
 # WXYZ.  Keep the calibrated jaw-seat rotation in tensor convention and

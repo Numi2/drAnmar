@@ -187,13 +187,22 @@ and recovery gates.
 
 ### Tissue puncture and pullout status
 
-The puncture-and-pullout candidate is blocked from promotion. Rigid tissue
-collision is now enforced for both PSM instruments, and distal-link contact is
-an environment-owned hard failure. The earlier seed `7001` receipt was
-invalidated because its tissue colliders were disabled; its GIF has been
-removed. The collision-enabled analytical replay currently fails safe by
-timing out before puncture, with no tool-through-tissue contact. A new champion
-and README GIF require a successful collision-enabled rendered replay.
+The puncture-and-pullout candidate remains blocked from promotion. The latest
+rendered replay was rejected because it modeled the exit on the underside of
+the tissue, placed the PSMs outside standard operative geometry, and did not
+prove collision authority for every instrument link. Its receipt and GIF are
+not retained as evidence. The replacement must keep both instruments on the
+operative side, enter the left tissue span, follow the curved needle below the
+surface, re-emerge through the top of the right span, and reject any whole-link
+tissue crossing before a new README GIF can be accepted.
+
+The replacement backend now defines a top-to-top semicircular bite and watches
+the giver and receiver insertion-shaft/wrist chains in PhysX. A fresh RTX 4090
+replay (seed 7004) terminated at control step 1602 with
+`unintended_robot_tissue_contact`, before an exit event, when the legacy giver
+geometry reached the tissue. This is the intended fail-closed behavior and
+confirms that the earlier apparent success cannot be promoted. A standard
+operative-side reset remains an explicit qualification blocker.
 
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.

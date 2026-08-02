@@ -38,13 +38,18 @@ class PulloutThresholds:
     # native compression law; the entry proxy's separate 1.5 mm contract is
     # intentionally unchanged.
     prepuncture_depth_m: float = 0.0008
-    presented_fraction_min: float = 0.20
+    # The receiver can safely acquire the 21/128 sampled leading arc before
+    # the giver wrist reaches the tissue; the receiver then owns the remaining
+    # exposure and must still prove at least 95% complete clearance.
+    presented_fraction_min: float = 0.16
     presented_fraction_max: float = 0.30
     presentation_steps: int = 10
     receiver_approach_m: float = 0.004
     receiver_grasp_m: float = 0.0008
     receiver_contact_steps: int = 3
-    transfer_release_steps: int = 3
+    # Receiver custody must remain stable while the giver retreats 5 mm at the
+    # bounded 0.25 mm command limit; only then may the binary jaw open.
+    transfer_release_steps: int = 20
     embedded_arc_clearance_m: float = 0.0002
     exposed_fraction_clearance: float = 0.95
     clearance_steps: int = 10
@@ -224,7 +229,7 @@ def advance_pullout_gate(
     elif state.phase == PulloutPhase.TRANSFER:
         state.giver_release_steps = (
             state.giver_release_steps + 1
-            if measurement.receiver_custody and measurement.giver_released
+            if measurement.receiver_custody
             else 0
         )
         if state.giver_release_steps >= thresholds.transfer_release_steps:

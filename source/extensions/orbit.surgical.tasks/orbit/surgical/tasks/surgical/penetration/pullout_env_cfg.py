@@ -52,6 +52,13 @@ class PulloutSceneCfg(PenetrationSceneCfg):
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
         history_length=2,
     )
+    receiver_all_links_tissue_contact = ContactSensorCfg(
+        prim_path=(
+            "{ENV_REGEX_NS}/RobotReceiver/(psm_main_insertion_link|"
+            "psm_tool_(roll|pitch|yaw|tip)_link)"
+        ),
+        history_length=2,
+    )
     receiver_tip_tissue_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/RobotReceiver/psm_tool_tip_link",
         history_length=2,
@@ -130,11 +137,20 @@ class PulloutEnvCfg(ThroughPunctureEnvCfg):
         super().__post_init__()
         receiver = PSM_HIGH_PD_CFG.replace(
             prim_path="{ENV_REGEX_NS}/RobotReceiver",
-            spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
+            spawn=PSM_HIGH_PD_CFG.spawn.replace(
+                activate_contact_sensors=True,
+                rigid_props=PSM_HIGH_PD_CFG.spawn.rigid_props.replace(
+                    max_depenetration_velocity=1.0,
+                    solver_position_iteration_count=16,
+                    solver_velocity_iteration_count=4,
+                ),
+                articulation_props=PSM_HIGH_PD_CFG.spawn.articulation_props.replace(
+                    solver_position_iteration_count=16,
+                    solver_velocity_iteration_count=4,
+                ),
+            ),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
-                # Park fully lateral to the 70 mm-wide tissue span. The old
-                # 50 mm root placed receiver jaw 2 inside the right slab at
-                # reset and generated a measured 161.9 N contact.
+                # Park fully lateral to the 70 mm-wide tissue span.
                 pos=(0.080, -0.0730, 0.04676338424909),
                 rot=(0.175850305627, -0.684891721377, 0.684891721377, 0.175850305627),
             ),

@@ -79,7 +79,7 @@ class PenetrationAnalyticController(nn.Module):
         )
         current_tangent = quat_apply(
             needle_quaternion,
-            torch.tensor((1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype).expand_as(
+            torch.tensor((-1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype).expand_as(
                 surface_normal
             ),
         )
@@ -87,9 +87,10 @@ class PenetrationAnalyticController(nn.Module):
         plane_sign = torch.where(plane_sign == 0.0, torch.ones_like(plane_sign), plane_sign)
         wound_tangent = wound_tangent * plane_sign
         desired_tangent = -surface_normal
-        desired_second_axis = torch.linalg.cross(wound_tangent, desired_tangent)
+        desired_local_x = -desired_tangent
+        desired_second_axis = torch.linalg.cross(wound_tangent, desired_local_x)
         desired_needle_matrix = torch.stack(
-            (desired_tangent, desired_second_axis, wound_tangent), dim=-1
+            (desired_local_x, desired_second_axis, wound_tangent), dim=-1
         )
         desired_needle_quaternion = quat_from_matrix(desired_needle_matrix)
         grasp_quaternion = quat_mul(
@@ -243,7 +244,7 @@ class PenetrationResidualGRUModel(RNNModel):
 
 
 class ThroughPunctureAnalyticController(nn.Module):
-    """Follow the needle curvature until 20% of its arc is exposed below tissue."""
+    """Drive a top-to-top curved bite until 20% of the arc re-emerges."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -253,6 +254,7 @@ class ThroughPunctureAnalyticController(nn.Module):
         self.curvature_radius_m = 0.0070028174960433945
         self.tissue_thickness_m = 0.006
         self.target_exposed_fraction = 0.22
+        self.drive_rotation_command = 0.5
 
     def forward(self, raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         phase = torch.argmax(raw[..., 58:65], dim=-1)
@@ -267,7 +269,6 @@ class ThroughPunctureAnalyticController(nn.Module):
         surface_normal = torch.nn.functional.normalize(raw[..., 43:46], dim=-1)
         indentation = raw[..., 46].clamp_min(0.0)
         exposed_fraction = raw[..., 72].clamp_min(0.0)
-        exit_delta = raw[..., 74:77]
 
         reference_x = torch.tensor(
             (1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype
@@ -296,12 +297,12 @@ class ThroughPunctureAnalyticController(nn.Module):
         start_tangent = -surface_normal
         current_tangent = quat_apply(
             needle_quaternion,
-            torch.tensor((1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype).expand_as(
+            torch.tensor((-1.0, 0.0, 0.0), device=raw.device, dtype=raw.dtype).expand_as(
                 surface_normal
             ),
         )
         sine = torch.sum(
-            torch.linalg.cross(start_tangent, current_tangent) * wound_tangent,
+            torch.linalg.cross(current_tangent, start_tangent) * wound_tangent,
             dim=-1,
         )
         cosine = torch.sum(start_tangent * current_tangent, dim=-1).clamp(-1.0, 1.0)
@@ -310,7 +311,7 @@ class ThroughPunctureAnalyticController(nn.Module):
             (indentation / self.curvature_radius_m).clamp(0.0, 1.0)
         )
         trajectory_angle = torch.maximum(orientation_angle, geometric_angle)
-        drive_direction = torch.linalg.cross(wound_tangent, start_tangent)
+        drive_direction = torch.linalg.cross(start_tangent, wound_tangent)
         desired_tip_position = (
             entry_position
             + drive_direction
@@ -324,29 +325,23 @@ class ThroughPunctureAnalyticController(nn.Module):
             self.translation_scale_m / delta_norm.clamp_min(1.0e-9), max=1.0
         ) / self.translation_scale_m
 
-        exit_angle = torch.asin(
-            torch.tensor(
-                self.tissue_thickness_m / self.curvature_radius_m,
-                device=raw.device,
-                dtype=raw.dtype,
-            )
-        )
+        # The sharp tip re-emerges through the top surface after a half turn.
+        exit_angle = torch.tensor(torch.pi, device=raw.device, dtype=raw.dtype)
         target_angle = exit_angle + self.target_exposed_fraction * torch.pi
         rotate_active = (orientation_angle < target_angle) & (
             exposed_fraction < self.target_exposed_fraction
+        ) & (phase <= 5)
+        rotation = (
+            -wound_tangent
+            * rotate_active.unsqueeze(-1).to(raw.dtype)
+            * self.drive_rotation_command
         )
-        rotation = wound_tangent * rotate_active.unsqueeze(-1).to(raw.dtype)
         through_base = torch.cat((translation, rotation), dim=-1).clamp(-1.0, 1.0)
-        exit_translation = exit_delta / self.translation_scale_m
-        exit_norm = torch.linalg.vector_norm(exit_translation, dim=-1, keepdim=True)
-        exit_translation = exit_translation * torch.clamp(
-            1.0 / exit_norm.clamp_min(1.0e-9), max=1.0
-        )
-        # Once the tip crosses the underside, keep rotating until the required
-        # exposed length is reached while translating the exit intersection
-        # back onto its target. This decouples exposure from lateral exit drift.
-        exit_base = torch.cat((exit_translation, rotation), dim=-1)
-        through_base = torch.where((phase >= 5).unsqueeze(-1), exit_base, through_base)
+        # Keep following the same circular tip trajectory after top re-emergence.
+        # Switching to a static historical exit-point correction
+        # rotates about the jaws, lifts the sharp tip back into the tract, and
+        # reverses exposure. The curvature controller already produced the
+        # qualified exit intersection and remains authoritative to presentation.
         through_phase = phase >= 3
         base = torch.where(through_phase.unsqueeze(-1), through_base, entry_base)
         base = torch.where(unsafe.unsqueeze(-1), torch.zeros_like(base), base)
@@ -382,7 +377,7 @@ class ThroughPunctureResidualGRUModel(PenetrationResidualGRUModel):
             ),
         )
         drive_direction = torch.nn.functional.normalize(
-            torch.linalg.cross(wound_tangent, -surface_normal), dim=-1
+            torch.linalg.cross(-surface_normal, wound_tangent), dim=-1
         )
         contact_phase = phase >= 2
         normal_component = torch.sum(
@@ -480,11 +475,25 @@ class PulloutAnalyticController(nn.Module):
         receiver_body = torch.where(
             (phase >= 11).unsqueeze(-1), torch.zeros_like(receiver_body), receiver_body
         )
+        receiver_body = torch.where(
+            (phase == 9).unsqueeze(-1), torch.zeros_like(receiver_body), receiver_body
+        )
         giver_body = torch.where(
             (phase >= 7).unsqueeze(-1), torch.zeros_like(giver_body), giver_body
         )
+        giver_retreat = torch.cat(
+            (
+                torch.nn.functional.normalize(raw[..., 43:46], dim=-1),
+                torch.zeros_like(raw[..., 43:46]),
+            ),
+            dim=-1,
+        )
+        giver_retreat_active = (phase >= 9) & (phase < 11)
+        giver_body = torch.where(
+            giver_retreat_active.unsqueeze(-1), giver_retreat, giver_body
+        )
         giver_gripper = torch.where(
-            phase >= 9,
+            phase >= 10,
             torch.ones_like(phase, dtype=raw.dtype),
             -torch.ones_like(phase, dtype=raw.dtype),
         ).unsqueeze(-1)

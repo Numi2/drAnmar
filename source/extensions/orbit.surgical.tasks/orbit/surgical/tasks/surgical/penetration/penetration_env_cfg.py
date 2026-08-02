@@ -48,8 +48,16 @@ class PenetrationSceneCfg(InteractiveSceneCfg):
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Needle"],
         history_length=2,
     )
-    robot_contacts = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/.*",
+    giver_all_links_tissue_contact = ContactSensorCfg(
+        # GPU PhysX does not support filtering a multi-body sensor against
+        # static colliders.  Monitor every non-jaw body unfiltered instead;
+        # self-collision is disabled and any environment contact by these
+        # links is a safety failure.  Jaws are excluded because their intended
+        # needle custody contact is measured by dedicated sensors above.
+        prim_path=(
+            "{ENV_REGEX_NS}/Robot/(psm_main_insertion_link|"
+            "psm_tool_(roll|pitch|yaw|tip)_link)"
+        ),
         history_length=2,
     )
     giver_tip_tissue_contact = ContactSensorCfg(
@@ -113,10 +121,10 @@ class CommandsCfg:
         resampling_time_range=(30.0, 30.0),
         debug_vis=False,
         ranges=mdp.UniformPoseCommandCfg.Ranges(
-            # Compensate the giver's +20 mm world-Z safety lift in its fixed
-            # root frame so the physical entry target remains unchanged.
-            pos_x=(-0.01572351386552, -0.01572351386552),
-            pos_y=(0.00706205237818, 0.00706205237818),
+            # Enter the left tissue span 5 mm from the wound edge.  The
+            # previous command mapped to world X=0 in the open wound gap.
+            pos_x=(-0.00958936386552, -0.00958936386552),
+            pos_y=(0.01043433237818, 0.01043433237818),
             pos_z=(-0.0730, -0.0730),
             roll=(0.0, 0.0),
             pitch=(0.0, 0.0),
@@ -201,7 +209,18 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
         super().__post_init__()
         robot = PSM_HIGH_PD_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot",
-            spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
+            spawn=PSM_HIGH_PD_CFG.spawn.replace(
+                activate_contact_sensors=True,
+                rigid_props=PSM_HIGH_PD_CFG.spawn.rigid_props.replace(
+                    max_depenetration_velocity=1.0,
+                    solver_position_iteration_count=16,
+                    solver_velocity_iteration_count=4,
+                ),
+                articulation_props=PSM_HIGH_PD_CFG.spawn.articulation_props.replace(
+                    solver_position_iteration_count=16,
+                    solver_velocity_iteration_count=4,
+                ),
+            ),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
                 pos=(-0.01037645055381, -0.0730, 0.06676338424909),
                 rot=(0.175850305627, -0.684891721377, 0.684891721377, 0.175850305627),
@@ -217,12 +236,12 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                 # domain PSM and authored needle grasp. This avoids beginning
                 # an episode with the tip already indenting outside the 1 mm
                 # entry region.
-                "psm_yaw_joint": 0.026266563683748245,
-                "psm_pitch_end_joint": 0.05557627975940704,
-                "psm_main_insertion_joint": 0.07030967622995377,
-                "psm_tool_roll_joint": -0.000004311198154027807,
-                "psm_tool_pitch_joint": -0.05519611015915871,
-                "psm_tool_yaw_joint": -0.0260869599878788,
+                "psm_yaw_joint": -0.29034745693206787,
+                "psm_pitch_end_joint": 0.13004551827907562,
+                "psm_main_insertion_joint": 0.07494500279426575,
+                "psm_tool_roll_joint": 3.141592502593994,
+                "psm_tool_pitch_joint": 0.13004685938358307,
+                "psm_tool_yaw_joint": -0.2903473973274231,
             }
         )
         self.scene.robot = robot

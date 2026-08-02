@@ -57,10 +57,11 @@ if TYPE_CHECKING:
 
 
 NEEDLE_TIP_LOCAL_M = (0.0, -0.0070028174960433945, 0.0)
-NEEDLE_TANGENT_LOCAL = (1.0, 0.0, 0.0)
+NEEDLE_TANGENT_LOCAL = (-1.0, 0.0, 0.0)
 NEEDLE_PLANE_NORMAL_LOCAL = (0.0, 0.0, 1.0)
 TISSUE_CENTER_LOCAL_M = (0.0, 0.0, 0.05)
 TISSUE_TOP_LOCAL_Z_M = 0.053
+RECEIVER_TOOL_TIP_TO_CAPTURE_CENTER_M = 0.0014
 def _step_number(env: ManagerBasedRLEnv) -> int:
     value = env.common_step_counter
     return int(value.item()) if isinstance(value, torch.Tensor) else int(value)
@@ -350,7 +351,12 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         ],
         dim=-1,
     )
-    giver_tissue_force = giver_tissue_forces.amax(dim=-1)
+    giver_all_links_tissue_force = mdp_common.contact_force_magnitude(
+        env, "giver_all_links_tissue_contact"
+    )
+    giver_tissue_force = torch.maximum(
+        giver_tissue_forces.amax(dim=-1), giver_all_links_tissue_force
+    )
     grasp_quat = state["grasp_local_quaternion_xyzw"].to(dtype=root_quat.dtype)
     expected_quat = quat_mul(tool_quat, quat_conjugate(grasp_quat))
     grasp_position = state["grasp_local_position_m"].to(dtype=root_pos.dtype)
@@ -389,17 +395,12 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
 
     if through_puncture:
         curvature_radius_m = 0.0070028174960433945
-        tissue_thickness_m = 0.006
-        exit_angle = torch.asin(
-            torch.tensor(tissue_thickness_m / curvature_radius_m, device=env.device)
-        )
-        exit_chord_m = curvature_radius_m * (1.0 - torch.cos(exit_angle))
-        drive_direction = torch.linalg.cross(wound_tangent, -surface_normal)
-        exit_target = (
-            target
-            + drive_direction * exit_chord_m
-            - surface_normal * tissue_thickness_m
-        )
+        # A standard curved bite enters and exits through the operative top
+        # surface.  A half-circle therefore re-emerges two radii across the
+        # wound, on the right tissue span—not through the slab underside.
+        exit_chord_m = 2.0 * curvature_radius_m
+        drive_direction = torch.linalg.cross(-surface_normal, wound_tangent)
+        exit_target = target + drive_direction * exit_chord_m
         exit_position = tissue_center + torch.tensor(
             [item.exit_position_m for item in tissue_state],
             device=env.device,
@@ -452,7 +453,12 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             ],
             dim=-1,
         )
-        receiver_tissue_force = receiver_tissue_forces.amax(dim=-1)
+        receiver_all_links_tissue_force = mdp_common.contact_force_magnitude(
+            env, "receiver_all_links_tissue_contact"
+        )
+        receiver_tissue_force = torch.maximum(
+            receiver_tissue_forces.amax(dim=-1), receiver_all_links_tissue_force
+        )
         receiver_force_contact = torch.all(receiver_jaw_forces > 0.01, dim=-1)
         current_phase = torch.tensor(
             [int(gate.phase) for gate in state["gates"]], device=env.device
@@ -462,10 +468,20 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             (tip_pos - root_pos) + (exit_position - root_pos), dim=-1
         )
         exposed_grasp_target = root_pos + radius_m * exposed_mid_direction
+        # The commanded PSM tool-tip frame sits above the physical jaw capture
+        # centre.  Keep that frame on the free side of the tissue and guide the
+        # capture centre—not the distal link itself—to the exposed needle.
+        # Both PSMs remain on the operative side.  The tool-tip frame stays
+        # above the tissue while its lower jaw capture centre meets the
+        # re-emerged needle arc.
+        receiver_capture_offset = (
+            surface_normal * RECEIVER_TOOL_TIP_TO_CAPTURE_CENTER_M
+        )
+        receiver_target = exposed_grasp_target + receiver_capture_offset
         receiver_target = torch.where(
             (current_phase < 8).unsqueeze(-1),
-            exposed_grasp_target - surface_normal * 0.003,
-            exposed_grasp_target,
+            receiver_target + surface_normal * 0.003,
+            receiver_target,
         )
         receiver_root_pos = mdp_common.as_torch(receiver_robot.data.root_pos_w)
         receiver_root_quat = mdp_common.as_torch(receiver_robot.data.root_quat_w)
@@ -482,14 +498,13 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             receiver_tool_quat,
         )
         receiver_delta_r = receiver_target_r - receiver_tool_r
-        desired_receiver_quat_w = quat_mul(
-            root_quat,
-            torch.tensor(
-                NEEDLE_POLICY_GRASP_QUAT_XYZW,
-                device=env.device,
-                dtype=root_quat.dtype,
-            ).repeat(env.num_envs, 1),
-        )
+        # Preserve the receiver's neutral jaw attitude while translating to
+        # the exposed arc.  Mirroring the giver's authored grasp quaternion
+        # drives the opposing PSM tool-yaw joint to its +30 degree hard stop,
+        # leaving more than 12 mm of unclosed position error.  The neutral
+        # attitude is exactly reachable at reset and keeps the jaw centre free
+        # to converge on the measured arc target.
+        desired_receiver_quat_w = receiver_root_quat
         desired_receiver_quat_r = quat_mul(
             quat_conjugate(receiver_root_quat), desired_receiver_quat_w
         )
@@ -499,8 +514,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 quat_conjugate(receiver_tool_quat_r),
             )
         )
+        receiver_capture_position = receiver_tool_pos - receiver_capture_offset
         receiver_distance = torch.linalg.vector_norm(
-            receiver_tool_pos - exposed_grasp_target, dim=-1
+            receiver_capture_position - exposed_grasp_target, dim=-1
         )
         action = mdp_common.as_torch(env.action_manager.action)
         receiver_close_commanded = action[:, 13] < 0.0
@@ -523,13 +539,15 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             dim=-1,
         ).clamp(-1.0, 1.0)
         pull_active = current_phase >= 10
-        exit_delta_w = exit_target - exit_position
-        exit_delta_r = quat_apply_inverse(receiver_root_quat, exit_delta_w)
-        pull_axis_r = quat_apply_inverse(receiver_root_quat, plane_normal)
+        # After transfer, retract upward on the free operative side.
+        # Rotating about the receiver tool tip pivots the distal link into the
+        # tissue before the embedded arc can clear; fixed-attitude translation
+        # instead carries both the captured needle and receiver away safely.
+        pull_delta_r = quat_apply_inverse(receiver_root_quat, surface_normal)
         pull_guidance = torch.cat(
             (
-                (exit_delta_r / 0.00025).clamp(-1.0, 1.0),
-                torch.nn.functional.normalize(pull_axis_r, dim=-1),
+                torch.nn.functional.normalize(pull_delta_r, dim=-1),
+                torch.zeros_like(pull_delta_r),
             ),
             dim=-1,
         )
@@ -552,7 +570,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             state["custody_owner"][ids] = 1
         giver_open_commanded = action[:, 6] > 0.0
         transfer_ready = (
-            (current_phase == 9)
+            (current_phase >= 10)
             & (state["custody_owner"] >= 1)
             & giver_open_commanded
         )
@@ -562,6 +580,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
     else:
         receiver_jaw_forces = torch.zeros((env.num_envs, 2), device=env.device)
         receiver_tissue_forces = torch.zeros((env.num_envs, 3), device=env.device)
+        receiver_all_links_tissue_force = torch.zeros(env.num_envs, device=env.device)
         receiver_tissue_force = torch.zeros(env.num_envs, device=env.device)
         receiver_bilateral = torch.zeros(
             env.num_envs, dtype=torch.bool, device=env.device
@@ -693,6 +712,8 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 "receiver_jaw_forces": receiver_jaw_forces,
                 "giver_tissue_force": giver_tissue_force,
                 "receiver_tissue_force": receiver_tissue_force,
+                "giver_all_links_tissue_force": giver_all_links_tissue_force,
+                "receiver_all_links_tissue_force": receiver_all_links_tissue_force,
                 "target": target,
                 "surface_normal": surface_normal,
                 "tip_pos": tip_pos,
@@ -733,6 +754,8 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "receiver_tissue_force": receiver_tissue_force,
             "giver_tissue_forces": giver_tissue_forces,
             "receiver_tissue_forces": receiver_tissue_forces,
+            "giver_all_links_tissue_force": giver_all_links_tissue_force,
+            "receiver_all_links_tissue_force": receiver_all_links_tissue_force,
             "receiver_distance": receiver_distance,
             "receiver_bilateral": receiver_bilateral,
             "receiver_guidance": receiver_guidance,
