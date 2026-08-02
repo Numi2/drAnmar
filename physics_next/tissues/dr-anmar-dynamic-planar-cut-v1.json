@@ -1,0 +1,57 @@
+{
+  "schema": "dr.anmar.dynamic-discontinuous-tissue-profile.v1",
+  "id": "dr-anmar-dynamic-planar-cut-v1",
+  "version": "0.1.0",
+  "base_profile": "physics_next/tissues/dr-anmar-cuttable-tissue-v1.json",
+  "base_profile_sha256": "1ea9d4a54cc8d81619825b097d8687dbe0e383a583d1de0e02117a437de6f9d1",
+  "scope": "exact_mesh_conforming_planar_incison_for_dynamic_discontinuous_fem_qualification",
+  "cut_plane": {
+    "point_m": [0.0, 0.0, 0.0],
+    "normal": [1.0, 0.0, 0.0],
+    "selection_tolerance_m": 1e-12,
+    "requires_exact_mesh_conformity": true
+  },
+  "solver": {
+    "time_step_s": 0.00002,
+    "intact_settle_s": 0.02,
+    "opening_load_s": 0.01,
+    "post_load_s": 0.03,
+    "opening_traction_pa": 50.0,
+    "velocity_damping_per_s": 28.0
+  },
+  "wound_collision": {
+    "probe_radius_m": 0.0002,
+    "probe_mass_kg": 0.002,
+    "probe_speed_m_s": 0.02,
+    "normal_stiffness_n_m": 8000.0,
+    "normal_damping_n_s_m": 1.2,
+    "probe_time_step_s": 0.000005,
+    "probe_steps": 1500
+  },
+  "qualification": {
+    "maximum_mass_relative_error": 1e-12,
+    "maximum_center_of_mass_drift_m": 0.00001,
+    "maximum_net_momentum_kg_m_s": 0.000001,
+    "minimum_jacobian": 0.2,
+    "maximum_intact_interface_jump_m": 0.00008,
+    "minimum_mean_wound_gap_m": 0.00008,
+    "maximum_mean_wound_gap_m": 0.0025,
+    "maximum_opposed_area_relative_error": 1e-12,
+    "minimum_two_sided_collision_coverage_fraction": 1.0,
+    "maximum_probe_surface_crossing_m": 0.00001,
+    "require_zero_inverted_tetrahedra": true,
+    "require_exact_replay": true
+  },
+  "promotion_boundary": {
+    "qualified_claim": "exact_planar_dynamic_discontinuous_fem_reference",
+    "blocked_claims": [
+      "arbitrary_dynamic_cut",
+      "curved_dynamic_cut",
+      "intersecting_dynamic_cut",
+      "cuda_dynamic_cut",
+      "human_skin_calibration",
+      "biomechanical_validation",
+      "clinical_validation"
+    ]
+  }
+}

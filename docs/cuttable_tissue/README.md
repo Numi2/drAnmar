@@ -128,3 +128,27 @@ frozen in `cuttable-tissue-cuda-promotion-lock.json`.
 This promotes the existing kernels to CUDA-qualified simulator components. It
 does not promote dynamic fracture: discontinuous FEM degrees of freedom and
 deforming two-sided wound collision remain the next required runtime gate.
+
+## Exact planar dynamic separation
+
+The first live discontinuous-FEM reference is qualified with:
+
+```bash
+python scripts/qualify_dranmar_dynamic_planar_cut.py
+```
+
+Each tetrahedron owns independent nodal degrees of freedom while 1,000
+cohesive interfaces maintain the intact continuum. After intact pre-tension
+settles, 24 interfaces exactly coincident with the qualified plane are released.
+Their two face copies then deform independently and become opposed one-sided
+collision surfaces.
+
+The retained run preserves mass and net momentum, has zero inversions with a
+minimum Jacobian of 0.976, holds all remaining cohesive seams below 0.044 mm,
+and relaxes to a 1.94 mm mean opening. Both wound sides stop an inward-moving
+probe without surface crossing.
+
+This is intentionally a planar, mesh-conforming dynamic gate. It does not map
+the arbitrary cut-cell field onto mesh faces. Arbitrary curved and intersecting
+dynamic cuts remain blocked until an embedded-discontinuity or cut-cell enriched
+FEM formulation can consume the persistent field without mesh-direction bias.
