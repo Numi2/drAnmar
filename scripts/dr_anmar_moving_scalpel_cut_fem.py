@@ -306,7 +306,11 @@ class MovingScalpelCutFEM:
 
         if blade_center is not None and np.any(self.released):
             released_indices = np.flatnonzero(self.released)
-            relative = self.mesh.gap_rest_points[released_indices, :2] - blade_center[None, :2]
+            live_midpoint = 0.5 * (
+                self.position[plus[released_indices]]
+                + self.position[minus[released_indices]]
+            )
+            relative = live_midpoint[:, :2] - blade_center[None, :2]
             near = np.linalg.norm(relative, axis=1) <= float(solver_cfg["blade_wedge_half_width_m"])
             active = released_indices[near]
             if len(active):
