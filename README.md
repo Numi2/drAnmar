@@ -196,13 +196,20 @@ operative side, enter the left tissue span, follow the curved needle below the
 surface, re-emerge through the top of the right span, and reject any whole-link
 tissue crossing before a new README GIF can be accepted.
 
-The replacement backend now defines a top-to-top semicircular bite and watches
-the giver and receiver insertion-shaft/wrist chains in PhysX. A fresh RTX 4090
-replay (seed 7004) terminated at control step 1602 with
-`unintended_robot_tissue_contact`, before an exit event, when the legacy giver
-geometry reached the tissue. This is the intended fail-closed behavior and
-confirms that the earlier apparent success cannot be promoted. A standard
-operative-side reset remains an explicit qualification blocker.
+The replacement backend now owns explicit slab identities and emits an exit
+event only for a `left -> right` top-surface route; same-slab, wound-gap,
+outside-span, and underside routes fail closed. Both giver and receiver
+insertion-shaft/wrist chains remain collision-authoritative in PhysX.
+
+The standard posterior-above giver reset is now kinematically qualified on the
+RTX 4090 (sub-micrometre target error, 0.028 degree orientation error, and no
+initial shaft/wrist contact). Seed 7010 then drove the physical curved needle
+to 99 degrees below the surface before correctly terminating on
+`unintended_robot_tissue_contact`. A trailing-end grasp was also rejected
+before puncture because it removed the sharp-tip clearance. The remaining
+blocker is therefore a tract-supported giver regrasp before wrist contact,
+followed by right-side receiver acquisition and complete clearance. No GIF or
+promotion is permitted until that complete rendered sequence succeeds.
 
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.

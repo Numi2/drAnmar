@@ -82,7 +82,7 @@ def successful_through_puncture(env: ManagerBasedRLEnv) -> torch.Tensor:
     if torch.any(result):
         env._dr_anmar_last_successful_through_puncture = [
             ThroughPunctureReceipt(
-                schema="dr.anmar.tissue-through-puncture-receipt.v1",
+                schema="dr.anmar.tissue-through-puncture-receipt.v2",
                 success=True,
                 entry_event_count=gate.entry_event_count,
                 exit_event_count=gate.exit_event_count,
@@ -111,6 +111,11 @@ def successful_through_puncture(env: ManagerBasedRLEnv) -> torch.Tensor:
                     state["backend_metadata"].implementation_sha256
                 ),
                 hard_failures=tuple(sorted(gate.hard_failures)),
+                entry_slab=state["measurement"]["entry_slab"][index],
+                exit_slab=state["measurement"]["exit_slab"][index],
+                cross_slab_route_valid=bool(
+                    state["measurement"]["cross_slab_route_valid"][index]
+                ),
             ).as_dict()
             | {
                 "phase": int(gate.phase),
@@ -129,7 +134,7 @@ def successful_pullout(env: ManagerBasedRLEnv) -> torch.Tensor:
     if torch.any(result):
         env._dr_anmar_last_successful_pullout = [
             PulloutReceipt(
-                schema="dr.anmar.tissue-puncture-pullout-receipt.v1",
+                schema="dr.anmar.tissue-puncture-pullout-receipt.v2",
                 success=True,
                 entry_event_count=gate.entry_event_count,
                 exit_event_count=gate.exit_event_count,
@@ -160,6 +165,11 @@ def successful_pullout(env: ManagerBasedRLEnv) -> torch.Tensor:
                     state["backend_metadata"].implementation_sha256
                 ),
                 hard_failures=tuple(sorted(gate.hard_failures)),
+                entry_slab=state["measurement"]["entry_slab"][index],
+                exit_slab=state["measurement"]["exit_slab"][index],
+                cross_slab_route_valid=bool(
+                    state["measurement"]["cross_slab_route_valid"][index]
+                ),
             ).as_dict()
             if bool(result[index])
             else {"success": False}

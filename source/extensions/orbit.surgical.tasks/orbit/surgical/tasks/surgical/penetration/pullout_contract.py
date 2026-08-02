@@ -77,6 +77,10 @@ class PulloutMeasurement:
     target_region_valid: bool
     tissue_contact: bool
     backend_exit_count: int
+    entry_slab: str = "none"
+    exit_slab: str = "none"
+    cross_slab_route_valid: bool = False
+    invalid_exit_route: bool = False
     solver_finite: bool = True
     unintended_jaw_contact: bool = False
     unintended_robot_contact: bool = False
@@ -157,6 +161,8 @@ def advance_pullout_gate(
         state.hard_failures.add("prepuncture_force_limit")
     if measurement.backend_exit_count > 1:
         state.hard_failures.add("multiple_exit_events")
+    if measurement.invalid_exit_route:
+        state.hard_failures.add("invalid_cross_slab_exit_route")
     if state.phase >= PulloutPhase.PULL and not measurement.receiver_custody:
         state.hard_failures.add("receiver_custody_loss")
     if state.failed:
@@ -269,6 +275,9 @@ def pullout_success(
         and state.entry_event_count == 1
         and state.exit_event_count == 1
         and measurement.backend_exit_count == 1
+        and measurement.entry_slab == "left"
+        and measurement.exit_slab == "right"
+        and measurement.cross_slab_route_valid
         and state.phase == PulloutPhase.CLEAR
         and state.cleared_steps >= thresholds.clearance_steps
         and measurement.receiver_custody
@@ -301,6 +310,9 @@ class PulloutReceipt:
     backend_revision: str
     backend_implementation_sha256: str
     hard_failures: tuple[str, ...]
+    entry_slab: str
+    exit_slab: str
+    cross_slab_route_valid: bool
     custody_model: str = (
         "bilateral_force_or_calibrated_geometry_then_receiver_pose_coupling"
     )

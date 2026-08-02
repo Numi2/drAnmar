@@ -48,8 +48,11 @@ class PenetrationAnalyticController(nn.Module):
                 (phase == 1).unsqueeze(-1),
                 torch.full_like(surface_normal, 0.0010),
                 torch.where(
-                    (phase == 2).unsqueeze(-1),
-                    torch.full_like(surface_normal, -0.0015),
+                (phase == 2).unsqueeze(-1),
+                # Cross the 1.5 mm puncture gate decisively despite float and
+                # contact-compliance error; the force shield still caps this
+                # pre-puncture advance at 1.25x the sampled threshold.
+                torch.full_like(surface_normal, -0.0016),
                     torch.full_like(surface_normal, -0.0020),
                 ),
             ),
@@ -254,7 +257,10 @@ class ThroughPunctureAnalyticController(nn.Module):
         self.curvature_radius_m = 0.0070028174960433945
         self.tissue_thickness_m = 0.006
         self.target_exposed_fraction = 0.22
-        self.drive_rotation_command = 0.5
+        # Use the full bounded 0.5 degree command during the drive. The former
+        # half command could not complete a semicircle inside the 30 s horizon
+        # once the PSM was moved to its standard above-field posture.
+        self.drive_rotation_command = 1.0
 
     def forward(self, raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         phase = torch.argmax(raw[..., 58:65], dim=-1)

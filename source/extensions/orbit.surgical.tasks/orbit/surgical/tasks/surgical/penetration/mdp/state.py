@@ -627,6 +627,10 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 exposed_arc_length_m=float(exposed_arc_length[index]),
                 exposed_fraction=float(exposed_fraction[index]),
                 backend_exit_count=int(exit_event_count[index]),
+                entry_slab=tissue_state[index].entry_slab,
+                exit_slab=tissue_state[index].exit_slab,
+                cross_slab_route_valid=tissue_state[index].cross_slab_route_valid,
+                invalid_exit_route=tissue_state[index].invalid_exit_route,
                 giver_custody=bool(
                     effective_custody[index]
                     and state["custody_owner"][index] < 2
@@ -644,6 +648,10 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 exposed_arc_length_m=float(exposed_arc_length[index]),
                 exposed_fraction=float(exposed_fraction[index]),
                 backend_exit_count=int(exit_event_count[index]),
+                entry_slab=tissue_state[index].entry_slab,
+                exit_slab=tissue_state[index].exit_slab,
+                cross_slab_route_valid=tissue_state[index].cross_slab_route_valid,
+                invalid_exit_route=tissue_state[index].invalid_exit_route,
             )
         else:
             measurement = PunctureMeasurement(
@@ -708,6 +716,20 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 "exit_error": exit_error,
                 "exit_target": exit_target,
                 "exit_position": exit_position,
+                "entry_slab": tuple(
+                    getattr(item, "entry_slab", "none") for item in tissue_state
+                ),
+                "exit_slab": tuple(
+                    getattr(item, "exit_slab", "none") for item in tissue_state
+                ),
+                "cross_slab_route_valid": torch.tensor(
+                    [
+                        getattr(item, "cross_slab_route_valid", False)
+                        for item in tissue_state
+                    ],
+                    device=env.device,
+                    dtype=torch.bool,
+                ),
                 "receiver_distance": receiver_distance,
                 "receiver_jaw_forces": receiver_jaw_forces,
                 "giver_tissue_force": giver_tissue_force,

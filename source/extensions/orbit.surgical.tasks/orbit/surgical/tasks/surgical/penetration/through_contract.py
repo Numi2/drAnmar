@@ -56,6 +56,10 @@ class ThroughPunctureMeasurement:
     unintended_robot_contact: bool = False
     unintended_surface_crossing: bool = False
     backend_exit_count: int = 0
+    entry_slab: str = "none"
+    exit_slab: str = "none"
+    cross_slab_route_valid: bool = False
+    invalid_exit_route: bool = False
 
 
 @dataclass
@@ -127,6 +131,8 @@ def advance_through_puncture_gate(
         state.hard_failures.add("prepuncture_force_limit")
     if measurement.backend_exit_count > 1:
         state.hard_failures.add("multiple_exit_events")
+    if measurement.invalid_exit_route:
+        state.hard_failures.add("invalid_cross_slab_exit_route")
     if measurement.exposed_fraction > thresholds.exposed_fraction_max:
         state.hard_failures.add("excessive_exit_exposure")
     if state.failed:
@@ -203,6 +209,9 @@ def through_puncture_success(
         and state.entry_event_count == 1
         and state.exit_event_count == 1
         and measurement.backend_exit_count == 1
+        and measurement.entry_slab == "left"
+        and measurement.exit_slab == "right"
+        and measurement.cross_slab_route_valid
         and state.phase == ThroughPuncturePhase.PRESENT
         and state.presented_steps >= thresholds.presentation_steps
         and state.entry_error_at_puncture_m is not None
@@ -235,6 +244,9 @@ class ThroughPunctureReceipt:
     backend_revision: str
     backend_implementation_sha256: str
     hard_failures: tuple[str, ...]
+    entry_slab: str
+    exit_slab: str
+    cross_slab_route_valid: bool
     custody_model: str = "pregrasped_pose_coupling"
     evidence_level: str = "simulator_engineering_only"
     clinical_validation: bool = False

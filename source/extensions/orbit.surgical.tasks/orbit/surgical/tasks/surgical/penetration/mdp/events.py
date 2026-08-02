@@ -31,9 +31,14 @@ NEEDLE_MID_GRASP_POSITION_M = (0.00613661575091, 0.00337363305778, 0.0)
 # This Isaac Lab build exposes tensors in XYZW, while OpenUSD authors quatf in
 # WXYZ.  Keep the calibrated jaw-seat rotation in tensor convention and
 # convert only at the USD boundary below.
-NEEDLE_MID_GRASP_QUAT_XYZW = (0.50904141575, 0.860742027004, 0.0, 0.0)
+NEEDLE_MID_GRASP_QUAT_XYZW = (
+    -0.2588191330432892,
+    0.9659258127212524,
+    0.0,
+    0.0,
+)
 # Authored entry-policy presentation frame.
-NEEDLE_POLICY_GRASP_QUAT_XYZW = (0.50904141575, 0.860742027004, 0.0, 0.0)
+NEEDLE_POLICY_GRASP_QUAT_XYZW = NEEDLE_MID_GRASP_QUAT_XYZW
 PSM_TOOL_TIP_TO_JAW_COLLISION_M = (0.0, 0.0, 0.0)
 PENETRATION_GRIPPER_CLOSE_RAD = float(PSM_GRIPPER_PROFILE["close_rad"])
 PENETRATION_GRIPPER_OPEN_RAD = float(PSM_GRIPPER_PROFILE["open_rad"])

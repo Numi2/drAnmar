@@ -324,6 +324,10 @@ def main() -> int:
                             "giver_joint_positions": [
                                 float(value) for value in policy_observation[:8]
                             ],
+                            "giver_joint_positions_absolute": [
+                                float(value)
+                                for value in env.unwrapped.scene["robot"].data.joint_pos.torch[0]
+                            ],
                             "giver_ee_position_robot": [
                                 float(value) for value in policy_observation[16:19]
                             ],

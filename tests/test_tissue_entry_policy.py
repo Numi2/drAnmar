@@ -310,8 +310,9 @@ def test_play_task_uses_canonical_fixed_domain_materials():
 
 def test_giver_reset_lifts_base_and_targets_the_left_tissue_span():
     config = (TASK_ROOT / "penetration_env_cfg.py").read_text(encoding="utf-8")
-    assert "pos=(-0.01037645055381, -0.0730, 0.06676338424909)" in config
-    assert "pos_x=(-0.00958936386552, -0.00958936386552)" in config
+    assert "pos=(-0.040, -0.120, 0.140)" in config
+    assert "rot=(0.4816338, -0.15930964, 0.0, 0.86177104)" in config
+    assert "pos_x=(-0.01257941, -0.01257941)" in config
     assert "Enter the left tissue span 5 mm from the wound edge" in config
 
 
@@ -430,6 +431,9 @@ def test_through_puncture_requires_one_entry_one_exit_and_twenty_percent_exposur
         "bilateral_custody": True,
         "target_region_valid": True,
         "tissue_contact": True,
+        "entry_slab": "left",
+        "exit_slab": "right",
+        "cross_slab_route_valid": True,
     }
     state = module.ThroughPunctureGateState(
         phase=module.ThroughPuncturePhase.INDENT
@@ -469,7 +473,7 @@ def test_through_puncture_backend_and_task_are_distinct_from_qualified_entry():
     )
     controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
     assert (
-        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v2-top-exit"'
+        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v3-cross-slab"'
         in backend
     )
     assert "through_sample_count = 129" in backend
@@ -490,14 +494,17 @@ def test_through_backend_emits_one_top_exit_after_the_tip_first_enters():
         (0.0, 0.0, 0.002),
         (-(2**-0.5), 0.0, 0.0, 2**-0.5),
     )
-    backend.step([entered], [entered], [True])
+    entry_tip = module.NeedlePose(
+        (-0.007, 0.0, 0.002), entered.quaternion_xyzw
+    )
+    backend.step([entry_tip], [entered], [True])
     before_exit = backend.scene_state[0]
-    backend.step([reemerged], [reemerged], [True])
+    backend.step([entry_tip], [reemerged], [True])
     first = backend.scene_state[0]
-    backend.step([reemerged], [reemerged], [True])
+    backend.step([entry_tip], [reemerged], [True])
     second = backend.scene_state[0]
     backend._through[0].tip_has_entered = True
-    backend.step([reemerged], [reemerged], [True])
+    backend.step([entry_tip], [reemerged], [True])
     replay_crossing = backend.scene_state[0]
     assert before_exit.exit_event_count == 0
     assert first.exit_event_count == 1
@@ -506,6 +513,30 @@ def test_through_backend_emits_one_top_exit_after_the_tip_first_enters():
     assert first.exposed_arc_length_m > 0.0
     assert first.embedded_arc_length_m > 0.0
     assert 0.0 < first.exposed_fraction < 1.0
+    assert first.entry_slab == "left"
+    assert first.exit_slab == "right"
+    assert first.cross_slab_route_valid
+
+
+def test_through_backend_rejects_same_slab_or_gap_exit_route():
+    module = _through_backend()
+    backend = module.DrAnmarNativeTissueThroughBackend(1)
+    entered = module.NeedlePose(
+        (-0.020, 0.0, 0.002),
+        (2**-0.5, 0.0, 0.0, 2**-0.5),
+    )
+    same_slab_exit = module.NeedlePose(
+        (-0.020, 0.0, 0.002),
+        (-(2**-0.5), 0.0, 0.0, 2**-0.5),
+    )
+    backend.step([entered], [entered], [True])
+    backend.step([entered], [same_slab_exit], [True])
+    state = backend.scene_state[0]
+    assert state.exit_event_count == 0
+    assert state.entry_slab == "left"
+    assert state.exit_slab in {"left", "wound_gap"}
+    assert state.invalid_exit_route
+    assert not state.cross_slab_route_valid
 
 
 def test_whole_psm_link_tissue_contacts_are_authoritative():
@@ -559,6 +590,8 @@ def test_through_puncture_benchmark_requires_a_grippable_twenty_percent_exit():
     acceptance = benchmark["engineering_acceptance"]
     assert acceptance["entry_event_count"] == 1
     assert acceptance["exit_event_count"] == 1
+    assert acceptance["entry_slab"] == "left"
+    assert acceptance["exit_slab"] == "right"
     assert acceptance["exposed_fraction_min"] == 0.2
     assert acceptance["exposed_arc_length_m_min"] == 0.0044
     assert "second_psm_pullout" in benchmark["excluded"]
@@ -592,6 +625,9 @@ def test_pullout_requires_receiver_contact_transfer_and_complete_clearance():
         "target_region_valid": True,
         "tissue_contact": True,
         "backend_exit_count": 1,
+        "entry_slab": "left",
+        "exit_slab": "right",
+        "cross_slab_route_valid": True,
     }
     measurement = module.PulloutMeasurement(**values)
     module.advance_pullout_gate(state, measurement, puncture_force_n=2.0)
@@ -638,7 +674,7 @@ def test_pullout_task_has_dual_psm_controller_and_receipt_contract():
     assert "tangential_error <= 0.0009" in controller
     assert "tangential_limit_m = 0.00005" in controller
     assert "remains authoritative to presentation" in controller
-    assert "self.drive_rotation_command = 0.5" in controller
+    assert "self.drive_rotation_command = 1.0" in controller
     assert "torch.linalg.cross(current_tangent, start_tangent)" in controller
     assert ") & (phase <= 5)" in controller
     assert fields["custody_model"].default == (

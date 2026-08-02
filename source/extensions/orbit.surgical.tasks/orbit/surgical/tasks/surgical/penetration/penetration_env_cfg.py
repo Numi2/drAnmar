@@ -123,9 +123,9 @@ class CommandsCfg:
         ranges=mdp.UniformPoseCommandCfg.Ranges(
             # Enter the left tissue span 5 mm from the wound edge.  The
             # previous command mapped to world X=0 in the open wound gap.
-            pos_x=(-0.00958936386552, -0.00958936386552),
-            pos_y=(0.01043433237818, 0.01043433237818),
-            pos_z=(-0.0730, -0.0730),
+            pos_x=(-0.01257941, -0.01257941),
+            pos_y=(-0.00736387, -0.00736387),
+            pos_z=(-0.15955766, -0.15955766),
             roll=(0.0, 0.0),
             pitch=(0.0, 0.0),
             yaw=(0.0, 0.0),
@@ -222,8 +222,10 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                 ),
             ),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
-                pos=(-0.01037645055381, -0.0730, 0.06676338424909),
-                rot=(0.175850305627, -0.684891721377, 0.684891721377, 0.175850305627),
+                # Standard above-field trocar placement. The previous reset
+                # laid the insertion shaft nearly across the tissue plane.
+                pos=(-0.040, -0.120, 0.140),
+                rot=(0.4816338, -0.15930964, 0.0, 0.86177104),
             ),
         )
         robot.actuators["psm_tool"].effort_limit_sim = 0.8
@@ -236,12 +238,12 @@ class PenetrationEnvCfg(ManagerBasedRLEnvCfg):
                 # domain PSM and authored needle grasp. This avoids beginning
                 # an episode with the tip already indenting outside the 1 mm
                 # entry region.
-                "psm_yaw_joint": -0.29034745693206787,
-                "psm_pitch_end_joint": 0.13004551827907562,
-                "psm_main_insertion_joint": 0.07494500279426575,
-                "psm_tool_roll_joint": 3.141592502593994,
-                "psm_tool_pitch_joint": 0.13004685938358307,
-                "psm_tool_yaw_joint": -0.2903473973274231,
+                "psm_yaw_joint": 0.03736152499914169,
+                "psm_pitch_end_joint": 0.05148158594965935,
+                "psm_main_insertion_joint": 0.1571890115737915,
+                "psm_tool_roll_joint": 2.2345759868621826,
+                "psm_tool_pitch_joint": 0.5623907446861267,
+                "psm_tool_yaw_joint": -0.3484970033168793,
             }
         )
         self.scene.robot = robot

@@ -5,6 +5,9 @@
   "engineering_acceptance": {
     "entry_event_count": 1,
     "exit_event_count": 1,
+    "entry_slab": "left",
+    "exit_slab": "right",
+    "cross_slab_route_valid": true,
     "entry_error_m_max": 0.001,
     "exit_error_m_max": 0.001,
     "entry_tangent_error_deg_max": 10.0,
