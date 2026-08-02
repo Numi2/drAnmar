@@ -11,16 +11,25 @@ robot learning, and patient-effect evaluation.**
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
 
 <p align="center">
-  <a href="https://github.com/Numi2/dr-assets">
-    <img src="https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/hero-autonomous-rescue-or.png"
-         width="100%"
-         alt="Dr.Anmar Autonomous Rescue OR with patient, intervention stations, robot workcells, resuscitation, and physiological monitoring">
-  </a>
+  <img src="docs/media/dranmar-champion-tissue-puncture-pullout.gif"
+       width="720"
+       alt="Real Isaac Sim rollout of the Dr.Anmar policy driving a curved needle from the left tissue span through the right span, transferring it to the opposite PSM, and pulling it fully clear">
 </p>
 
 <p align="center">
-  <em>Autonomous Rescue OR — robot intervention, patient state, tools,
-  resuscitation, and monitoring in one composable research scene.</em>
+  <em>Real seed-17 RTX render: tissue puncture, opposite-arm handover, and
+  receiver-only pullout.</em>
+</p>
+
+<p align="center">
+  <img src="docs/media/dranmar-champion-needle-pickup-handover.gif"
+       width="600"
+       alt="Dr.Anmar champion policy picking up a curved needle and handing it from one PSM instrument to the other in Isaac Sim and PhysX">
+</p>
+
+<p align="center">
+  <em>Needle pickup, lift, presentation, receiver acquisition, giver release,
+  and retained handover.</em>
 </p>
 
 > A robot may command motion and intervention intent. It may not write the
@@ -197,18 +206,6 @@ continues rotating the needle about its curvature centre until the trailing tip
 is completely clear on the right. There is no surface-normal lift in either
 stage.
 
-<p align="center">
-  <img src="docs/media/dranmar-champion-tissue-puncture-pullout.gif"
-       width="600"
-       alt="Real Isaac Sim rollout of the Dr.Anmar policy driving a curved needle from the left tissue span through the right span, transferring it to the opposite PSM, and pulling it fully clear">
-</p>
-
-<p align="center">
-  <em>Real seed-17 RTX render: left-span entry, curved subsurface drive,
-  right-span underside puncture and top exit, opposite-arm handover, and
-  receiver-only clearance.</em>
-</p>
-
 The native backend owns explicit slab identities and requires three ordered,
 one-time events: left-top entry, right-underside puncture, then right-top exit.
 The top exit cannot occur unless the underside puncture has already occurred;
@@ -281,18 +278,6 @@ These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.
 
 ### Champion needle pickup and handover
-
-<p align="center">
-  <img src="docs/media/dranmar-champion-needle-pickup-handover.gif"
-       width="600"
-       alt="Dr.Anmar champion policy picking up a curved needle and handing it from one PSM instrument to the other in Isaac Sim and PhysX">
-</p>
-
-<p align="center">
-  <em>One complete successful rollout from the frozen simulation champion:
-  needle pickup, lift, presentation, receiver acquisition, giver release, and
-  retained handover.</em>
-</p>
 
 This is the real promoted composite running the
 `DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0` task, not an authored animation.
