@@ -216,3 +216,15 @@ This promotes the single curved post-fracture dynamic path to CUDA-qualified
 simulator engineering evidence. It does not yet promote a scalpel-driven moving
 fracture front or sequential intersecting live remeshing, and it remains
 uncalibrated against human-tissue specimens.
+
+## Real rendered CUDA trajectory
+
+![DrAnmar curved cut-cell tissue opening and relaxing under Warp CUDA](../media/dranmar-cuttable-tissue-curved-cuda.gif)
+
+This GIF is an Isaac Lab render of 64 positions sampled from the actual
+4,000-step Warp `cuda:0` trajectory on Gilgamesh. The exterior surface and both
+wound sheets are reconstructed from the qualified cut-cell nodes on every
+frame. Displacement is shown at physical scale with no visual exaggeration or
+generated intermediate imagery. The accompanying
+`dranmar-cuttable-tissue-curved-cuda.json` receipt binds the GIF hash, renderer
+revision, mesh sizes, CUDA device and evidence boundary.

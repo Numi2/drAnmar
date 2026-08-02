@@ -387,12 +387,15 @@ def main() -> None:
         optimize=True,
         disposal=2,
     )
+    with Image.open(args.output) as encoded_gif:
+        encoded_frame_count = int(getattr(encoded_gif, "n_frames", 1))
     receipt_path = args.receipt or args.output.with_suffix(".json")
     payload = {
         "schema": "dr.anmar.curved-cut-cuda-render-receipt.v1",
         "output": str(args.output),
         "gif_sha256": hashlib.sha256(args.output.read_bytes()).hexdigest(),
-        "frame_count": len(held),
+        "requested_frame_count": len(held),
+        "encoded_frame_count": encoded_frame_count,
         "trajectory_frame_count": len(trajectory),
         "width": args.width,
         "height": args.height,

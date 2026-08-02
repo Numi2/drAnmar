@@ -1,0 +1,22 @@
+{
+  "schema": "dr.anmar.curved-cut-cuda-render-receipt.v1",
+  "output": "docs/media/dranmar-cuttable-tissue-curved-cuda.gif",
+  "gif_sha256": "be3b37c89c18d33230361db7c4ff5fd4d547ac32413e481484d1006e36c76a53",
+  "renderer_source_revision": "3c5b9de8c1fbae683d0a2859537754cd49a9c2ed",
+  "requested_frame_count": 80,
+  "encoded_frame_count": 64,
+  "trajectory_frame_count": 64,
+  "width": 960,
+  "height": 600,
+  "warp_device": "cuda:0",
+  "source_profile": "dr-anmar-dynamic-curved-cut-v1",
+  "trajectory_steps": 4000,
+  "node_count": 551,
+  "tetrahedron_count": 1760,
+  "exterior_triangle_count": 384,
+  "wound_triangle_count": 256,
+  "displacement_exaggeration": 1.0,
+  "generated_imagery": false,
+  "biomechanical_validation": false,
+  "clinical_validation": false
+}
