@@ -41,7 +41,8 @@ def test_coupon_is_connected_positive_and_resolution_independent_of_cut_points()
     )
     assert np.all(np.linalg.det(matrices) > 0.0)
     assert "cut_points" not in profile["fracture"]
-    assert "dynamic_non_predefined_fracture_front" in profile["fracture"]["required_future_terms"]
+    assert profile["fracture"]["all_internal_faces_eligible"] is True
+    assert "dynamic_discontinuous_tetrahedral_dofs" in profile["fracture"]["required_future_terms"]
 
 
 def test_reference_solver_uses_nonlinear_stress_relaxation_and_fixed_anchors():

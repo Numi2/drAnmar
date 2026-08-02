@@ -1,7 +1,7 @@
 {
   "schema": "dr.anmar.cuttable-tissue-warp-parity-receipt.v1",
   "profile_id": "dr-anmar-cuttable-tissue-v1",
-  "profile_sha256": "ec39905e961ceb2b4442395c554d6d2a365b4eac0c69ccb86dcddb5c6da38f7f",
+  "profile_sha256": "775335f164c11b4cd4294c3b28c82598928ef173fa018484249a59173e452725",
   "warp_version": "1.15.0",
   "device": "cpu",
   "device_is_cuda": false,

@@ -2,7 +2,7 @@
   "schema": "dr.anmar.cuttable-tissue-profile.v1",
   "id": "dr-anmar-cuttable-tissue-v1",
   "name": "DrAnmar Cuttable Tissue Reference Coupon",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "status": "simulation_engineering_reference_pending_specimen_calibration",
   "purpose": "An intact, anchored tissue coupon for qualifying nonlinear deformation and non-penetrating scalpel contact before fracture is enabled.",
   "geometry": {
@@ -51,14 +51,38 @@
   },
   "fracture": {
     "enabled": false,
-    "state_representation": "per_tetrahedron_fracture_work_and_damage_reserved_for_dynamic_blade_seeded_front",
-    "activation_policy": "fail_closed_until_intact_contact_qualification_and_specimen_calibration",
+    "reference_oracle_enabled": true,
+    "state_representation": "intrinsic_mixed_mode_cohesive_interfaces_on_every_internal_tetrahedral_face",
+    "traction_separation_law": "irreversible_bilinear_cohesive_zone_with_benzeggagh_kenane_mode_mix_and_rate_regularization",
+    "activation_policy": "blade_sweep_seeded_connected_front_fail_closed_in_dynamic_solver_until_cuda_and_specimen_calibration",
+    "parameter_status": "provisional_dimensionally_consistent_reference_not_human_skin_calibration",
+    "penalty_stiffness_pa_m": 180000000.0,
+    "compression_stiffness_pa_m": 360000000.0,
+    "mode_i_peak_traction_pa": 24000.0,
+    "mode_ii_peak_traction_pa": 20000.0,
+    "mode_i_fracture_energy_j_m2": 14.0,
+    "mode_ii_fracture_energy_j_m2": 22.0,
+    "benzeggagh_kenane_exponent": 1.6,
+    "cohesive_viscosity_pa_s_m": 9000.0,
+    "blade_seed_distance_m": 0.0006,
+    "minimum_seeded_separation_rate_m_s": 0.0001,
+    "front_connectivity": "shared_edge_from_top_entry_or_existing_seeded_interface",
+    "all_internal_faces_eligible": true,
+    "qualification": {
+      "maximum_energy_relative_error": 0.005,
+      "maximum_damage_regression": 1e-12,
+      "minimum_post_failure_compression_traction_pa": 1000.0,
+      "minimum_off_grid_blade_seed_coverage_fraction": 1.0,
+      "require_zero_unseeded_damage": true,
+      "require_connected_seed_front": true,
+      "require_exact_replay": true
+    },
     "required_future_terms": [
-      "cohesive_fracture_energy",
       "adhesion_and_wear",
-      "rate_dependent_decohesion",
       "persistent_two_sided_collision_surface",
-      "dynamic_non_predefined_fracture_front"
+      "dynamic_discontinuous_tetrahedral_dofs",
+      "cuda_dynamic_front_and_energy_balance",
+      "specimen_calibration_and_mesh_convergence"
     ]
   },
   "qualification": {
@@ -79,6 +103,9 @@
     "maximum_internal_force_relative_l2_error": 0.0005,
     "maximum_contact_force_relative_l2_error": 0.001,
     "maximum_contact_penetration_absolute_error_m": 1e-7,
+    "maximum_cohesive_traction_relative_l2_error": 0.001,
+    "maximum_cohesive_damage_absolute_error": 1e-6,
+    "maximum_cohesive_separation_absolute_error_m": 1e-8,
     "cuda_qualification_required_for_promotion": true
   },
   "evidence_boundary": {

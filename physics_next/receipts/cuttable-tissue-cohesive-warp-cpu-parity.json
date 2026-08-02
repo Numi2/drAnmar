@@ -1,0 +1,18 @@
+{
+  "schema": "dr.anmar.cohesive-fracture-warp-parity-receipt.v1",
+  "profile_id": "dr-anmar-cuttable-tissue-v1",
+  "profile_sha256": "775335f164c11b4cd4294c3b28c82598928ef173fa018484249a59173e452725",
+  "warp_version": "1.15.0",
+  "device": "cpu",
+  "device_is_cuda": false,
+  "sample_count": 7,
+  "maximum_traction_relative_l2_error": 7.525799990189037e-08,
+  "maximum_damage_absolute_error": 2.9334279783022055e-08,
+  "maximum_history_absolute_error_m": 4.5758982757451716e-11,
+  "maximum_envelope_separation_absolute_error_m": 4.31879692598669e-11,
+  "maximum_fracture_energy_absolute_error_j_m2": 6.237918839246959e-07,
+  "qualified": true,
+  "failed_gates": [],
+  "cuda_promotion_pending": true,
+  "clinical_validation": false
+}
