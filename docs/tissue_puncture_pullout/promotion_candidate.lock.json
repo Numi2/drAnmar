@@ -29,7 +29,7 @@
     "hard_safety_failures": 0,
     "timeouts": 0,
     "receipt": "seed17_fem_rendered_success.json",
-    "gif_sha256": "979fe7d93542b68c97174cb8c1a0630a9ce94bc14095ddc8688241de2444048a"
+    "gif_sha256": "3b53f4ee42b8595a059590ef29333ccfddb1f733102dbcdc5e215a417aba5f36"
   },
   "promotion_eligible": false,
   "remaining_gate": "three_untouched_seeds_with_256_isolated_episodes_each",

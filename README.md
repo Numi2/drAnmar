@@ -223,6 +223,8 @@ evidence is in
 The receiver follows the instantaneous curved-needle tangent while any arc
 remains embedded; it separates upward only after backend-confirmed clearance,
 avoiding a cross-surface pull through the right FEM flap.
+The GIF preserves the real entry frames at near-real-time speed and uses a
+closer operative crop so the initial left-flap tip crossing remains visible.
 
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.

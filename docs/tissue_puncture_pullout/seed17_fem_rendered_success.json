@@ -37,10 +37,10 @@
     "source_frames": 350,
     "source_duration_s": 29.166667,
     "readme_gif": "docs/media/dranmar-champion-tissue-puncture-pullout.gif",
-    "readme_gif_sha256": "979fe7d93542b68c97174cb8c1a0630a9ce94bc14095ddc8688241de2444048a",
-    "gif_frames": 117,
-    "gif_duration_s": 9.75,
-    "frame_generation": "complete real renderer rollout sampled every tenth control step at 12 fps and time compressed 3x without interpolation"
+    "readme_gif_sha256": "3b53f4ee42b8595a059590ef29333ccfddb1f733102dbcdc5e215a417aba5f36",
+    "gif_frames": 112,
+    "gif_duration_s": 9.33,
+    "frame_generation": "real renderer frames only; 0.5-5.0 second entry segment slowed to 1.125x compression, remaining rollout compressed 4.5x, operative field cropped to 960x600, sampled at 12 fps without interpolation"
   },
   "evidence_level": "simulator_engineering_only",
   "clinical_validation": false
