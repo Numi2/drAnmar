@@ -1,0 +1,77 @@
+{
+  "schema": "dr.anmar.cuttable-tissue-cuda-promotion-lock.v1",
+  "qualified_source_revision": "b5798974ea238a7a6ac6f677ed7945e5c9503d4c",
+  "branch": "research/cuttable-tissue-solver",
+  "qualified_at_utc": "2026-08-02T19:40:41Z",
+  "remote_checkout": "/home/numi/dr_anmar/DrAnmar-cuttable-a1e28d0",
+  "host": "gilgamesh-System-Product-Name",
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 4090",
+    "uuid": "GPU-6e22deb4-a77d-aa82-1057-6cbcf53bf587",
+    "driver_version": "580.159.03",
+    "memory_mib": 24564
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "numpy": "1.26.4",
+    "warp": "1.15.0",
+    "warp_device": "cuda:0",
+    "cuda_toolkit_reported_by_warp": "12.9",
+    "compute_capability": "sm_89"
+  },
+  "profile_sha256": "1ea9d4a54cc8d81619825b097d8687dbe0e383a583d1de0e02117a437de6f9d1",
+  "raw_receipts": [
+    {
+      "path": "physics_next/receipts/cuttable-tissue-warp-cuda-parity.json",
+      "sha256": "72c23b536101495a3d9d560730118cad63a0b5135300b0d86b70bc4227cbb91f"
+    },
+    {
+      "path": "physics_next/receipts/cuttable-tissue-cohesive-warp-cuda-parity.json",
+      "sha256": "12a077359dcdd8e239b2e97fddb262cef0b3afdd0c3c37eb02caad5923f2cc11"
+    }
+  ],
+  "cuda_replay": {
+    "runs": 5,
+    "all_runs_qualified": true,
+    "intact_internal_force_relative_l2_error": {
+      "minimum": 3.5701171831386967e-06,
+      "maximum": 3.576765261074778e-06,
+      "span": 6.648077936081398e-09
+    },
+    "intact_contact_force_relative_l2_error": {
+      "minimum": 1.4763885361848091e-06,
+      "maximum": 1.4763885361848091e-06,
+      "span": 0.0
+    },
+    "intact_contact_penetration_absolute_error_m": {
+      "minimum": 3.53995710240633e-10,
+      "maximum": 3.53995710240633e-10,
+      "span": 0.0
+    },
+    "cohesive_traction_relative_l2_error": {
+      "minimum": 7.525799990189036e-08,
+      "maximum": 7.525799990189036e-08,
+      "span": 0.0
+    },
+    "cohesive_damage_absolute_error": {
+      "minimum": 2.9334279783022055e-08,
+      "maximum": 2.9334279783022055e-08,
+      "span": 0.0
+    },
+    "cohesive_envelope_separation_absolute_error_m": {
+      "minimum": 4.31879692598669e-11,
+      "maximum": 4.31879692598669e-11,
+      "span": 0.0
+    }
+  },
+  "remote_reference_tests": {
+    "total_passed": 21,
+    "intact_and_contact": 10,
+    "cohesive_fracture": 7,
+    "persistent_topology": 4,
+    "failed": 0
+  },
+  "qualified": true,
+  "failed_gates": [],
+  "evidence_boundary": "simulator engineering evidence only; not biomechanical, clinical, haptic, or autonomous surgical validation"
+}

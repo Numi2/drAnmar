@@ -110,3 +110,21 @@ a curved incision, a repeated incision, and a crossing incision. It produced
 volume, complete wound-collision sampling, and deterministic replay. These are
 topology/reference results—not yet proof that the dynamic FEM opens and collides
 correctly under a robot-held scalpel.
+
+## RTX 4090 CUDA qualification
+
+The intact FEM/contact and cohesive-fracture Warp kernels were qualified on the
+Gilgamesh RTX 4090 at source revision `b579897`. Both raw receipts report
+`device_is_cuda: true`, no failed gates, and no pending CUDA promotion. The
+same pinned checkout passed all 21 reference tests under Isaac's Python 3.11,
+NumPy 1.26.4, and Warp 1.15.0.
+
+Five fresh CUDA replays all qualified. Cohesive/contact metrics were identical;
+parallel internal-force atomic accumulation varied by only `6.65e-9` relative
+L2 across the five runs, versus the `5e-4` qualification limit. Hardware,
+runtime, raw-receipt hashes, replay envelopes, and the evidence boundary are
+frozen in `cuttable-tissue-cuda-promotion-lock.json`.
+
+This promotes the existing kernels to CUDA-qualified simulator components. It
+does not promote dynamic fracture: discontinuous FEM degrees of freedom and
+deforming two-sided wound collision remain the next required runtime gate.
