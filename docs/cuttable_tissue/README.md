@@ -265,3 +265,13 @@ not physical elapsed time. The curved path is live in the deforming FEM;
 crossing and repeated paths are qualified in the persistent topology authority,
 but a second crossing discontinuity is not yet enriched into the same live FEM
 mesh. Specimen calibration and clinical claims remain blocked.
+
+The identical incremental release and wedge mechanics also qualified under
+Warp on Gilgamesh's RTX 4090. CUDA reproduced the CPU event trace exactly:
+1,248 fracture events, all 85 interface-pair releases, zero inversions, a 0.807
+minimum Jacobian, and 0.062 mm mean relaxed opening. CPU/GPU mean-gap difference
+was 1.26 micrometres. Five fresh CUDA replays all qualified with identical
+event traces; their minimum-Jacobian envelope was 3.4e-6 wide. The raw receipt,
+source/profile hashes, hardware/runtime, 30-test result, replay receipts and
+metric envelopes are frozen in
+`moving-scalpel-cut-cuda-promotion-lock.json`.
