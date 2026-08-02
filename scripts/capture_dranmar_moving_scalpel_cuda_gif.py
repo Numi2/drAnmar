@@ -216,6 +216,32 @@ def _set_triangles(surface, triangles: np.ndarray) -> None:
     surface.GetFaceVertexIndicesAttr().Set(triangles.astype(np.int32).reshape(-1).tolist())
 
 
+def _weld_unreleased_exterior(
+    points: np.ndarray,
+    triangles: np.ndarray,
+    plus_nodes: np.ndarray,
+    minus_nodes: np.ndarray,
+    released: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Hide latent cohesive enrichment until its pair actually fractures."""
+    render_points = points.copy()
+    render_triangles = triangles.copy()
+    for plus, minus, is_released in zip(plus_nodes, minus_nodes, released, strict=True):
+        if is_released:
+            continue
+        plus = int(plus)
+        minus = int(minus)
+        midpoint = 0.5 * (render_points[plus] + render_points[minus])
+        render_points[plus] = midpoint
+        render_points[minus] = midpoint
+        render_triangles[render_triangles == minus] = plus
+    nondegenerate = np.asarray(
+        [triangle for triangle in render_triangles if len(set(map(int, triangle))) == 3],
+        dtype=np.int32,
+    )
+    return render_points, nondegenerate.reshape((-1, 3))
+
+
 def main() -> None:
     solver, trajectory, releases, centers, directions, event_counts, segments, labels, trace_sha, moving = _cuda_moving_trajectory()
     fem = solver.mesh
@@ -224,6 +250,8 @@ def main() -> None:
     wound_keys = {tuple(sorted(map(int, triangle))) for triangle in wound_all}
     outer = np.asarray([triangle for triangle in boundary if tuple(sorted(map(int, triangle))) not in wound_keys], dtype=np.int32)
     node_to_pair = solver.node_to_pair
+    plus_nodes = fem.gap_plus_nodes
+    minus_nodes = fem.gap_minus_nodes
 
     sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1.0 / 60.0, device=args.device, gravity=(0.0, 0.0, 0.0)))
     sim_utils.GroundPlaneCfg(color=(0.025, 0.029, 0.035)).func("/World/Ground", sim_utils.GroundPlaneCfg(color=(0.025, 0.029, 0.035)))
@@ -259,10 +287,14 @@ def main() -> None:
             if is_released:
                 released_triangles.append(triangle)
         released_array = np.asarray(released_triangles, dtype=np.int32).reshape((-1, 3))
-        set_points(exterior_mesh, points); set_points(wound_mesh, points)
+        render_points, render_outer = _weld_unreleased_exterior(
+            points, outer, plus_nodes, minus_nodes, released
+        )
+        set_points(exterior_mesh, render_points); set_points(wound_mesh, points)
         # Latent cohesive sheets are a mechanical enrichment, not visible
-        # geometry. Render only the continuous exterior ahead of the blade.
-        _set_triangles(exterior_mesh, outer)
+        # geometry. Unreleased pairs share a render vertex and become two-sided
+        # wound geometry only after the fracture authority releases them.
+        _set_triangles(exterior_mesh, render_outer)
         _set_triangles(wound_mesh, released_array)
         if center is None:
             hidden = np.asarray((0.0, 0.0, 0.06))
