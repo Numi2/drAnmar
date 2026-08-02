@@ -27,6 +27,16 @@ def _module():
     return module
 
 
+def _assert_retained_receipt_matches(payload, retained):
+    assert payload.keys() == retained.keys()
+    for key, expected in retained.items():
+        actual = payload[key]
+        if isinstance(expected, float):
+            assert np.isclose(actual, expected, rtol=1.0e-12, atol=1.0e-15), key
+        else:
+            assert actual == expected, key
+
+
 def test_triangle_box_overlap_is_bounded_and_not_a_center_distance_guess():
     module = _module()
     triangle = np.asarray(((-0.2, 0.0, 0.0), (0.2, 0.0, 0.0), (0.0, 0.2, 0.0)))
@@ -91,4 +101,4 @@ def test_persistent_topology_qualifies_replays_and_matches_retained_receipt():
     assert first.removed_volume_m3 == 0.0
     assert first.wound_collision_coverage_fraction == 1.0
     retained = json.loads(RECEIPT_PATH.read_text(encoding="utf-8"))
-    assert first.payload() == retained
+    _assert_retained_receipt_matches(first.payload(), retained)

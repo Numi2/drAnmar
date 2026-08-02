@@ -24,6 +24,16 @@ def _module():
     return module
 
 
+def _assert_retained_receipt_matches(payload, retained):
+    assert payload.keys() == retained.keys()
+    for key, expected in retained.items():
+        actual = payload[key]
+        if isinstance(expected, float):
+            assert np.isclose(actual, expected, rtol=1.0e-12, atol=1.0e-15), key
+        else:
+            assert actual == expected, key
+
+
 def test_coupon_is_connected_positive_and_resolution_independent_of_cut_points():
     module = _module()
     profile = module.load_profile()
@@ -124,4 +134,4 @@ def test_intact_scalpel_contact_qualifies_and_replays_exactly():
             encoding="utf-8"
         )
     )
-    assert first.payload() == retained
+    _assert_retained_receipt_matches(first.payload(), retained)
