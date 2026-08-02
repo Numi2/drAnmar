@@ -1,0 +1,106 @@
+{
+  "schema": "dr.anmar.cuttable-tissue-profile.v1",
+  "id": "dr-anmar-cuttable-tissue-v1",
+  "name": "DrAnmar Cuttable Tissue Reference Coupon",
+  "version": "0.1.0",
+  "status": "simulation_engineering_reference_pending_specimen_calibration",
+  "purpose": "An intact, anchored tissue coupon for qualifying nonlinear deformation and non-penetrating scalpel contact before fracture is enabled.",
+  "geometry": {
+    "width_m": 0.036,
+    "depth_m": 0.024,
+    "thickness_m": 0.006,
+    "cells_x": 8,
+    "cells_y": 6,
+    "cells_z": 2,
+    "attachment_band_m": 0.003,
+    "prestrain_x": 0.04
+  },
+  "material": {
+    "constitutive_model": "compressible_neo_hookean_with_single_term_prony_relaxation",
+    "density_kg_m3": 1050.0,
+    "youngs_modulus_pa": 85000.0,
+    "poisson_ratio": 0.47,
+    "prony_relaxation_fraction": 0.28,
+    "prony_time_constant_s": 0.12,
+    "velocity_damping_per_s": 18.0
+  },
+  "scalpel_contact": {
+    "representation": "finite_rounded_edge_capsule",
+    "edge_length_m": 0.018,
+    "edge_radius_m": 0.00045,
+    "normal_stiffness_n_m": 3200.0,
+    "normal_damping_n_s_m": 0.42,
+    "dynamic_friction": 0.22,
+    "friction_regularization_m_s": 0.002,
+    "maximum_command_speed_m_s": 0.01
+  },
+  "solver": {
+    "integrator": "semi_implicit_euler_reference",
+    "time_step_s": 0.00005,
+    "settle_s": 0.12,
+    "approach_s": 0.16,
+    "hold_s": 0.12,
+    "slide_s": 0.12,
+    "retract_s": 0.16,
+    "recovery_s": 0.20,
+    "commanded_indentation_m": 0.0008,
+    "commanded_slide_m": 0.004,
+    "initial_clearance_m": 0.00035,
+    "minimum_jacobian": 0.2
+  },
+  "fracture": {
+    "enabled": false,
+    "state_representation": "per_tetrahedron_fracture_work_and_damage_reserved_for_dynamic_blade_seeded_front",
+    "activation_policy": "fail_closed_until_intact_contact_qualification_and_specimen_calibration",
+    "required_future_terms": [
+      "cohesive_fracture_energy",
+      "adhesion_and_wear",
+      "rate_dependent_decohesion",
+      "persistent_two_sided_collision_surface",
+      "dynamic_non_predefined_fracture_front"
+    ]
+  },
+  "qualification": {
+    "maximum_contact_penetration_m": 0.00025,
+    "maximum_anchor_drift_m": 1e-10,
+    "maximum_volume_error_fraction": 0.08,
+    "maximum_recovery_residual_m": 0.00035,
+    "minimum_force_relaxation_fraction": 0.01,
+    "maximum_force_relaxation_fraction": 0.65,
+    "require_zero_inverted_tetrahedra": true,
+    "require_zero_fracture_events": true,
+    "require_exact_replay": true
+  },
+  "evidence_boundary": {
+    "claims": "simulator engineering evidence only",
+    "not_claimed": [
+      "human_skin_calibration",
+      "biomechanical_validation",
+      "clinical_validation",
+      "arbitrary_cutting",
+      "haptic_validation"
+    ]
+  },
+  "research_basis": [
+    {
+      "title": "Cutting soft materials: how material differences shape the response",
+      "published": "2026-01-06",
+      "url": "https://doi.org/10.1038/s41524-025-01869-y",
+      "used_for": "finite-strain cohesive-fracture, adhesion, wear, friction and dissipative-force architecture"
+    },
+    {
+      "title": "A real-time reconstructed grid method for soft tissue cutting and haptic",
+      "published": "2025-10-20",
+      "url": "https://doi.org/10.1016/j.cmpb.2025.109123",
+      "used_for": "future persistent surface reconstruction and non-penetrating collision architecture"
+    },
+    {
+      "title": "A numerical simulation study of soft tissue resection for low-damage precision cancer surgery",
+      "published": "2025-10-01",
+      "url": "https://doi.org/10.1016/j.cmpb.2025.108937",
+      "used_for": "hyperelastic-viscoelastic parameter fitting and force-displacement validation workflow"
+    }
+  ],
+  "biomechanical_validation": false,
+  "clinical_validation": false
+}
