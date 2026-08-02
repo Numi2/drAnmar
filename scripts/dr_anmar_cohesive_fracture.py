@@ -437,7 +437,10 @@ def _monotonic_work(
         resistance.append(value)
         if len(resistance) % 128 == 1:
             trace.append((float(separation), value, state.damage))
-    work = float(np.trapezoid(np.asarray(resistance), separations))
+    resistance_array = np.asarray(resistance)
+    work = float(
+        np.sum(0.5 * (resistance_array[1:] + resistance_array[:-1]) * np.diff(separations))
+    )
     return work, expected, trace
 
 
