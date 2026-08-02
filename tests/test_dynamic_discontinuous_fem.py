@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import importlib.util
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -12,6 +13,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts/dr_anmar_dynamic_discontinuous_fem.py"
 RECEIPT_PATH = ROOT / "physics_next/receipts/dynamic-planar-cut-reference.json"
+RUNTIME_LOCK_PATH = ROOT / "physics_next/receipts/dynamic-planar-cut-runtime-lock.json"
 
 
 def _module():
@@ -98,3 +100,18 @@ def test_dynamic_planar_cut_qualifies_replays_and_matches_retained_receipt():
     assert first.maximum_probe_surface_crossing_m == 0.0
     retained = json.loads(RECEIPT_PATH.read_text(encoding="utf-8"))
     _assert_retained_receipt_matches(first.payload(), retained)
+
+
+def test_isaac_runtime_receipt_is_hashed_and_keeps_cuda_dynamic_cut_blocked():
+    lock = json.loads(RUNTIME_LOCK_PATH.read_text(encoding="utf-8"))
+    receipt_path = ROOT / lock["receipt"]["path"]
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert hashlib.sha256(receipt_path.read_bytes()).hexdigest() == lock["receipt"]["sha256"]
+    assert receipt["qualified"] is True
+    assert receipt["failed_gates"] == []
+    assert (
+        receipt["deterministic_trace_sha256"]
+        == "8d98b01ad4ffb2bd129b2019b919b519d38b223d1426442d4015e746c69057b5"
+    )
+    assert lock["remote_tests"] == {"passed": 26, "failed": 0}
+    assert lock["cuda_dynamic_cut_qualified"] is False

@@ -152,3 +152,8 @@ This is intentionally a planar, mesh-conforming dynamic gate. It does not map
 the arbitrary cut-cell field onto mesh faces. Arbitrary curved and intersecting
 dynamic cuts remain blocked until an embedded-discontinuity or cut-cell enriched
 FEM formulation can consume the persistent field without mesh-direction bias.
+
+The exact planar reference also replayed under Gilgamesh's Isaac Python runtime
+with the same deterministic trace and 26/26 tests passing. Its runtime lock
+explicitly records CPU execution and keeps CUDA dynamic cutting blocked; the
+earlier CUDA promotion applies only to the continuum/contact/cohesive kernels.
