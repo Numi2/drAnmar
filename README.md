@@ -32,6 +32,55 @@ robot learning, and patient-effect evaluation.**
   and retained handover.</em>
 </p>
 
+## Quick start
+
+> [!IMPORTANT]
+> Running the complete local simulator requires **Linux x86-64 and at least an
+> NVIDIA RTX 4090 with 24 GB of VRAM**. Install a compatible NVIDIA driver,
+> Isaac Sim, and Isaac Lab before continuing. macOS and Windows can inspect the
+> source and browser UI, but they do not run the supported simulator backend.
+
+Clone Dr.Anmar with its pinned asset catalog:
+
+```bash
+git clone --recurse-submodules https://github.com/Numi2/drAnmar.git
+cd drAnmar
+cp .env.example .env
+```
+
+Edit `.env` and set `ISAAC_PYTHON` to the Python executable from your
+Isaac Sim / Isaac Lab environment. Then install the Dr.Anmar extensions once:
+
+```bash
+export IsaacLab_PATH=/absolute/path/to/IsaacLab
+./orbitsurgical.sh
+```
+
+Start Doctor Studio and open it in the local browser:
+
+```bash
+./dr_anmar_suite.sh start
+xdg-open http://localhost:2360
+```
+
+If `xdg-open` is unavailable, visit
+[http://localhost:2360](http://localhost:2360) manually. The suite binds to
+loopback by default. Useful lifecycle commands are:
+
+```bash
+./dr_anmar_suite.sh status
+./dr_anmar_suite.sh logs
+./dr_anmar_suite.sh restart
+./dr_anmar_suite.sh stop
+```
+
+Recorded native-simulator lanes include Isaac Sim 5.1 / Isaac Lab 2.3.2 and
+Isaac Sim 6.0.1.0. To reproduce a particular result, use the exact runtime,
+driver, and package versions named by its evidence artifact or by
+[`config/physics-next-lock.json`](config/physics-next-lock.json). See
+[SECURITY.md](SECURITY.md) before exposing Doctor Studio beyond the local
+machine.
+
 > A robot may command motion and intervention intent. It may not write the
 > patient outcome.
 
@@ -453,45 +502,6 @@ Start with:
 - [Revision-bound portfolio evidence](physics_next/benchmarks/dranmar-portfolio-evidence-index.json)
 - [Evidence levels](docs/EVIDENCE_LEVELS.md)
 - [Validation backlog](docs/VALIDATION_BACKLOG.md)
-
-## Quick start
-
-The asset catalog is a pinned submodule, so clone recursively:
-
-```bash
-git clone --recurse-submodules https://github.com/Numi2/drAnmar.git
-cd drAnmar
-cp .env.example .env
-```
-
-Set `ISAAC_PYTHON` in `.env` to the selected Isaac environment, then install
-the local extensions and start Doctor Studio:
-
-```bash
-export IsaacLab_PATH=/absolute/path/to/IsaacLab
-./orbitsurgical.sh
-./dr_anmar_suite.sh start
-```
-
-Open [http://localhost:2360](http://localhost:2360).
-
-```bash
-./dr_anmar_suite.sh status
-./dr_anmar_suite.sh logs
-./dr_anmar_suite.sh restart
-./dr_anmar_suite.sh stop
-```
-
-The simulator backend requires Linux x86-64 and a compatible NVIDIA GPU. The
-browser, source, and documentation can be inspected on macOS and Windows.
-Recorded native-simulator lanes include Isaac Sim 5.1 / Isaac Lab 2.3.2 and
-Isaac Sim 6.0.1.0. The current isolated lane is defined by
-`config/physics-next-lock.json`, including full source revisions and exact
-Torch packages; use the exact stack named by the evidence artifact you are
-reproducing.
-
-See [SECURITY.md](SECURITY.md) before exposing Doctor Studio beyond a trusted
-LAN or private VPN.
 
 ## Repository map
 
