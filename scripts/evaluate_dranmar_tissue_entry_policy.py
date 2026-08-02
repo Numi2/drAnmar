@@ -265,6 +265,7 @@ def main() -> int:
     normalized_peak_forces: list[float] = []
     event_counts: list[int] = []
     exit_event_counts: list[int] = []
+    right_underside_event_counts: list[int] = []
     exit_errors: list[float] = []
     exposed_fractions: list[float] = []
     exposed_arc_lengths: list[float] = []
@@ -332,6 +333,12 @@ def main() -> int:
                             ),
                             "exit_error_m": float(
                                 measurement.get("exit_error", torch.tensor([0.0]))[0]
+                            ),
+                            "right_underside_event_count": int(
+                                state.get(
+                                    "right_underside_event_count",
+                                    torch.tensor([0]),
+                                )[0]
                             ),
                             "tip_pos": [
                                 float(value)
@@ -493,6 +500,9 @@ def main() -> int:
                     if through_puncture or pullout:
                         event_counts.append(int(receipt["entry_event_count"]))
                         exit_event_counts.append(int(receipt["exit_event_count"]))
+                        right_underside_event_counts.append(
+                            int(receipt["right_underside_event_count"])
+                        )
                         exit_errors.append(float(receipt["exit_error_m"]))
                         exposed_fractions.append(float(receipt["exposed_fraction"]))
                         exposed_arc_lengths.append(
@@ -589,6 +599,10 @@ def main() -> int:
                     ),
                     "exactly_one_exit_event_per_success": bool(exit_event_counts)
                     and all(count == 1 for count in exit_event_counts),
+                    "exactly_one_right_underside_event_per_success": bool(
+                        right_underside_event_counts
+                    )
+                    and all(count == 1 for count in right_underside_event_counts),
                 }
             )
         if "Puncture-Pullout" in args.task:

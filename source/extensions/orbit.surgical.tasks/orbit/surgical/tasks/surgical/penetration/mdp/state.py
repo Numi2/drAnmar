@@ -83,6 +83,8 @@ def _couple_fem_contact_patch(
     """
 
     patch_radius_m = 0.008
+    underside_patch_radius_m = 0.006
+    underside_displacement_max_m = 0.0008
     exit_influence_depth_m = 0.004
     exit_lift_max_m = 0.0012
     tract_displacement_max_m = 0.0035
@@ -113,7 +115,9 @@ def _couple_fem_contact_patch(
             torch.ones_like(targets[..., 3]),
         )
         top_z = positions[..., 2].amax(dim=1, keepdim=True)
+        bottom_z = positions[..., 2].amin(dim=1, keepdim=True)
         top_surface = positions[..., 2] >= top_z - top_band_m
+        bottom_surface = positions[..., 2] <= bottom_z + top_band_m
         punctured_mask = torch.tensor(punctured, device=env.device)
         contact_position = tissue_center + torch.tensor(
             [item.contact_position_m for item in tissue_state],
@@ -137,6 +141,33 @@ def _couple_fem_contact_patch(
             [getattr(item, "exit_event_count", 0) for item in tissue_state],
             device=env.device,
         )
+        right_underside_event_count = torch.tensor(
+            [
+                getattr(item, "right_underside_event_count", 0)
+                for item in tissue_state
+            ],
+            device=env.device,
+        )
+        right_underside_position = tissue_center + torch.tensor(
+            [
+                getattr(
+                    item,
+                    "right_underside_position_m",
+                    (0.0, 0.0, -0.003),
+                )
+                for item in tissue_state
+            ],
+            device=env.device,
+            dtype=positions.dtype,
+        )
+        right_underside_displacement = torch.tensor(
+            [
+                getattr(item, "right_underside_displacement_m", 0.0)
+                for item in tissue_state
+            ],
+            device=env.device,
+            dtype=positions.dtype,
+        ).clamp(max=underside_displacement_max_m)
         tip_over_flap = (tip_position[:, 0] >= x.amin(dim=1)) & (
             tip_position[:, 0] <= x.amax(dim=1)
         )
@@ -147,6 +178,7 @@ def _couple_fem_contact_patch(
             & tip_over_flap
             & (exit_vertical_distance < exit_influence_depth_m)
             & (exit_event_count <= 1)
+            & (right_underside_event_count == 1)
         )
         contact_over_flap = (contact_position[:, 0] >= x.amin(dim=1)) & (
             contact_position[:, 0] <= x.amax(dim=1)
@@ -183,6 +215,33 @@ def _couple_fem_contact_patch(
             positions[..., :2]
             + lateral_displacement.unsqueeze(1) * falloff.unsqueeze(-1),
             targets[..., :2],
+        )
+        # The tip lifts a bounded patch on the underside of the right FEM flap.
+        # Its backend displacement decays after the event so the volume recoils
+        # progressively during passage instead of behaving like a ghost.
+        underside_delta = (
+            positions[..., :2] - right_underside_position[:, None, :2]
+        )
+        underside_radius = torch.linalg.vector_norm(underside_delta, dim=-1)
+        underside_falloff = torch.clamp(
+            1.0 - underside_radius / underside_patch_radius_m, min=0.0
+        ) ** 2
+        underside_active = (
+            (flap_side == "right")
+            & punctured_mask
+            & (right_underside_displacement > 0.0)
+        )
+        underside_patch = (
+            bottom_surface
+            & (underside_falloff > 0.0)
+            & underside_active.unsqueeze(-1)
+            & ~outer_anchor
+        )
+        targets[..., 2] = torch.where(
+            underside_patch,
+            positions[..., 2]
+            + right_underside_displacement.unsqueeze(-1) * underside_falloff,
+            targets[..., 2],
         )
         # The tract needle remains collision-free so it can pass a deformable
         # volume without PhysX interpreting the shaft as an uncut solid.  Make
@@ -618,6 +677,11 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             device=env.device,
             dtype=torch.long,
         )
+        right_underside_event_count = torch.tensor(
+            [item.right_underside_event_count for item in tissue_state],
+            device=env.device,
+            dtype=torch.long,
+        )
     else:
         exit_target = target.clone()
         exit_position = target.clone()
@@ -626,6 +690,9 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         exposed_arc_length = torch.zeros(env.num_envs, device=env.device)
         exposed_fraction = torch.zeros(env.num_envs, device=env.device)
         exit_event_count = torch.zeros(
+            env.num_envs, dtype=torch.long, device=env.device
+        )
+        right_underside_event_count = torch.zeros(
             env.num_envs, dtype=torch.long, device=env.device
         )
 
@@ -894,7 +961,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
         # instantaneous tangent at the receiver's grasp point. A straight
         # surface-normal lift drags the remaining embedded arc across the top
         # surface and visually tears the FEM. Choose the tangent sign that
-        # agrees with sharp-tip advance; lift away only after backend clearance.
+        # agrees with sharp-tip advance and retain it through final clearance.
         exposed_radial = torch.nn.functional.normalize(
             exposed_grasp_target - root_pos, dim=-1
         )
@@ -907,10 +974,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             -torch.ones_like(pull_tangent[..., :1]),
         )
         pull_tangent = pull_tangent * tangent_sign
-        tract_clear = embedded_arc_length <= PulloutThresholds().embedded_arc_clearance_m
-        pull_direction_w = torch.where(
-            tract_clear.unsqueeze(-1), surface_normal, pull_tangent
-        )
+        pull_direction_w = pull_tangent
         pull_delta_r = quat_apply_inverse(receiver_root_quat, pull_direction_w)
         pull_guidance = torch.cat(
             (
@@ -996,10 +1060,16 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 exposed_arc_length_m=float(exposed_arc_length[index]),
                 exposed_fraction=float(exposed_fraction[index]),
                 backend_exit_count=int(exit_event_count[index]),
+                backend_right_underside_count=int(
+                    right_underside_event_count[index]
+                ),
                 entry_slab=tissue_state[index].entry_slab,
                 exit_slab=tissue_state[index].exit_slab,
                 cross_slab_route_valid=tissue_state[index].cross_slab_route_valid,
                 invalid_exit_route=tissue_state[index].invalid_exit_route,
+                missing_right_underside_puncture=(
+                    tissue_state[index].missing_right_underside_puncture
+                ),
                 tract_support_active=tissue_state[index].tract_support_active,
                 tract_support_event_count=tissue_state[
                     index
@@ -1025,10 +1095,16 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
                 exposed_arc_length_m=float(exposed_arc_length[index]),
                 exposed_fraction=float(exposed_fraction[index]),
                 backend_exit_count=int(exit_event_count[index]),
+                backend_right_underside_count=int(
+                    right_underside_event_count[index]
+                ),
                 entry_slab=tissue_state[index].entry_slab,
                 exit_slab=tissue_state[index].exit_slab,
                 cross_slab_route_valid=tissue_state[index].cross_slab_route_valid,
                 invalid_exit_route=tissue_state[index].invalid_exit_route,
+                missing_right_underside_puncture=(
+                    tissue_state[index].missing_right_underside_puncture
+                ),
             )
         else:
             measurement = PunctureMeasurement(
@@ -1158,6 +1234,7 @@ def penetration_state(env: ManagerBasedRLEnv) -> dict[str, Any]:
             "phase": phase,
             "event_count": event_count,
             "exit_event_count": exit_event_count,
+            "right_underside_event_count": right_underside_event_count,
             "receiver_jaw_forces": receiver_jaw_forces,
             "giver_tissue_force": giver_tissue_force,
             "receiver_tissue_force": receiver_tissue_force,

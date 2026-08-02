@@ -434,6 +434,7 @@ def test_through_puncture_requires_one_entry_one_exit_and_twenty_percent_exposur
         "entry_slab": "left",
         "exit_slab": "right",
         "cross_slab_route_valid": True,
+        "backend_right_underside_count": 1,
     }
     state = module.ThroughPunctureGateState(
         phase=module.ThroughPuncturePhase.INDENT
@@ -473,7 +474,7 @@ def test_through_puncture_backend_and_task_are_distinct_from_qualified_entry():
     )
     controller = (TASK_ROOT / "residual_model.py").read_text(encoding="utf-8")
     assert (
-        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v12-fem-flap-route"'
+        'DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v13-right-underside-gate"'
         in backend
     )
     assert "through_sample_count = 129" in backend
@@ -483,7 +484,7 @@ def test_through_puncture_backend_and_task_are_distinct_from_qualified_entry():
     assert "target_exposed_fraction = 0.22" in controller
 
 
-def test_through_backend_emits_one_top_exit_after_the_tip_first_enters():
+def test_through_backend_requires_one_right_underside_puncture_before_top_exit():
     module = _through_backend()
     backend = module.DrAnmarNativeTissueThroughBackend(1)
     entered = module.NeedlePose(
@@ -499,6 +500,13 @@ def test_through_backend_emits_one_top_exit_after_the_tip_first_enters():
     )
     backend.step([entry_tip], [entered], [True])
     before_exit = backend.scene_state[0]
+    underside_tip = module.NeedlePose(
+        (0.010, 0.0, -0.0020), (0.0, 0.0, 0.0, 1.0)
+    )
+    underside_arc = module.NeedlePose(
+        (0.010, 0.007, -0.0020), underside_tip.quaternion_xyzw
+    )
+    backend.step([underside_tip], [underside_arc], [True])
     backend.step([entry_tip], [reemerged], [True])
     first = backend.scene_state[0]
     moved_after_exit = module.NeedlePose(
@@ -510,6 +518,7 @@ def test_through_backend_emits_one_top_exit_after_the_tip_first_enters():
     backend.step([entry_tip], [reemerged], [True])
     replay_crossing = backend.scene_state[0]
     assert before_exit.exit_event_count == 0
+    assert first.right_underside_event_count == 1
     assert first.exit_event_count == 1
     assert second.exit_event_count == 1
     assert second.exit_position_m == first.exit_position_m
@@ -541,6 +550,29 @@ def test_through_backend_rejects_same_slab_or_gap_exit_route():
     assert state.exit_slab in {"left", "wound_gap"}
     assert state.invalid_exit_route
     assert not state.cross_slab_route_valid
+
+
+def test_through_backend_rejects_right_top_exit_without_underside_event():
+    module = _through_backend()
+    backend = module.DrAnmarNativeTissueThroughBackend(1)
+    entered = module.NeedlePose(
+        (0.0, 0.0, 0.002),
+        (2**-0.5, 0.0, 0.0, 2**-0.5),
+    )
+    reemerged = module.NeedlePose(
+        (0.0, 0.0, 0.002),
+        (-(2**-0.5), 0.0, 0.0, 2**-0.5),
+    )
+    entry_tip = module.NeedlePose(
+        (-0.007, 0.0, 0.002), entered.quaternion_xyzw
+    )
+    backend.step([entry_tip], [entered], [True])
+    backend.step([entry_tip], [reemerged], [True])
+    state = backend.scene_state[0]
+    assert state.right_underside_event_count == 0
+    assert state.exit_event_count == 0
+    assert state.missing_right_underside_puncture
+    assert state.invalid_exit_route
 
 
 def test_through_backend_authorizes_four_bounded_embedded_tract_regrasps():
@@ -608,13 +640,13 @@ def test_fem_tract_load_stretches_and_recoils_through_free_nodes():
         assert "float physxDeformableMaterial:elasticityDamping = 0.08" in asset
 
 
-def test_receiver_follows_needle_tangent_until_backend_clearance():
+def test_receiver_follows_needle_tangent_through_final_clearance():
     state = (TASK_ROOT / "mdp/state.py").read_text(encoding="utf-8")
     assert "exposed_grasp_target - root_pos" in state
     assert "torch.linalg.cross(plane_normal, exposed_radial)" in state
     assert "pull_tangent * tangent" in state
-    assert "tract_clear = embedded_arc_length" in state
-    assert "tract_clear.unsqueeze(-1), surface_normal, pull_tangent" in state
+    assert "pull_direction_w = pull_tangent" in state
+    assert "tract_clear.unsqueeze(-1), surface_normal" not in state
 
 
 def test_whole_psm_link_tissue_contacts_are_authoritative():
@@ -703,6 +735,7 @@ def test_pullout_requires_receiver_contact_transfer_and_complete_clearance():
         "target_region_valid": True,
         "tissue_contact": True,
         "backend_exit_count": 1,
+        "backend_right_underside_count": 1,
         "entry_slab": "left",
         "exit_slab": "right",
         "cross_slab_route_valid": True,
@@ -802,6 +835,8 @@ def test_tissue_blocks_psms_but_filters_only_the_needle_pair():
     assert "patch_radius_m = 0.008" in state
     assert "item.surface_displacement_m" in state
     assert "contact_patch" in state
+    assert "underside_patch" in state
+    assert "right_underside_event_count" in state
     assert "giver_tip_tissue_contact" in penetration
     assert "collision_enabled=False" not in pullout
     assert "dranmar_needle.usda" not in pullout

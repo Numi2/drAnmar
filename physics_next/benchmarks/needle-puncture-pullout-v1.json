@@ -18,6 +18,7 @@
   },
   "engineering_acceptance": {
     "entry_event_count": 1,
+    "right_underside_event_count": 1,
     "exit_event_count": 1,
     "entry_slab": "left",
     "exit_slab": "right",

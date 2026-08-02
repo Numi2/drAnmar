@@ -78,10 +78,12 @@ class PulloutMeasurement:
     target_region_valid: bool
     tissue_contact: bool
     backend_exit_count: int
+    backend_right_underside_count: int = 0
     entry_slab: str = "none"
     exit_slab: str = "none"
     cross_slab_route_valid: bool = False
     invalid_exit_route: bool = False
+    missing_right_underside_puncture: bool = False
     tract_support_active: bool = False
     tract_support_event_count: int = 0
     giver_regrasp_stage: int = 0
@@ -167,6 +169,10 @@ def advance_pullout_gate(
         state.hard_failures.add("prepuncture_force_limit")
     if measurement.backend_exit_count > 1:
         state.hard_failures.add("multiple_exit_events")
+    if measurement.backend_right_underside_count > 1:
+        state.hard_failures.add("multiple_right_underside_events")
+    if measurement.missing_right_underside_puncture:
+        state.hard_failures.add("missing_right_underside_puncture")
     if measurement.invalid_exit_route:
         state.hard_failures.add("invalid_cross_slab_exit_route")
     if measurement.tract_support_event_count > 4:
@@ -213,7 +219,11 @@ def advance_pullout_gate(
         if measurement.embedded_arc_length_m > 0.0:
             next_phase = PulloutPhase.DRIVE
     elif state.phase == PulloutPhase.DRIVE:
-        if measurement.backend_exit_count == 1 and measurement.exposed_arc_length_m > 0.0:
+        if (
+            measurement.backend_right_underside_count == 1
+            and measurement.backend_exit_count == 1
+            and measurement.exposed_arc_length_m > 0.0
+        ):
             state.exit_event_count = 1
             state.exit_error_at_event_m = measurement.exit_error_m
             next_phase = PulloutPhase.EXIT
@@ -290,6 +300,7 @@ def pullout_success(
         and state.entry_event_count == 1
         and state.exit_event_count == 1
         and measurement.backend_exit_count == 1
+        and measurement.backend_right_underside_count == 1
         and measurement.entry_slab == "left"
         and measurement.exit_slab == "right"
         and measurement.cross_slab_route_valid
@@ -311,6 +322,7 @@ class PulloutReceipt:
     success: bool
     entry_event_count: int
     exit_event_count: int
+    right_underside_event_count: int
     representation_switch_count: int
     entry_error_m: float
     exit_error_m: float

@@ -19,7 +19,7 @@ from .backend import (
 )
 
 
-DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v12-fem-flap-route"
+DRANMAR_NATIVE_THROUGH_REVISION = "dranmar-native-tissue-through-v13-right-underside-gate"
 
 # Tissue coordinates are relative to the midpoint between the two authored
 # FEM flaps.  These are the authored TetMesh extents, not a legacy collision
@@ -34,6 +34,9 @@ class ThroughTissueSceneState:
     representation: str
     representation_switch_count: int
     exit_event_count: int
+    right_underside_event_count: int
+    right_underside_displacement_m: float
+    right_underside_position_m: tuple[float, float, float]
     surface_displacement_m: float
     local_strain: float
     contact_position_m: tuple[float, float, float]
@@ -51,12 +54,16 @@ class ThroughTissueSceneState:
     exit_slab: str
     cross_slab_route_valid: bool
     invalid_exit_route: bool
+    missing_right_underside_puncture: bool
     finite: bool
 
 
 @dataclass
 class _ThroughState:
     exit_event_count: int = 0
+    right_underside_event_count: int = 0
+    right_underside_displacement_m: float = 0.0
+    right_underside_position_m: tuple[float, float, float] = (0.0, 0.0, -0.003)
     tip_has_entered: bool = False
     previous_tip_z_m: float | None = None
     embedded_arc_length_m: float = 0.0
@@ -70,6 +77,7 @@ class _ThroughState:
     entry_slab: str = "none"
     exit_slab: str = "none"
     invalid_exit_route: bool = False
+    missing_right_underside_puncture: bool = False
 
 
 def _source_sha256() -> str:
@@ -100,6 +108,9 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
                 representation=entry.representation,
                 representation_switch_count=entry.representation_switch_count,
                 exit_event_count=through.exit_event_count,
+                right_underside_event_count=through.right_underside_event_count,
+                right_underside_displacement_m=through.right_underside_displacement_m,
+                right_underside_position_m=through.right_underside_position_m,
                 surface_displacement_m=entry.surface_displacement_m,
                 local_strain=entry.local_strain,
                 contact_position_m=entry.contact_position_m,
@@ -119,6 +130,9 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
                     through.entry_slab == "left" and through.exit_slab == "right"
                 ),
                 invalid_exit_route=through.invalid_exit_route,
+                missing_right_underside_puncture=(
+                    through.missing_right_underside_puncture
+                ),
                 finite=entry.finite,
             )
             for entry, through in zip(entry_states, self._through, strict=True)
@@ -150,6 +164,9 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
         state = self._through[index]
         if not punctured:
             state.exit_event_count = 0
+            state.right_underside_event_count = 0
+            state.right_underside_displacement_m = 0.0
+            state.right_underside_position_m = (0.0, 0.0, -0.003)
             state.tip_has_entered = False
             state.previous_tip_z_m = None
             state.embedded_arc_length_m = 0.0
@@ -163,6 +180,7 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
             state.entry_slab = "none"
             state.exit_slab = "none"
             state.invalid_exit_route = False
+            state.missing_right_underside_puncture = False
             return
         if state.entry_slab == "none":
             state.entry_slab = self._classify_slab(tip_pose.position[0])
@@ -238,12 +256,56 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
             )
             state.trailing_grasp_over_wound_gap = False
         tip_z = points[0][2]
+        tip_x = points[0][0]
+        tip_slab = self._classify_slab(tip_x)
         if tip_z < self.surface_z_m - 1.0e-5:
             state.tip_has_entered = True
+        # The right flap owns a distinct bottom-surface puncture.  Before this
+        # one-time event the sharp tip may indent the underside, but it may not
+        # be credited with a top exit.  This prevents a collision-free tract
+        # representation from silently treating the second flap as air.
+        underside_puncture_depth_m = 0.0008
+        if (
+            state.tip_has_entered
+            and tip_slab == "right"
+            and state.right_underside_event_count == 0
+            and tip_z < self.surface_z_m
+        ):
+            state.right_underside_position_m = (points[0][0], points[0][1], bottom_z)
+            state.right_underside_displacement_m = min(
+                max(tip_z - bottom_z, 0.0), underside_puncture_depth_m
+            )
+            if tip_z >= bottom_z + underside_puncture_depth_m:
+                state.right_underside_event_count = 1
+        elif (
+            state.right_underside_event_count == 1
+            and tip_slab == "right"
+            and tip_z < self.surface_z_m
+        ):
+            # Keep diminishing tract support while the sharp tip traverses the
+            # flap, then release it fully at the top. This gives the volume time
+            # to stretch and recoil instead of flashing for a single frame.
+            remaining_fraction = min(
+                max(
+                    (self.surface_z_m - tip_z)
+                    / (self.tissue_thickness_m - underside_puncture_depth_m),
+                    0.0,
+                ),
+                1.0,
+            )
+            state.right_underside_displacement_m = (
+                underside_puncture_depth_m * remaining_fraction
+            )
+        else:
+            state.right_underside_displacement_m = 0.0
         tip_reemerged = state.tip_has_entered and tip_z >= self.surface_z_m
         if tip_reemerged and state.exit_event_count == 0:
             state.exit_slab = self._classify_slab(candidate_exit_position[0])
-            valid_route = state.entry_slab == "left" and state.exit_slab == "right"
+            valid_route = (
+                state.entry_slab == "left"
+                and state.exit_slab == "right"
+                and state.right_underside_event_count == 1
+            )
             if valid_route:
                 state.exit_event_count += 1
                 # Exit is an event coordinate, not a live intersection that
@@ -252,6 +314,10 @@ class DrAnmarNativeTissueThroughBackend(DrAnmarNativeTissueEntryBackend):
                 state.exit_position_m = candidate_exit_position
             else:
                 state.invalid_exit_route = True
+                state.missing_right_underside_puncture = (
+                    state.exit_slab == "right"
+                    and state.right_underside_event_count != 1
+                )
         state.previous_tip_z_m = tip_z
         state.embedded_arc_length_m = embedded
         state.exposed_arc_length_m = exposed
