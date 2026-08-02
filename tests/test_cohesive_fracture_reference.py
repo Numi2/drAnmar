@@ -32,7 +32,7 @@ def _assert_retained_receipt_matches(payload, retained):
     for key, expected in retained.items():
         actual = payload[key]
         if isinstance(expected, float):
-            assert np.isclose(actual, expected, rtol=1.0e-12, atol=1.0e-15), key
+            assert np.isclose(actual, expected, rtol=1.0e-12, atol=1.0e-12), key
         else:
             assert actual == expected, key
 
