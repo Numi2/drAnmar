@@ -30,7 +30,7 @@ def test_moving_scalpel_warp_contract_requires_real_cuda_and_event_parity():
 
 def test_moving_scalpel_cuda_lock_hashes_real_receipt_and_bounded_claim():
     lock = json.loads(PROMOTION_LOCK.read_text(encoding="utf-8"))
-    for field in ("profile", "implementation", "cpu_oracle", "cuda_receipt"):
+    for field in ("profile", "implementation", "front_authority", "cpu_oracle", "cuda_receipt"):
         path = ROOT / lock[field]["path"]
         assert hashlib.sha256(path.read_bytes()).hexdigest() == lock[field]["sha256"]
     receipt = json.loads((ROOT / lock["cuda_receipt"]["path"]).read_text())

@@ -1,22 +1,26 @@
 {
   "schema": "dr.anmar.moving-scalpel-cut-cuda-promotion-lock.v1",
-  "source_revision": "2f6d9fa9f971aab4dc10a54e679bab88592cc11f",
+  "source_revision": "650e54caea0ec738fe6af64d82742d9c5d8d4ada",
   "branch": "research/cuttable-tissue-solver",
   "profile": {
     "path": "physics_next/tissues/dr-anmar-moving-scalpel-cut-v1.json",
-    "sha256": "95f7b45be6a1139227f7e0ee6493ca98e226b9885c72855b370d848ea84c3251"
+    "sha256": "19058c55174d4ee80bdbe4bff05c4a49ddf8c36f2fff167e8600d7bf6524aa33"
   },
   "implementation": {
     "path": "scripts/dr_anmar_moving_scalpel_cut_warp.py",
     "sha256": "7823484ded9b79578571ee7cd0e40e70f7820ace150c73d7205313f9614ef68e"
   },
+  "front_authority": {
+    "path": "scripts/dr_anmar_moving_scalpel_cut_fem.py",
+    "sha256": "6af611887068c11b566c676ecac3981a75919368bd76a61f22aaf7876dda9f13"
+  },
   "cpu_oracle": {
     "path": "physics_next/receipts/moving-scalpel-cut-reference.json",
-    "sha256": "1a7fc4472a85bd6e39af4fdf5b90f9321b60cf4875060157a9a6772cff103583"
+    "sha256": "bf0aced11b5e4caa1eec27adcbfc8fd571a059531998ee1bd02387af9aa99731"
   },
   "cuda_receipt": {
     "path": "physics_next/receipts/moving-scalpel-cut-warp-cuda-reference.json",
-    "sha256": "18057ee382ca5b4a4917f69db61d85a94c94dbed684e0bc7ff99a3024a83a772"
+    "sha256": "6c261bae5dc03892fb051e9b24fc8361c212de90c122627b1a9ee1a81d7940b1"
   },
   "qualification_host": {
     "hostname": "gilgamesh",
@@ -32,16 +36,16 @@
     "all_qualified": true,
     "event_trace_identical": true,
     "receipt_sha256": [
-      "3a336ba63de783e521a03dab67815c2ef317df7b051fef05ed7a168c30afdf4b",
-      "e6da6c27f9d958f7d750fef8a777f9763c5fd503fa652a76f3de4219ae200baf",
-      "58e7a56383c8e91101bb4a2180f30a7b7b8871d2182bf7b182573403c37cac49",
-      "77403b2da5a5b882faa64ae00d1f5c41057727b405f31d7cd7e358efb9e47bbb",
-      "58d21cd5094e3f7b1cbe5443322c3346994f1729e66fdc3eade8922980a339c4"
+      "a3734e4617ce89d9b9fe0fc0c59b8ecf7a09612718b1f33a76eddb94ea1eebf4",
+      "f1d5fbae34a7fd18f0bfeba6daf5e72de27e2cc186791126ee7c752b483e3782",
+      "aab41b8f6dab8f68e9e9e93e75c9ef7e95a3153c795ea32d691d01b1f65f8d78",
+      "1bb7b1117debad6700dec42723ff723c378c85f365fc921a1b1e7210818ecbd5",
+      "ca788a9c5087d2708c2abedb9faa3f64b5564cbf1430a26fd9c7174fd9cd14a7"
     ],
     "metric_envelopes": {
-      "minimum_jacobian": [0.8069270253181458, 0.806930422782898],
-      "mean_wound_gap_m": [6.204160542601805e-05, 6.206773269706612e-05],
-      "maximum_wound_gap_m": [0.0003058789697579148, 0.0003059377366383125]
+      "minimum_jacobian": [0.8202229738235474, 0.8202356696128845],
+      "mean_wound_gap_m": [6.334354407600516e-05, 6.337138141813212e-05],
+      "maximum_wound_gap_m": [0.00025855348992481894, 0.0002588694193418649]
     }
   },
   "remote_tests": {
