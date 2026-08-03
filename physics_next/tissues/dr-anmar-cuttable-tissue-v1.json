@@ -1,0 +1,164 @@
+{
+  "schema": "dr.anmar.cuttable-tissue-profile.v1",
+  "id": "dr-anmar-cuttable-tissue-v1",
+  "name": "DrAnmar Cuttable Tissue Reference Coupon",
+  "version": "0.3.0",
+  "status": "simulation_engineering_reference_pending_specimen_calibration",
+  "purpose": "An intact, anchored tissue coupon for qualifying nonlinear deformation and non-penetrating scalpel contact before fracture is enabled.",
+  "geometry": {
+    "width_m": 0.036,
+    "depth_m": 0.024,
+    "thickness_m": 0.006,
+    "cells_x": 8,
+    "cells_y": 6,
+    "cells_z": 2,
+    "attachment_band_m": 0.003,
+    "prestrain_x": 0.04
+  },
+  "material": {
+    "constitutive_model": "compressible_neo_hookean_with_single_term_prony_relaxation",
+    "density_kg_m3": 1050.0,
+    "youngs_modulus_pa": 85000.0,
+    "poisson_ratio": 0.47,
+    "prony_relaxation_fraction": 0.28,
+    "prony_time_constant_s": 0.12,
+    "velocity_damping_per_s": 18.0
+  },
+  "scalpel_contact": {
+    "representation": "finite_rounded_edge_capsule_with_surface_triangle_projection_and_analytic_contact_strip",
+    "edge_length_m": 0.018,
+    "edge_radius_m": 0.00045,
+    "edge_quadrature_segments": 36,
+    "normal_stiffness_pa_m": 600000000.0,
+    "normal_damping_pa_s_m": 80000.0,
+    "dynamic_friction": 0.22,
+    "friction_regularization_m_s": 0.002,
+    "maximum_command_speed_m_s": 0.01
+  },
+  "solver": {
+    "integrator": "semi_implicit_euler_reference",
+    "time_step_s": 0.00005,
+    "settle_s": 0.12,
+    "approach_s": 0.16,
+    "hold_s": 0.12,
+    "slide_s": 0.12,
+    "retract_s": 0.16,
+    "recovery_s": 0.20,
+    "commanded_indentation_m": 0.0008,
+    "commanded_slide_m": 0.004,
+    "initial_clearance_m": 0.00035,
+    "minimum_jacobian": 0.2
+  },
+  "fracture": {
+    "enabled": false,
+    "reference_oracle_enabled": true,
+    "state_representation": "intrinsic_mixed_mode_cohesive_interfaces_on_every_internal_tetrahedral_face",
+    "traction_separation_law": "irreversible_bilinear_cohesive_zone_with_benzeggagh_kenane_mode_mix_and_rate_regularization",
+    "activation_policy": "blade_sweep_seeded_connected_front_fail_closed_in_dynamic_solver_until_cuda_and_specimen_calibration",
+    "parameter_status": "provisional_dimensionally_consistent_reference_not_human_skin_calibration",
+    "penalty_stiffness_pa_m": 180000000.0,
+    "compression_stiffness_pa_m": 360000000.0,
+    "mode_i_peak_traction_pa": 24000.0,
+    "mode_ii_peak_traction_pa": 20000.0,
+    "mode_i_fracture_energy_j_m2": 14.0,
+    "mode_ii_fracture_energy_j_m2": 22.0,
+    "benzeggagh_kenane_exponent": 1.6,
+    "cohesive_viscosity_pa_s_m": 9000.0,
+    "blade_seed_distance_m": 0.0006,
+    "minimum_seeded_separation_rate_m_s": 0.0001,
+    "front_connectivity": "shared_edge_from_top_entry_or_existing_seeded_interface",
+    "all_internal_faces_eligible": true,
+    "qualification": {
+      "maximum_energy_relative_error": 0.005,
+      "maximum_damage_regression": 1e-12,
+      "minimum_post_failure_compression_traction_pa": 1000.0,
+      "minimum_off_grid_blade_seed_coverage_fraction": 1.0,
+      "require_zero_unseeded_damage": true,
+      "require_connected_seed_front": true,
+      "require_exact_replay": true
+    },
+    "required_future_terms": [
+      "adhesion_and_wear",
+      "persistent_two_sided_collision_surface",
+      "dynamic_discontinuous_tetrahedral_dofs",
+      "cuda_dynamic_front_and_energy_balance",
+      "specimen_calibration_and_mesh_convergence"
+    ]
+  },
+  "qualification": {
+    "maximum_contact_penetration_m": 0.00025,
+    "minimum_off_grid_contact_coverage_fraction": 1.0,
+    "maximum_off_grid_force_variation_fraction": 0.35,
+    "maximum_anchor_drift_m": 1e-10,
+    "maximum_volume_error_fraction": 0.08,
+    "maximum_recovery_residual_m": 0.00035,
+    "minimum_force_relaxation_fraction": 0.01,
+    "maximum_force_relaxation_fraction": 0.65,
+    "require_zero_inverted_tetrahedra": true,
+    "require_zero_fracture_events": true,
+    "require_exact_replay": true
+  },
+  "warp_parity": {
+    "required_runtime": "NVIDIA Warp supplied by the isolated Isaac Sim or parity environment",
+    "maximum_internal_force_relative_l2_error": 0.0005,
+    "maximum_contact_force_relative_l2_error": 0.001,
+    "maximum_contact_penetration_absolute_error_m": 1e-7,
+    "maximum_cohesive_traction_relative_l2_error": 0.001,
+    "maximum_cohesive_damage_absolute_error": 1e-6,
+    "maximum_cohesive_separation_absolute_error_m": 1e-8,
+    "cuda_qualification_required_for_promotion": true
+  },
+  "persistent_topology": {
+    "representation": "uniform_cut_cell_field_with_multiple_oriented_zero_volume_discontinuity_patches_per_cell",
+    "cells_x": 48,
+    "cells_y": 32,
+    "cells_z": 12,
+    "patch_merge_angle_deg": 12.0,
+    "patch_merge_distance_fraction_of_minimum_cell": 0.25,
+    "wound_reconstruction": "plane_box_polygon_duplicated_as_opposed_positive_and_negative_collision_sheets",
+    "removed_material_model": "zero_volume_strong_discontinuity",
+    "qualification": {
+      "minimum_arbitrary_origin_coverage_fraction": 1.0,
+      "minimum_intersection_cell_count": 1,
+      "maximum_removed_volume_m3": 0.0,
+      "maximum_opposed_surface_area_relative_error": 1e-12,
+      "minimum_wound_collision_coverage_fraction": 1.0,
+      "require_repeated_cut_idempotence": true,
+      "require_persistent_topology_hash": true,
+      "require_separate_work_channels": true,
+      "require_exact_replay": true
+    }
+  },
+  "evidence_boundary": {
+    "claims": "simulator engineering evidence only",
+    "not_claimed": [
+      "human_skin_calibration",
+      "biomechanical_validation",
+      "clinical_validation",
+      "arbitrary_cutting",
+      "haptic_validation"
+    ]
+  },
+  "research_basis": [
+    {
+      "title": "Cutting soft materials: how material differences shape the response",
+      "published": "2026-01-06",
+      "url": "https://doi.org/10.1038/s41524-025-01869-y",
+      "used_for": "finite-strain cohesive-fracture, adhesion, wear, friction and dissipative-force architecture"
+    },
+    {
+      "title": "A real-time reconstructed grid method for soft tissue cutting and haptic",
+      "published": "2025-10-20",
+      "url": "https://doi.org/10.1016/j.cmpb.2025.109123",
+      "used_for": "future persistent surface reconstruction and non-penetrating collision architecture"
+    },
+    {
+      "title": "A numerical simulation study of soft tissue resection for low-damage precision cancer surgery",
+      "published": "2025-10-01",
+      "url": "https://doi.org/10.1016/j.cmpb.2025.108937",
+      "used_for": "hyperelastic-viscoelastic parameter fitting and force-displacement validation workflow"
+    }
+  ],
+  "biomechanical_validation": false,
+  "clinical_validation": false
+}

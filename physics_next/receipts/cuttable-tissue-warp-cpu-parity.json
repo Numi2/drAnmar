@@ -1,0 +1,19 @@
+{
+  "schema": "dr.anmar.cuttable-tissue-warp-parity-receipt.v1",
+  "profile_id": "dr-anmar-cuttable-tissue-v1",
+  "profile_sha256": "1ea9d4a54cc8d81619825b097d8687dbe0e383a583d1de0e02117a437de6f9d1",
+  "warp_version": "1.15.0",
+  "device": "cpu",
+  "device_is_cuda": false,
+  "internal_states": 2,
+  "contact_poses": 3,
+  "maximum_internal_force_relative_l2_error": 3.5499983539679377e-06,
+  "maximum_jacobian_absolute_error": 2.7656555201538424e-07,
+  "maximum_contact_force_relative_l2_error": 1.9590651902951213e-06,
+  "maximum_contact_reaction_absolute_error_n": 1.3596016741335148e-06,
+  "maximum_contact_penetration_absolute_error_m": 3.5399571067431385e-10,
+  "qualified": true,
+  "failed_gates": [],
+  "cuda_promotion_pending": true,
+  "clinical_validation": false
+}

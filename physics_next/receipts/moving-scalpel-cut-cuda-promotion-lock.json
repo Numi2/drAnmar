@@ -1,0 +1,66 @@
+{
+  "schema": "dr.anmar.moving-scalpel-cut-cuda-promotion-lock.v1",
+  "source_revision": "4c5d7b96ab33f885f65d63c8eb12b255e0384c0e",
+  "branch": "research/cuttable-tissue-solver",
+  "profile": {
+    "path": "physics_next/tissues/dr-anmar-moving-scalpel-cut-v1.json",
+    "sha256": "268f014114b0d5d2279b179235aa9ac570fbe126796c088827648d69e5a35528"
+  },
+  "implementation": {
+    "path": "scripts/dr_anmar_moving_scalpel_cut_warp.py",
+    "sha256": "5bba463dc506d34c52042160ee55575adae03b721a2059dc8d143bc688c1bcbe"
+  },
+  "front_authority": {
+    "path": "scripts/dr_anmar_moving_scalpel_cut_fem.py",
+    "sha256": "857ee990cd0fb6743a0bed1b651f0de12a06b2005986fd6452f65713366d7bb6"
+  },
+  "cpu_oracle": {
+    "path": "physics_next/receipts/moving-scalpel-cut-reference.json",
+    "sha256": "83ebd7ee12a8b662ffd9902456116604aa286e99ea4972266a9902265ae70cf2"
+  },
+  "cuda_receipt": {
+    "path": "physics_next/receipts/moving-scalpel-cut-warp-cuda-reference.json",
+    "sha256": "5dcdb7140cd840d907421d2f2fce738fa6220a6bca6a6c087c91f6d1bb7fdac4"
+  },
+  "qualification_host": {
+    "hostname": "gilgamesh",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "580.159.03",
+    "cuda_toolkit": "12.9",
+    "warp": "1.15.0",
+    "python": "3.11.15",
+    "execution_backend": "warp_cuda_0"
+  },
+  "fresh_cuda_replays": {
+    "count": 5,
+    "all_qualified": true,
+    "event_trace_identical": true,
+    "receipt_sha256": [
+      "aa25ca54cdf6d309f63e751c1ee50232bdd29174e236880caa9ba7bd1f20c967",
+      "ed0586b7c88fdb4eee2182a8bc65fe64120cdbb55a84d593379d61234dcb82c7",
+      "d0179a88fe81ccfe1399cc0b863d36b76b5f10f5235b23a9c6be6647d6e3b082",
+      "a4287b5d3e657dadbe1a252dbb42128234cc411e81b3ee6943bec5539c075397",
+      "9d9223a30b399900413eb58250d635a23492e50a6ae216501e704550234bd97a"
+    ],
+    "metric_envelopes": {
+      "minimum_jacobian": [0.8479903936386108, 0.8480040431022644],
+      "mean_wound_gap_m": [0.0007237560379111818, 0.0007237590562624845],
+      "maximum_wound_gap_m": [0.0011031811033562788, 0.0011032145144718624],
+      "entry_boundary_mean_gap_m": [0.00031636981293559074, 0.0003163920948281884],
+      "exit_boundary_mean_gap_m": [0.0001358022913336754, 0.00013582156971096991]
+    }
+  },
+  "remote_tests": {
+    "passed": 24,
+    "failed": 0
+  },
+  "cuda_moving_scalpel_qualified": true,
+  "qualified_claim": "moving_scalpel_energy_gated_curved_fracture_front_with_live_warp_cuda_fem_release",
+  "blocked_claims": [
+    "sequential_crossing_enrichment_in_one_live_fem_mesh",
+    "real_time_transient_cutting",
+    "specimen_calibrated_human_skin",
+    "biomechanical_validation",
+    "clinical_validation"
+  ]
+}

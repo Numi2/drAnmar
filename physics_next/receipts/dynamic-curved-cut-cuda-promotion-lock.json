@@ -1,0 +1,61 @@
+{
+  "schema": "dr.anmar.dynamic-curved-cut-cuda-promotion-lock.v1",
+  "source_revision": "4ced353997e5e36096422ad3e9c707779c522a63",
+  "branch": "research/cuttable-tissue-solver",
+  "profile": {
+    "path": "physics_next/tissues/dr-anmar-dynamic-curved-cut-v1.json",
+    "sha256": "e4504687d2474ec2cb42f7c5c496691e72f642d4b0a79679aed694247e8f678e"
+  },
+  "implementation": {
+    "path": "scripts/dr_anmar_dynamic_curved_cut_warp.py",
+    "sha256": "651bfc46f87b952c470d6dd628fb79f836bad07c018880a7e23b138945d4a461"
+  },
+  "cpu_oracle": {
+    "path": "physics_next/receipts/dynamic-curved-cut-reference.json",
+    "sha256": "cc483a8cac6ecdf7a50d6856c1a387cf934951308bbd48aedc5a758ed753d496"
+  },
+  "cuda_receipt": {
+    "path": "physics_next/receipts/dynamic-curved-cut-warp-cuda-reference.json",
+    "sha256": "2846c7a0057fe1381aedf7c8c62735e3cf05258716cf9316bd72a492e8ea94c2"
+  },
+  "qualification_host": {
+    "hostname": "gilgamesh",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "580.159.03",
+    "cuda_toolkit": "12.9",
+    "warp": "1.15.0",
+    "python": "3.11.15",
+    "execution_backend": "warp_cuda_0"
+  },
+  "fresh_cuda_replays": {
+    "count": 5,
+    "all_qualified": true,
+    "receipt_sha256": [
+      "9d6684f46c74a34ed4b4b3d8c5d8a79bf9589b27bacdfc19aff1174095428207",
+      "8f3fed5ab3d0a875d8e88b539a4558391e933ad7f9767dc135b42980503f2012",
+      "bf087fe62a8f552953438059fcdb683fc34557bd19ec087b699ecdf0900a3f46",
+      "6436c831197763c2cca0e295d5b33d6ae6011b01bb07df42214ceb0f19b5e5f7",
+      "00ef14165a96e2e0ba049f2a3b95eb406607452894c3dd652eb2353b80a951a0"
+    ],
+    "metric_envelopes": {
+      "minimum_jacobian": [0.8699485063552856, 0.8699496984481812],
+      "center_of_mass_drift_m": [3.655503765338104e-05, 3.655596391001802e-05],
+      "net_momentum_kg_m_s": [6.56171241255059e-05, 6.562648744108287e-05],
+      "mean_wound_gap_m": [6.862714379114721e-05, 6.863754830617847e-05],
+      "maximum_wound_gap_m": [0.00026652612985654284, 0.0002665892367209647]
+    }
+  },
+  "remote_tests": {
+    "passed": 25,
+    "failed": 0
+  },
+  "cuda_dynamic_cut_qualified": true,
+  "qualified_claim": "single_curved_implicit_surface_cut_cell_dynamics_on_warp_cuda",
+  "blocked_claims": [
+    "sequential_intersecting_dynamic_remesh",
+    "scalpel_driven_dynamic_fracture_front",
+    "specimen_calibrated_human_skin",
+    "biomechanical_validation",
+    "clinical_validation"
+  ]
+}

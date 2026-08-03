@@ -1,0 +1,31 @@
+{
+  "schema": "dr.anmar.dynamic-planar-cut-runtime-lock.v1",
+  "qualified_source_revision": "0a4d297a5fa84f79555cc3b74927a92dda0c7138",
+  "qualified_at_utc": "2026-08-02T20:52:24Z",
+  "host": "gilgamesh-System-Product-Name",
+  "remote_checkout": "/home/numi/dr_anmar/DrAnmar-cuttable-a1e28d0",
+  "runtime": {
+    "python": "3.11.15",
+    "numpy": "1.26.4",
+    "execution_device": "cpu"
+  },
+  "receipt": {
+    "path": "physics_next/receipts/dynamic-planar-cut-isaac-runtime-reference.json",
+    "sha256": "ae6c12333379a0874128961c1a203910c868c5e5d71b1a95a274eb060048ef24"
+  },
+  "remote_tests": {
+    "passed": 26,
+    "failed": 0
+  },
+  "qualified": true,
+  "cuda_dynamic_cut_qualified": false,
+  "qualified_claim": "exact planar mesh-conforming dynamic discontinuous-FEM simulator reference",
+  "blocked_claims": [
+    "arbitrary dynamic cut",
+    "curved dynamic cut",
+    "intersecting dynamic cut",
+    "CUDA dynamic cut",
+    "biomechanical validation",
+    "clinical validation"
+  ]
+}
