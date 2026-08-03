@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180">
-  <rect width="720" height="180" rx="28" fill="#06151D"/>
-  <rect x="32" y="32" width="116" height="116" rx="22" fill="none" stroke="#32D4E6" stroke-width="4"/>
-  <text x="90" y="108" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="52" font-weight="700" fill="#32D4E6">DA</text>
-  <text x="184" y="83" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="44" font-weight="750" fill="#F4FBFD">Dr.<tspan fill="#32D4E6">Anmar</tspan></text>
-  <text x="186" y="117" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" letter-spacing="3" fill="#91AAB5">SURGICAL ROBOTICS RESEARCH STUDIO</text>
-</svg>

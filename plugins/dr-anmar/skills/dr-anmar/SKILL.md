@@ -10,6 +10,26 @@ simulation-only surgical robotics studio. Work from natural-language intent;
 do not force the user into a fixed surgical-task schema or invent a second
 workflow engine over the repository's live capabilities.
 
+## Open first
+
+When the user asks to open, launch, show, or use Dr.Anmar, do not hand them a
+setup checklist. Locate the live repository and run:
+
+```sh
+plugins/dr-anmar/scripts/open-doctor-studio auto
+```
+
+The launcher reuses a healthy local studio, otherwise connects through the
+configured private webcam tunnel, and only then falls back to starting a local
+suite. It opens Doctor Studio once the hub responds and continues until the
+Isaac worker publishes a camera frame. Return the URL and distinguish page
+availability from live-worker readiness.
+
+Use `local` or `remote` instead of `auto` only when the user names that route.
+Use `--no-open` for readiness checks or when the user asks for the URL without
+opening it. Do not ask the user to choose ports or runtime paths when the live
+configuration already resolves them.
+
 ## Start from live truth
 
 1. Locate the active DrAnmar repository and inspect its branch, revision,

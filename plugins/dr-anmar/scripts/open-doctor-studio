@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="auto"
+open_browser=1
+repo_override=""
+
+usage() {
+  cat <<'EOF'
+Usage: open-doctor-studio [auto|local|remote|status] [--no-open] [--repo PATH]
+
+Opens Dr.Anmar Doctor Studio and verifies that its Isaac worker publishes a
+camera frame. Auto reuses a healthy local studio, prefers a configured private
+remote tunnel, then falls back to starting the local suite.
+
+Environment:
+  DR_ANMAR_REPO          DrAnmar source checkout
+  DR_ANMAR_SSH_TARGET    Private remote destination used by remote/auto
+  DR_ANMAR_HUB_PORT      Local Doctor Studio port (default: 2360)
+  DR_ANMAR_LOCAL_PORT    Private tunnel port (default: 12360)
+  DR_ANMAR_OPEN_TIMEOUT  Worker readiness timeout in seconds (default: 180)
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    auto|local|remote|status)
+      mode="$1"
+      shift
+      ;;
+    --no-open)
+      open_browser=0
+      shift
+      ;;
+    --repo)
+      [[ $# -ge 2 ]] || { usage >&2; exit 2; }
+      repo_override="$2"
+      shift 2
+      ;;
+    -h|--help|help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'Unknown argument: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+find_repo() {
+  local candidate plugin_source
+  plugin_source="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." 2>/dev/null && pwd || true)"
+  for candidate in \
+    "$repo_override" \
+    "${DR_ANMAR_REPO:-}" \
+    "$PWD" \
+    "$plugin_source" \
+    "${HOME}/gilgamesh/DrAnmar" \
+    "${HOME}/DrAnmar" \
+    "${HOME}/Documents/DrAnmar"; do
+    [[ -n "$candidate" && -x "$candidate/dr_anmar_suite.sh" ]] || continue
+    (cd -- "$candidate" && pwd)
+    return 0
+  done
+  printf 'DrAnmar repository not found. Set DR_ANMAR_REPO or pass --repo PATH.\n' >&2
+  return 1
+}
+
+repo="$(find_repo)"
+if [[ -f "$repo/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$repo/.env"
+  set +a
+fi
+
+hub_port="${DR_ANMAR_HUB_PORT:-2360}"
+tunnel_port="${DR_ANMAR_LOCAL_PORT:-12360}"
+timeout="${DR_ANMAR_OPEN_TIMEOUT:-180}"
+case "$timeout" in
+  ''|*[!0-9]*) printf 'DR_ANMAR_OPEN_TIMEOUT must be an integer.\n' >&2; exit 2 ;;
+esac
+
+local_url="http://127.0.0.1:${hub_port}/"
+remote_url="http://127.0.0.1:${tunnel_port}/"
+
+hub_ready() {
+  curl -fsS --max-time 2 "${1}api/status" >/dev/null 2>&1
+}
+
+worker_ready() {
+  python3 - "$1" <<'PY'
+import json
+import sys
+import urllib.request
+
+try:
+    with urllib.request.urlopen(sys.argv[1] + "api/status", timeout=2.0) as response:
+        status = json.load(response)
+    worker = status.get("worker") or {}
+    ready = not status.get("switching", False) and int(worker.get("frame_id") or 0) > 0
+except Exception:
+    ready = False
+raise SystemExit(0 if ready else 1)
+PY
+}
+
+open_url() {
+  local url="$1"
+  ((open_browser)) || return 0
+  if command -v open >/dev/null 2>&1; then
+    open "$url"
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$url" >/dev/null 2>&1
+  else
+    printf 'No browser opener found; use %s\n' "$url" >&2
+  fi
+}
+
+wait_for_hub() {
+  local url="$1" elapsed=0
+  while ((elapsed < timeout)); do
+    if hub_ready "$url"; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  return 1
+}
+
+wait_for_worker() {
+  local url="$1" elapsed=0
+  while ((elapsed < timeout)); do
+    if worker_ready "$url"; then
+      return 0
+    fi
+    if ((elapsed > 0 && elapsed % 15 == 0)); then
+      printf 'Waiting for the Isaac worker camera frame (%ss)...\n' "$elapsed"
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  return 1
+}
+
+finish_open() {
+  local url="$1"
+  open_url "$url"
+  printf 'Doctor Studio: %s\n' "$url"
+  if wait_for_worker "$url"; then
+    printf 'Dr.Anmar is ready: hub online, worker online, camera frame live.\n'
+    return 0
+  fi
+  printf 'Doctor Studio opened, but the Isaac worker did not publish a camera frame within %ss.\n' "$timeout" >&2
+  return 1
+}
+
+open_local() {
+  if ! worker_ready "$local_url"; then
+    "$repo/dr_anmar_suite.sh" start
+    wait_for_hub "$local_url" || {
+      printf 'The local Dr.Anmar hub did not become reachable at %s\n' "$local_url" >&2
+      return 1
+    }
+  fi
+  finish_open "$local_url"
+}
+
+open_remote() {
+  [[ -n "${DR_ANMAR_SSH_TARGET:-}" ]] || {
+    printf 'DR_ANMAR_SSH_TARGET is required for the private remote route.\n' >&2
+    return 2
+  }
+  DR_ANMAR_NO_OPEN=1 "$repo/dr_anmar_webcam.sh" start
+  wait_for_hub "$remote_url" || {
+    printf 'The private Dr.Anmar hub is not reachable at %s\n' "$remote_url" >&2
+    return 1
+  }
+  finish_open "$remote_url"
+}
+
+case "$mode" in
+  status)
+    if worker_ready "$local_url"; then
+      printf 'local ready %s\n' "$local_url"
+      exit 0
+    fi
+    if [[ -n "${DR_ANMAR_SSH_TARGET:-}" ]] && worker_ready "$remote_url"; then
+      printf 'remote ready %s\n' "$remote_url"
+      exit 0
+    fi
+    printf 'Dr.Anmar does not currently have a camera-ready worker.\n' >&2
+    exit 1
+    ;;
+  local) open_local ;;
+  remote) open_remote ;;
+  auto)
+    if worker_ready "$local_url"; then
+      finish_open "$local_url"
+    elif [[ -n "${DR_ANMAR_SSH_TARGET:-}" ]]; then
+      open_remote
+    else
+      open_local
+    fi
+    ;;
+esac

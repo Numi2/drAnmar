@@ -1,6 +1,6 @@
 {
   "name": "dr-anmar",
-  "version": "0.1.0",
+  "version": "0.1.0+codex.20260803032931",
   "description": "Operate, train, evaluate, and extend the Dr.Anmar surgical robotics research studio through Codex.",
   "author": {
     "name": "Dr.Anmar"
@@ -17,12 +17,13 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Dr.Anmar",
-    "shortDescription": "Your surgical robotics research studio inside Codex.",
-    "longDescription": "Turn natural-language intent into simulation-only surgical robotics operation, training, evaluation, teleoperation, evidence review, and new research capabilities. Codex works through Dr.Anmar's Doctor Studio and exact Isaac/PhysX runtime while preserving provenance, safety boundaries, and honest evidence levels.",
+    "shortDescription": "Open and operate your surgical robotics studio from Codex.",
+    "longDescription": "Open Doctor Studio directly from Codex, then turn natural-language intent into simulation-only surgical robotics operation, training, evaluation, teleoperation, evidence review, and new research capabilities. Codex connects to Dr.Anmar's exact Isaac/PhysX runtime while preserving provenance, safety boundaries, and honest evidence levels.",
     "developerName": "Dr.Anmar",
     "category": "Developer Tools",
     "capabilities": [
       "Doctor Studio operation",
+      "One-step web launch",
       "Isaac and PhysX simulation",
       "Robot policy training",
       "Webcam teleoperation",
@@ -30,14 +31,14 @@
       "Research capability extension"
     ],
     "defaultPrompt": [
-      "Open Dr.Anmar Doctor Studio and verify the live Isaac room.",
+      "Open Dr.Anmar for me.",
       "Train and evaluate a surgical robot policy against the current champion.",
       "Add a new simulation-only surgical learning capability to Dr.Anmar.",
       "Audit this result against Dr.Anmar's evidence ladder."
     ],
     "brandColor": "#32D4E6",
-    "composerIcon": "./assets/icon.svg",
-    "logo": "./assets/logo.svg",
-    "logoDark": "./assets/logo.svg"
+    "composerIcon": "./assets/drA.png",
+    "logo": "./assets/drA.png",
+    "logoDark": "./assets/drA.png"
   }
 }
