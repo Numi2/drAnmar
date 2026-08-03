@@ -250,7 +250,12 @@ class MovingScalpelCutFEM:
         deformation = np.einsum("tij,tjk->tik", ds, self.mesh.dm_inverse)
         return deformation, np.linalg.det(deformation)
 
-    def step(self, dt: float, blade_center: np.ndarray | None = None) -> None:
+    def step(
+        self,
+        dt: float,
+        blade_center: np.ndarray | None = None,
+        external_force: np.ndarray | None = None,
+    ) -> None:
         material = self.base["material"]
         fracture = self.base["fracture"]
         solver_cfg = self.moving["quasi_static_solver"]
@@ -323,6 +328,13 @@ class MovingScalpelCutFEM:
                 wedge = traction[:, None] * self.mesh.gap_area[active, None] * self.mesh.gap_normals[active]
                 np.add.at(force, plus[active], wedge)
                 np.add.at(force, minus[active], -wedge)
+
+        if external_force is not None:
+            if external_force.shape != force.shape:
+                raise ValueError("External nodal force shape must match tissue nodes")
+            if not np.isfinite(external_force).all():
+                raise ValueError("External nodal force must remain finite")
+            force += external_force
 
         damping = math.exp(-float(solver_cfg["velocity_damping_per_s"]) * dt)
         self.velocity += dt * force / self.mesh.mass[:, None]

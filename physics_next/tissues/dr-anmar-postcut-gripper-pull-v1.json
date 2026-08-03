@@ -1,0 +1,68 @@
+{
+  "schema": "dr.anmar.postcut-gripper-pull-profile.v1",
+  "id": "dr-anmar-postcut-gripper-pull-v1",
+  "version": "0.1.0",
+  "moving_cut_profile": "physics_next/tissues/dr-anmar-moving-scalpel-cut-v1.json",
+  "moving_cut_profile_file_sha256": "268f014114b0d5d2279b179235aa9ac570fbe126796c088827648d69e5a35528",
+  "gripper": {
+    "flap_side": "positive_level_set",
+    "grasp_center_material_m": [0.0, 0.0055],
+    "pad_half_extent_m": [0.005, 0.0025],
+    "open_clearance_m": 0.001,
+    "closed_indentation_per_jaw_m": 0.00025,
+    "normal_stiffness_n_m": 1500.0,
+    "normal_damping_n_s_m": 0.6,
+    "tangential_stiffness_n_m": 900.0,
+    "tangential_damping_n_s_m": 0.25,
+    "friction_coefficient": 0.85,
+    "lateral_pull_m": 0.004
+  },
+  "quasi_static_schedule": {
+    "pseudo_time_step_s": 0.000005,
+    "close_steps": 320,
+    "custody_hold_steps": 240,
+    "pull_steps": 800,
+    "lateral_hold_steps": 320,
+    "release_steps": 320,
+    "recovery_steps": 4000,
+    "velocity_damping_per_s": 58.0
+  },
+  "qualification": {
+    "minimum_top_contact_nodes": 3,
+    "minimum_bottom_contact_nodes": 3,
+    "minimum_pull_custody_fraction": 0.95,
+    "minimum_peak_normal_force_per_jaw_n": 0.05,
+    "minimum_peak_lateral_reaction_n": 0.01,
+    "minimum_gripped_flap_lateral_displacement_m": 0.002,
+    "minimum_differential_flap_displacement_m": 0.0015,
+    "minimum_local_wound_gap_increase_m": 0.0003,
+    "maximum_contact_penetration_m": 0.0005,
+    "maximum_anchor_drift_m": 1e-10,
+    "minimum_jacobian": 0.2,
+    "maximum_recovery_residual_m": 0.0008,
+    "maximum_topology_event_delta": 0,
+    "require_all_cut_pairs_released": true,
+    "require_bilateral_custody": true,
+    "require_zero_inversions": true,
+    "require_finite_state": true,
+    "require_exact_replay": true
+  },
+  "cuda_parity": {
+    "maximum_flap_displacement_absolute_error_m": 0.0001,
+    "maximum_wound_gap_increase_absolute_error_m": 0.0001,
+    "maximum_contact_penetration_absolute_error_m": 0.00005,
+    "maximum_recovery_absolute_error_m": 0.0001,
+    "maximum_peak_force_relative_error": 0.1
+  },
+  "evidence_boundary": {
+    "qualified_claim": "postcut_one_flap_bilateral_frictional_grasp_and_lateral_elastic_pull",
+    "blocked_claims": [
+      "real_time_transient_grasping",
+      "instrument_specific_jaw_damage",
+      "specimen_calibrated_human_skin",
+      "haptic_validation",
+      "biomechanical_validation",
+      "clinical_validation"
+    ]
+  }
+}
