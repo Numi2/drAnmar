@@ -326,6 +326,39 @@ retained outside the selectable catalog under
 These are simulator-engineering results only; they are not biomechanical,
 clinical, or autonomous-surgery validation.
 
+### Cuttable tissue: incision and physical separation
+
+The in-house DrAnmar FEM tissue supports an energy-gated moving scalpel front,
+persistent two-sided wound geometry, retained anchors, and post-cut bilateral
+gripper contact. These are real solver trajectories with no generated imagery
+or displacement exaggeration.
+
+<p align="center">
+  <img src="docs/media/dranmar-moving-scalpel-cut-cuda.gif"
+       width="600"
+       alt="Real Warp CUDA trajectory of a scalpel cutting DrAnmar FEM tissue from one physical boundary to the other">
+</p>
+
+<p align="center">
+  <em>Moving scalpel: fracture occurs only behind the blade; the incision
+  reaches and mechanically opens at both physical tissue boundaries.</em>
+</p>
+
+<p align="center">
+  <img src="docs/media/dranmar-postcut-gripper-pull.gif"
+       width="600"
+       alt="Real FEM trajectory of bilateral gripper jaws grasping one flap of already-cut DrAnmar tissue and pulling it laterally">
+</p>
+
+<p align="center">
+  <em>Post-cut separation: bilateral jaw custody pulls one flap 3.88 mm while
+  the opposite flap moves 0.17 mm, then releases for elastic recovery.</em>
+</p>
+
+The cutter and separator evidence, qualification limits, CPU/CUDA receipts,
+and blocked claims are documented in the
+[cuttable-tissue development lane](docs/cuttable_tissue/README.md).
+
 ### Champion needle pickup and handover
 
 This is the real promoted composite running the
