@@ -1,6 +1,6 @@
 {
   "schema": "dr.anmar.moving-scalpel-cut-cuda-promotion-lock.v1",
-  "source_revision": "1187402f8191394c59dd8bbbf106fe3eb96940fa",
+  "source_revision": "4c5d7b96ab33f885f65d63c8eb12b255e0384c0e",
   "branch": "research/cuttable-tissue-solver",
   "profile": {
     "path": "physics_next/tissues/dr-anmar-moving-scalpel-cut-v1.json",
@@ -12,7 +12,7 @@
   },
   "front_authority": {
     "path": "scripts/dr_anmar_moving_scalpel_cut_fem.py",
-    "sha256": "d7dc0e22a4b5510403a3c1296cdc5f245642cdfc8c031e7a9f9eb690a5a0fabc"
+    "sha256": "857ee990cd0fb6743a0bed1b651f0de12a06b2005986fd6452f65713366d7bb6"
   },
   "cpu_oracle": {
     "path": "physics_next/receipts/moving-scalpel-cut-reference.json",
