@@ -1,0 +1,43 @@
+{
+  "name": "dr-anmar",
+  "version": "0.1.0",
+  "description": "Operate, train, evaluate, and extend the Dr.Anmar surgical robotics research studio through Codex.",
+  "author": {
+    "name": "Dr.Anmar"
+  },
+  "homepage": "https://github.com/Numi2/drAnmar",
+  "repository": "https://github.com/Numi2/drAnmar",
+  "keywords": [
+    "robotics",
+    "surgical-simulation",
+    "isaac-lab",
+    "physx",
+    "reinforcement-learning"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Dr.Anmar",
+    "shortDescription": "Your surgical robotics research studio inside Codex.",
+    "longDescription": "Turn natural-language intent into simulation-only surgical robotics operation, training, evaluation, teleoperation, evidence review, and new research capabilities. Codex works through Dr.Anmar's Doctor Studio and exact Isaac/PhysX runtime while preserving provenance, safety boundaries, and honest evidence levels.",
+    "developerName": "Dr.Anmar",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Doctor Studio operation",
+      "Isaac and PhysX simulation",
+      "Robot policy training",
+      "Webcam teleoperation",
+      "Evidence-qualified evaluation",
+      "Research capability extension"
+    ],
+    "defaultPrompt": [
+      "Open Dr.Anmar Doctor Studio and verify the live Isaac room.",
+      "Train and evaluate a surgical robot policy against the current champion.",
+      "Add a new simulation-only surgical learning capability to Dr.Anmar.",
+      "Audit this result against Dr.Anmar's evidence ladder."
+    ],
+    "brandColor": "#32D4E6",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.svg",
+    "logoDark": "./assets/logo.svg"
+  }
+}

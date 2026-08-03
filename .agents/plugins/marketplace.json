@@ -1,0 +1,20 @@
+{
+  "name": "dr-anmar",
+  "interface": {
+    "displayName": "Dr Anmar"
+  },
+  "plugins": [
+    {
+      "name": "dr-anmar",
+      "source": {
+        "source": "local",
+        "path": "./plugins/dr-anmar"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
